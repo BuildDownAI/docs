@@ -1,0 +1,91 @@
+---
+title: "Add custom pipeline steps to AI-Implement"
+description: "How to override built-in pipeline steps or add entirely new ones by placing TypeScript modules in the custom/steps/ directory of your AI-Implement installation."
+---
+
+AI-Implement's pipeline is extensible — you can override any built-in step or add new ones by placing TypeScript files in the `custom/` directory. Files in `custom/` take precedence over the corresponding built-ins, and upstream updates never overwrite them (the only exception is `custom/README.md`, which may be updated with documentation changes). Your customizations are safe across upgrades.
+
+There are two extension points: `custom/steps/` for step modules and `custom/pipelines/` for pipeline definitions.
+
+## custom/steps/ — override or add a step
+
+You can either replace a built-in step or introduce an entirely new one by dropping a TypeScript file in `custom/steps/`.
+
+**Built-in step keys you can override:** `clone`, `install`, `feedback-loop`, `preflight`, `push`
+
+To override a built-in, create a file named after its key: for example, `custom/steps/install.ts` replaces the built-in `install` step. To add a new step, give the file a name that doesn't match any built-in key.
+
+Every step file must export a `StepModule` as its default export:
+
+```typescript
+export interface StepModule<
+  I extends Record<string, unknown> = Record<string, unknown>,
+  O extends Record<string, unknown> = Record<string, unknown>,
+> {
+  run(context: PipelineContext, inputs: I, reporter: StepReporter): Promise<O>;
+}
+```
+
+Here is the `hello.ts` example from `custom/README.md`:
+
+```typescript
+// custom/steps/hello.ts
+import type { StepModule } from "../../src/pipeline/types.js";
+
+export default {
+  async run(_context, _inputs, _reporter) {
+    return { message: "hello from custom step" };
+  },
+} satisfies StepModule;
+```
+
+<Note>
+  A file in `custom/steps/` that exists but has no `default` export produces a warning at runtime and falls back to the built-in rather than silently misbehaving.
+</Note>
+
+## custom/pipelines/ — override the pipeline definition
+
+You can override the built-in autonomous loop pipeline by creating `custom/pipelines/autonomous.yml`. This replaces the built-in pipeline YAML entirely.
+
+Pipeline YAML follows this schema:
+
+```yaml
+id: <pipeline-id>
+steps:
+  - id: <step-id>
+    type: <StepType>
+    moduleId: <registry-key>  # optional; defaults to type
+```
+
+The `moduleId` field is what connects a pipeline step to your custom step module. When `moduleId` is set, the runner looks for `custom/steps/<moduleId>.js` (or `.ts` in development). When omitted, it defaults to the value of `type`.
+
+Here is an example that adds a custom step to the pipeline:
+
+```yaml
+# custom/pipelines/autonomous.yml
+id: autonomous
+steps:
+  - id: my-step
+    type: custom
+    moduleId: hello        # loads custom/steps/hello.js (or .ts in dev)
+  - id: install
+    type: install
+  - id: feedback-loop
+    type: feedback-loop
+  - id: preflight
+    type: preflight
+  - id: push
+    type: push
+```
+
+<Tip>
+  Step input wiring and `skip` predicates for the known built-in step IDs (`install`, `feedback-loop`, `preflight`, `push`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+</Tip>
+
+## custom/providers/ — reserved
+
+The `custom/providers/` directory is reserved for future provider overrides. It is not yet wired up to a stable interface.
+
+<Warning>
+  Do not use `custom/providers/` for production customizations — the interface is not yet stable and may change without notice.
+</Warning>

@@ -1,0 +1,106 @@
+---
+title: "Workflow template files and front matter"
+description: "How the workflow files synced to target repos work, the front matter keys they read from WORKFLOW.md and PLANNING.md, and how to run a resync."
+---
+
+When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+
+## Files installed by sync
+
+### `claude-implement.yml`
+
+The main implementation workflow, placed at `.github/workflows/claude-implement.yml` in the target repo. The orchestrator dispatches this workflow whenever a Linear issue with the **AI-Implement** label is ready to process. It reads `WORKFLOW.md` from the repo root, substitutes issue variables into it, and passes the result to Claude Code as the implementation prompt. After Claude creates a PR, the workflow posts a gap analysis comment and updates the Linear issue.
+
+### `claude-plan.yml`
+
+The planning workflow, placed at `.github/workflows/claude-plan.yml`. Dispatched before implementation when `planningEnabled=true` on the team mapping. Claude reads the codebase in read-only mode and posts structured planning comments to the Linear issue. The implementation workflow later fetches those comments and injects them into the Claude prompt. See [AI planning phase](/configuration/planning) for the full flow.
+
+### `comment-trigger.yml`
+
+Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
+
+### `WORKFLOW.md`
+
+Your implementation prompt template, placed at the root of the target repo. The sync workflow seeds this file once. After that, it is yours — future syncs will not overwrite it. Customize the "Repo context" and "Quality checklist" sections for your stack and standards.
+
+### `PLANNING.md`
+
+Your planning prompt template, seeded once in the same way as `WORKFLOW.md`. Customize the "Repo context" section to tell Claude which directories and patterns matter most for your codebase.
+
+## Syncing templates to a repo
+
+Run the sync workflow manually to push the latest templates to a target repo:
+
+```bash
+gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+```
+
+This opens a pull request in the target repo with the updated workflow files. It will seed `WORKFLOW.md` and `PLANNING.md` only if those files do not already exist.
+
+## `WORKFLOW.md` front matter
+
+The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delimiters) is stripped before the file is sent to Claude. Use it to configure model selection and lifecycle hooks.
+
+<ParamField body="model" type="string">
+  Model ID passed verbatim to `claude-code --model` for implementation runs. Required when `provider=bedrock`; optional for `anthropic` (default: `claude-sonnet-4-6`). For Bedrock, use a model ID such as `anthropic.claude-sonnet-4-6-20250805-v1:0` or an inference-profile ARN. The workflow passes this value through without validation — typos fail fast at Claude invocation time with a clear error.
+</ParamField>
+
+<ParamField body="gap_analysis_model" type="string">
+  Model ID used for the post-PR gap analysis step. For `anthropic`, defaults to `claude-haiku-4-5-20251001` when omitted. For `bedrock`, defaults to the same value as `model`. Override this to use a faster or cheaper model for gap analysis.
+</ParamField>
+
+<ParamField body="setup" type="string">
+  Path to a shell script (relative to the repo root) run before Claude starts. Use this to install dependencies, set up test databases, or do any other environment preparation.
+</ParamField>
+
+<ParamField body="verify" type="string">
+  Path to a shell script run after Claude succeeds. Use this to run tests, linters, or any post-implementation quality checks. If this script exits non-zero, the workflow job fails.
+</ParamField>
+
+<ParamField body="teardown" type="string">
+  Path to a shell script run always — even if the Claude step or the verify step fails. Use this to clean up resources such as temporary databases or test containers.
+</ParamField>
+
+### Example `WORKFLOW.md` front matter
+
+```yaml
+---
+model: claude-sonnet-4-6
+gap_analysis_model: claude-haiku-4-5-20251001
+setup: scripts/ci-setup.sh
+verify: scripts/ci-verify.sh
+teardown: scripts/ci-teardown.sh
+---
+```
+
+## `PLANNING.md` front matter
+
+<ParamField body="model" type="string">
+  Model ID for planning runs. Follows the same rules as the `model` field in `WORKFLOW.md`: required for `bedrock`, optional for `anthropic` (default: `claude-sonnet-4-6`).
+</ParamField>
+
+## Variable substitution in `WORKFLOW.md`
+
+After stripping front matter and HTML comments, the workflow runs `envsubst` on the body of `WORKFLOW.md`. You can use these variables anywhere in the template:
+
+| Variable | Description |
+|---|---|
+| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_TITLE}` | Issue title |
+| `${ISSUE_DESCRIPTION}` | Full issue description in Markdown |
+| `${ISSUE_ID}` | Linear UUID for the issue |
+| `${PR_NUMBER}` | Existing PR number on gap-fill runs; empty on the first implementation run |
+
+## Variable substitution in `PLANNING.md`
+
+`PLANNING.md` supports the following variables in addition to the common issue fields:
+
+| Variable | Description |
+|---|---|
+| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_TITLE}` | Issue title |
+| `${ISSUE_DESCRIPTION}` | Full issue description in Markdown |
+| `${ISSUE_ID}` | Linear UUID |
+| `${PARENT}` | Parent issue as `- IDENTIFIER: Title`, or `None` if there is no parent |
+| `${SIBLINGS}` | Other children of the parent issue, newline-separated, or `None` |
+| `${DEPENDENCIES}` | Related issues as `- [type] IDENTIFIER: Title`, newline-separated, or `None` |

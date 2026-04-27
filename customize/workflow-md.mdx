@@ -1,0 +1,189 @@
+---
+title: "Customize WORKFLOW.md for your codebase"
+description: "How to customize WORKFLOW.md: set the model, repo context, quality checklist, and lifecycle hooks Claude follows for every implementation run in your repo."
+---
+
+`WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up a Linear issue, it renders this file and sends the result to Claude as its implementation instructions. You control the model, the repo context Claude reads, and every detail of how Claude approaches your codebase.
+
+## File structure
+
+`WORKFLOW.md` has two parts separated by a YAML front matter block:
+
+**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. This block is stripped before Claude sees anything; Claude never receives it.
+
+**Markdown body** — everything after the front matter. This is rendered through `envsubst` (variable substitution) and then sent to Claude as the prompt.
+
+## Front matter keys
+
+<AccordionGroup>
+  <Accordion title="model">
+    The model ID passed to `claude-code --model`. Accepts any ID your configured provider supports.
+
+    ```yaml
+    # Anthropic API or OAuth
+    model: claude-sonnet-4-6
+
+    # AWS Bedrock (replace with your model ID or inference-profile ARN)
+    model: anthropic.claude-sonnet-4-6-20250805-v1:0
+    ```
+
+    This key is **required when using Bedrock** — there is no safe default for Bedrock model IDs because they are region- and account-specific. The workflow hard-fails with a clear error if you omit it on a Bedrock-mapped repo. For the Anthropic provider it defaults to `claude-sonnet-4-6` if omitted.
+  </Accordion>
+
+  <Accordion title="gap_analysis_model">
+    The model used for the post-PR gap analysis step. Optional.
+
+    ```yaml
+    gap_analysis_model: claude-haiku-4-5-20251001
+    ```
+
+    When omitted, the Anthropic provider defaults to `claude-haiku-4-5-20251001` (a cheaper model suited to analysis). The Bedrock provider falls back to the same value as `model` because there is no generic Bedrock haiku ID to default to.
+  </Accordion>
+
+  <Accordion title="setup">
+    Path to a shell script to run **before** Claude starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
+
+    ```yaml
+    setup: scripts/ai-setup.sh
+    ```
+  </Accordion>
+
+  <Accordion title="verify">
+    Path to a shell script to run **after Claude succeeds**. Use this to run your test suite or any other validation that must pass before the PR is opened.
+
+    ```yaml
+    verify: scripts/ai-verify.sh
+    ```
+
+    This script only runs when Claude completes without error.
+  </Accordion>
+
+  <Accordion title="teardown">
+    Path to a shell script that **always runs at the end**, whether or not Claude succeeded. Use this for cleanup tasks.
+
+    ```yaml
+    teardown: scripts/ai-teardown.sh
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Variables available in the body
+
+The markdown body is processed with `envsubst` before being sent to Claude. You can reference any of these variables anywhere in the body:
+
+| Variable | Description |
+|---|---|
+| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_TITLE}` | Issue title |
+| `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
+| `${ISSUE_ID}` | Linear UUID — useful if you want Claude to call the Linear API directly |
+| `${PR_NUMBER}` | Set on gap-fill re-runs; empty on first run |
+
+## New implementation vs gap-fill runs
+
+AI-Implement uses this single file for two distinct scenarios:
+
+- **When `${PR_NUMBER}` is empty** — Claude creates a new branch and opens a pull request.
+- **When `${PR_NUMBER}` is set** — Claude pushes commits to the existing PR branch without creating a new one. This happens when you comment `/ai-implement` on an existing PR, triggering a gap-fill run.
+
+The starter template handles both cases with a conditional section. You can read `${PR_NUMBER}` in your own template body to branch the instructions however your workflow requires.
+
+## Starter template
+
+The following is the default body that ships with `WORKFLOW.md` after initial setup. Use it as your starting point:
+
+````markdown
+Read CLAUDE.md if it exists for repo-specific context and conventions.
+
+---
+
+If `${PR_NUMBER}` is set (value: "${PR_NUMBER}"), skip to the **Gap-fill instructions**
+section below and ignore New implementation.
+
+---
+
+## New implementation
+
+Create a branch named `${ISSUE_IDENTIFIER}/short-description`, implement the
+feature described in the issue below, then open a pull request with:
+
+- **Title:** `${ISSUE_IDENTIFIER}: ${ISSUE_TITLE}`
+- **Body:** must include `Fixes ${ISSUE_IDENTIFIER}` so Linear automatically
+  closes the issue when the PR is merged.
+
+---
+
+## Gap-fill instructions _(only when PR_NUMBER is set)_
+
+You are adding missing work to existing PR #${PR_NUMBER}.
+**Do NOT create a new branch or PR.** Commit your changes to the current
+branch and push. Review the gap analysis comment on the PR to understand
+what is still missing.
+
+---
+
+## Issue
+
+**Identifier:** ${ISSUE_IDENTIFIER}
+**Title:** ${ISSUE_TITLE}
+**Description:**
+${ISSUE_DESCRIPTION}
+
+---
+
+## Repo context
+
+- **Stack:** _e.g. Node.js 20, TypeScript, PostgreSQL, Vitest_
+- **Run tests:** _e.g. `npm test`_
+- **Run linting / formatting:** _e.g. `npm run lint`_
+- **Key conventions:** _e.g. follow patterns in existing files; no new dependencies without good reason_
+
+---
+
+## Quality checklist
+
+Before opening or updating the PR, verify:
+
+- [ ] Tests pass
+- [ ] No lint errors. Build completes successfully
+- [ ] No debug output, `console.log`, or commented-out code left in
+- [ ] PR description explains the approach, not just the what
+- [ ] No unrelated files changed
+````
+
+## Customizing the "Repo context" section
+
+The `## Repo context` section is the primary place to teach Claude about your codebase. Fill it in with specifics so Claude doesn't have to guess:
+
+```markdown
+## Repo context
+
+- **Stack:** Node.js 20, TypeScript 5, PostgreSQL 16, Prisma ORM, Vitest
+- **Run tests:** `npm test`
+- **Run linting / formatting:** `npm run lint && npm run format`
+- **Key conventions:**
+  - All database access goes through the repository layer in `src/repositories/`
+  - Never modify migration files directly — create a new migration with `npm run migrate:create`
+  - Use `zod` for all input validation
+  - Follow patterns in existing files; avoid introducing new dependencies without good reason
+```
+
+<Tip>
+  If your repo has a `CLAUDE.md` file with codebase conventions, point Claude at it explicitly. The starter template already includes `Read CLAUDE.md if it exists` at the top — keep that line in place so Claude picks up your conventions automatically.
+</Tip>
+
+## Adding repo-specific constraints
+
+After the `## Repo context` section you can add any constraint Claude should follow throughout the run:
+
+```markdown
+## Constraints
+
+- Never modify files under `src/generated/` — those are auto-generated by the build
+- All API endpoints must have corresponding OpenAPI annotations
+- Prefer `async/await` over `.then()` chains
+```
+
+<Note>
+  The sync workflow seeds `WORKFLOW.md` into your repo once and never overwrites it again. Every change you make is permanent — upstream updates to the workflow templates will not touch this file.
+</Note>

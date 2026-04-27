@@ -1,0 +1,137 @@
+---
+title: "Quick start: your first AI-generated PR"
+description: "Set up AI-Implement locally and get your first Claude-generated pull request in about 30 minutes, from cloning the repo to watching the PR appear."
+---
+
+This guide walks you through running AI-Implement for the first time. By the end, you'll have the orchestrator running locally, a target repo connected, and a Linear issue on its way to becoming a pull request.
+
+<Note>
+  Before you start, make sure you have: a Linear workspace with API access, a GitHub App you control, a Fly.io account (for the runner), and an Anthropic API key or AWS Bedrock access. See [Prerequisites](/setup/prerequisites) for details on setting each one up.
+</Note>
+
+<Steps>
+
+  <Step title="Clone the repository">
+    Clone AI-Implement and move into the project directory:
+
+    ```bash
+    git clone https://github.com/BuildDownAI/AI-Implement.git
+    cd AI-Implement
+    ```
+  </Step>
+
+  <Step title="Configure your environment">
+    Copy the example environment file and fill in your credentials:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Open `.env` and set at minimum:
+
+    | Variable | Description |
+    |---|---|
+    | `LINEAR_API_KEY` | Your Linear personal API key (`lin_api_...`) |
+    | `GITHUB_APP_ID` | The numeric ID of your GitHub App |
+    | `GITHUB_APP_PRIVATE_KEY` | Your GitHub App's RSA private key in PEM format, with newlines escaped as `\n` |
+
+    The other variables in `.env.example` are optional for a first run:
+
+    | Variable | Default | Description |
+    |---|---|---|
+    | `ADMIN_ACCESS_CODE` | _(none)_ | Password for the admin UI — UI is disabled if unset |
+    | `NOTIFY_TYPE` | `slack` | Notification provider: `slack` or `teams` |
+    | `NOTIFY_WEBHOOK_URL` | _(none)_ | Webhook URL — notifications are skipped if unset |
+    | `POLL_INTERVAL_MS` | `60000` | How often the orchestrator polls Linear, in milliseconds |
+    | `PORT` | `8080` | HTTP port for the orchestrator and admin UI |
+    | `DEDUP_DB_PATH` | `./dedup.sqlite` | Path for the SQLite database |
+
+    <Tip>
+      Set `ADMIN_ACCESS_CODE` to a non-empty value so you can access the admin UI at the next step. Without it, the UI is disabled.
+    </Tip>
+  </Step>
+
+  <Step title="Install dependencies and start the orchestrator">
+    Install packages and start the development server:
+
+    ```bash
+    npm install
+    npm run dev
+    ```
+
+    The orchestrator starts polling Linear and serving HTTP on port 8080. You should see log output confirming both.
+  </Step>
+
+  <Step title="Create the AI-Implement label in Linear">
+    In your Linear workspace, create a label named exactly `AI-Implement`. The orchestrator polls for issues with this label — the name must match.
+
+    You'll also want to create an `AI-Working` label. AI-Implement adds this to an issue while a run is in progress and removes it when the run finishes.
+  </Step>
+
+  <Step title="Add a team-to-repo mapping in the admin UI">
+    Open the admin UI at [http://localhost:8080/admin](http://localhost:8080/admin) and enter your `ADMIN_ACCESS_CODE`.
+
+    Add a mapping that tells the orchestrator which GitHub repo to use for a given Linear team:
+
+    - **Team key** — your Linear team's identifier (e.g. `ENG`)
+    - **Owner** — the GitHub org or user (e.g. `your-org`)
+    - **Repo** — the repository name (e.g. `your-repo`)
+    - **Workflow file** — `claude-implement.yml` (the default)
+    - **Default branch** — typically `main`
+
+    Leave the other settings at their defaults for now.
+  </Step>
+
+  <Step title="Sync workflow templates to your target repo">
+    AI-Implement needs its GitHub Actions workflow files inside the target repo. Run the sync workflow to open a PR there with everything it needs:
+
+    ```bash
+    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+    ```
+
+    This opens a PR in `your-org/your-repo` containing `claude-implement.yml`, `comment-trigger.yml`, `claude-plan.yml`, and a starter `WORKFLOW.md`. Merge that PR before continuing.
+
+    <Warning>
+      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
+    </Warning>
+  </Step>
+
+  <Step title="Install the GitHub App on the target repo">
+    In your GitHub App settings, install the app on the target repository. This gives the orchestrator permission to dispatch workflows and the workflow permission to push branches and open PRs.
+  </Step>
+
+  <Step title="Add required secrets to the target repo">
+    In the target repo's **Settings → Secrets and variables → Actions**, add these org or repo secrets:
+
+    | Secret | Value |
+    |---|---|
+    | `AI_IMPLEMENT_APP_ID` | Your GitHub App's numeric ID |
+    | `AI_IMPLEMENT_PRIVATE_KEY` | Your GitHub App's PEM private key |
+    | `ANTHROPIC_API_KEY` | Your Anthropic API key |
+    | `LINEAR_API_KEY` | Your Linear API key |
+
+    If you prefer Claude Code OAuth authentication over an API key, add `CLAUDE_CODE_OAUTH_TOKEN` instead of (or in addition to) `ANTHROPIC_API_KEY`. OAuth takes precedence.
+  </Step>
+
+  <Step title="Label an issue and watch the PR appear">
+    In your Linear workspace, open any issue in the team you mapped and add the `AI-Implement` label.
+
+    Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it **In Progress**, adds the **AI-Working** label, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
+
+    When the run finishes, the **AI-Working** label is removed, the Linear issue gets a **Ready for Review** label, and the PR has a gap analysis comment comparing the diff to your original ticket.
+
+    <Tip>
+      If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing team-to-repo mapping, an incorrect `LINEAR_API_KEY`, or a GitHub App that isn't installed on the target repo.
+    </Tip>
+  </Step>
+
+</Steps>
+
+## Next steps
+
+Now that you have a working end-to-end flow, you can:
+
+- Edit `WORKFLOW.md` in the target repo to give Claude repo-specific instructions and set the model.
+- Enable the planning phase to have Claude post an architecture analysis and test plan to Linear before implementation starts.
+- Add more team-to-repo mappings in the admin UI to connect additional Linear teams or repos.
+- Deploy the orchestrator to Fly.io for a persistent, production setup.

@@ -1,0 +1,85 @@
+---
+title: "Gap analysis: what Claude posts on every PR"
+description: "How the gap analysis comment works, what it contains, and how to trigger a gap-fill run on an existing AI-Implement PR using the /ai-implement comment."
+---
+
+After every implementation run, AI-Implement runs a second Claude pass that reviews the PR diff and posts a gap analysis comment. The gap analysis compares what was actually built — as visible in the diff — to what was specified in the original Linear ticket. It gives reviewers a structured summary of what was implemented, what was missed or only partially addressed, and any manual follow-up steps that a human needs to perform.
+
+## Comment format
+
+The gap analysis is posted as a PR comment with the following structure:
+
+```
+## 🔍 AI Implementation Gap Analysis
+
+### ✅ Implemented
+- [requirement that was fully addressed in the diff]
+- [another fully addressed requirement]
+
+### ⚠️ Gaps / Partial Implementation
+- [missing or only partially implemented requirement]
+- [another gap]
+(or "None identified." if everything in the ticket was addressed)
+
+### 🔧 Manual Steps Required
+- [human action needed, e.g. set an environment variable, run a migration, configure an external service]
+(or "None identified." if no manual steps are needed)
+
+---
+*To implement remaining items, comment `/ai-implement` on this PR.*
+```
+
+The gap analysis is based only on the PR diff and PR body — Claude does not explore the broader codebase during this pass.
+
+## Model and cost
+
+The gap analysis uses a faster, cheaper model by default. For the Anthropic provider, this is `claude-haiku-4-5-20251001`. For the Bedrock provider, the gap analysis falls back to the same model specified in your `WORKFLOW.md` front matter, since there is no safe default Bedrock model ID.
+
+You can override the gap analysis model by adding `gap_analysis_model:` to the front matter of your repo's `WORKFLOW.md`:
+
+```yaml
+---
+model: claude-sonnet-4-6
+gap_analysis_model: claude-haiku-4-5-20251001
+---
+```
+
+Model IDs are passed through verbatim. Any valid Anthropic model ID or Bedrock model ID (including inference-profile ARNs) is accepted.
+
+## Updating an existing gap analysis
+
+If a gap analysis comment already exists on the PR when the workflow runs, it is updated in place rather than duplicated. The comment is identified by its opening line (`## 🔍 AI Implementation Gap Analysis`).
+
+<Note>
+Gap analysis only runs when the implementation step succeeds and an open PR is found on the branch. If Claude does not open a PR during the implementation run, no gap analysis is posted.
+</Note>
+
+## Triggering a gap-fill run
+
+After reviewing the gap analysis, you can ask Claude to address the remaining items without starting a new implementation from scratch.
+
+<Steps>
+  <Step title="Open the PR on GitHub">
+    Navigate to the pull request that AI-Implement opened.
+  </Step>
+  <Step title="Post the trigger comment">
+    Add a comment containing exactly `/ai-implement` — no other text — on the PR. You must have write access to the repository.
+
+    ```
+    /ai-implement
+    ```
+  </Step>
+  <Step title="Wait for the run">
+    The `comment-trigger.yml` workflow picks up the comment, parses the Linear issue metadata from the PR body, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
+  </Step>
+</Steps>
+
+The Linear issue link, issue identifier, and issue description are all preserved from the original run — Claude sees the same ticket context it had during the first pass.
+
+<Warning>
+The `/ai-implement` trigger only works on PRs opened by AI-Implement. PRs created by hand do not contain the metadata block that the comment trigger reads, so the trigger will post a warning comment and exit without dispatching.
+</Warning>
+
+<Tip>
+You can run `/ai-implement` multiple times on the same PR. Each gap-fill run updates the existing gap analysis comment in place, so you can track progress without a growing thread of duplicate comments.
+</Tip>

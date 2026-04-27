@@ -1,0 +1,126 @@
+---
+title: "Use AWS Bedrock with AI-Implement"
+description: "Configure AI-Implement to invoke Claude through AWS Bedrock using GitHub OIDC and an IAM role. No static AWS credentials are required or supported."
+---
+
+AI-Implement supports AWS Bedrock as a provider, letting you invoke Claude models through your AWS account using GitHub OIDC — no static AWS credentials required. When Bedrock is configured, the orchestrator passes `provider=bedrock` and your chosen AWS region to the workflow at dispatch time, and the workflow assumes an IAM role via OIDC before invoking Claude. This page walks through the full setup.
+
+<Warning>
+  `provider=bedrock` is not compatible with `executionMode=fly-machines`. If your repo mapping uses Fly Machines execution, you must switch to `github-actions` before enabling Bedrock.
+</Warning>
+
+## How authentication works
+
+The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS key path. On each run, the workflow calls `aws-actions/configure-aws-credentials` to exchange the GitHub OIDC token for a short-lived STS session. This happens twice per run: once before the main implementation step and once before the gap analysis step, so long-running jobs do not hit STS token expiry.
+
+<Note>
+  Only OIDC is supported. Static AWS access keys (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) are not read or used by the workflow.
+</Note>
+
+## Configuration steps
+
+<Steps>
+  <Step title="Edit the repo mapping in the admin UI">
+    Navigate to your orchestrator's `/admin` page, find the team/repo mapping, and open the edit form.
+
+    Set these two fields:
+    - **Provider** → `bedrock`
+    - **AWS Region** → the AWS region where your Bedrock inference profile is available (e.g. `us-west-2`)
+
+    Save the mapping. The orchestrator will now pass `provider=bedrock` and your region to the workflow on each dispatch.
+  </Step>
+
+  <Step title="Add the IAM role ARN as a repository secret">
+    In your target GitHub repo, go to **Settings → Secrets and variables → Actions → Secrets** and add:
+
+    | Secret | Value |
+    |---|---|
+    | `AWS_BEDROCK_ROLE_ARN` | The ARN of the IAM role that trusts the GitHub OIDC provider and grants `bedrock:InvokeModel` on your inference profiles |
+
+    The role must be created in the same AWS account as your Bedrock inference profiles.
+  </Step>
+
+  <Step title="Add repository variables for comment-triggered runs">
+    When someone comments `/ai-implement` on a PR, the gap-fill workflow is triggered directly from the repo — not by the orchestrator. To ensure these runs also use Bedrock, add two **repository variables** (not secrets).
+
+    In your target repo, go to **Settings → Secrets and variables → Actions → Variables** and add:
+
+    | Variable | Value |
+    |---|---|
+    | `AI_IMPLEMENT_PROVIDER` | `bedrock` |
+    | `AI_IMPLEMENT_AWS_REGION` | The same region you set in the admin UI mapping |
+
+    Without these variables, comment-triggered gap-fill runs will fall back to the Anthropic provider.
+  </Step>
+
+  <Step title="Set the model in WORKFLOW.md (and PLANNING.md)">
+    Update the `model:` key in your repo's `WORKFLOW.md` to a Bedrock model ID or inference-profile ARN. If planning is enabled, update `PLANNING.md` as well.
+
+    ```yaml
+    ---
+    # Bedrock model ID
+    model: anthropic.claude-sonnet-4-6-20250805-v1:0
+    ---
+    ```
+
+    Or use an inference-profile ARN:
+
+    ```yaml
+    ---
+    model: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-6-20250805-v1:0
+    ---
+    ```
+
+    <Warning>
+      There is no safe default model ID for Bedrock — Bedrock model IDs are account- and region-specific and include date stamps. The workflow will hard-fail with a clear error if `model:` is not set when `provider=bedrock`.
+    </Warning>
+  </Step>
+</Steps>
+
+## IAM role configuration
+
+Create an IAM role in your AWS account with the following trust policy. Use the `StringLike` condition on `sub` to restrict the role to a specific GitHub repo:
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": { "Federated": "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com" },
+  "Action": "sts:AssumeRoleWithWebIdentity",
+  "Condition": {
+    "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+    "StringLike":   { "token.actions.githubusercontent.com:sub": "repo:<owner>/<repo>:*" }
+  }
+}
+```
+
+Replace `<account-id>`, `<owner>`, and `<repo>` with your actual values.
+
+For the role's permissions policy, grant `bedrock:InvokeModel` on the inference profiles your repo will use:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "bedrock:InvokeModel",
+  "Resource": "arn:aws:bedrock:<region>:<account-id>:inference-profile/*"
+}
+```
+
+<Note>
+  The workflow re-runs `aws-actions/configure-aws-credentials` before both the main implementation run and the gap analysis step. This prevents STS token expiry during long implementation runs.
+</Note>
+
+## Model IDs
+
+Bedrock model IDs follow the pattern `anthropic.<model-name>-<date>-v<version>:0`. You can also use a cross-region inference-profile ARN. Both are passed verbatim to `claude-code --model` — the workflow does not validate the format.
+
+Example model IDs for Bedrock:
+
+```yaml
+# Bedrock model string
+model: anthropic.claude-sonnet-4-6-20250805-v1:0
+
+# Cross-region inference-profile ARN
+model: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-6-20250805-v1:0
+```
+
+For gap analysis on Bedrock, there is no default cheaper model — the workflow uses the same `model:` value for both steps unless you explicitly set `gap_analysis_model:` in `WORKFLOW.md`.

@@ -1,0 +1,60 @@
+---
+title: "Linear labels: triggers and status indicators"
+description: "The Linear labels that trigger and track AI-Implement runs, what each label means, and when each one is applied automatically by the orchestrator."
+---
+
+AI-Implement uses Linear labels to trigger implementation runs and track their status. Some labels you apply yourself to kick things off; others are applied and removed automatically by the orchestrator and the GitHub Actions workflow as a run progresses. Understanding which label does what helps you monitor in-flight work and diagnose stalls at a glance.
+
+## Label overview
+
+| Label | Applied by | When | Removed when |
+|---|---|---|---|
+| `AI-Implement` | You | When you want a run to start | After the orchestrator dispatches the issue |
+| `AI-Working` | Orchestrator (auto) | When a run is dispatched and in progress | When the run completes (success or failure) |
+| `AI-Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes |
+| `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
+| `Ready for Review` | Workflow (auto) | When a PR is opened after implementation | Not removed automatically |
+
+## Label details
+
+### AI-Implement
+
+You apply this label manually to any Linear issue you want AI-Implement to implement. The orchestrator polls for issues with this label every 60 seconds and dispatches a run for each one that is eligible.
+
+An issue must be **unblocked** to be picked up. An issue is considered blocked if it has any open blocking issues linked to it in Linear. Blocked issues are skipped on each poll cycle until their blockers are resolved.
+
+### AI-Working
+
+The orchestrator applies `AI-Working` as soon as it dispatches a run for an issue. It acts as a live indicator that a run is in progress. The label is removed at the end of the run — whether the run succeeds, fails, or times out.
+
+<Note>
+If `AI-Working` remains on an issue after a run should have finished, the run may have stalled. Check the dispatch log in the admin UI at `/api/log` and the active sessions panel. You can destroy a stuck session from the sessions panel, which also removes `AI-Working` and clears the issue from the dedup window.
+</Note>
+
+### AI-Planning
+
+When the planning phase is enabled for a team/repo mapping (the default), `AI-Planning` is applied while the planning workflow is running. It is removed when planning completes and execution moves to the implementation phase.
+
+### Plan-Complete
+
+`Plan-Complete` is applied when the planning phase finishes successfully. It is not removed automatically. You can use it to filter issues that have been planned but not yet implemented.
+
+### Ready for Review
+
+`Ready for Review` is applied by the implementation workflow after it opens a PR. At the same time, the workflow posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
+
+## Concurrency
+
+The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team can have with `AI-Working` simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
+
+You can change the concurrency cap for a team from the admin UI or by sending a `PATCH /api/mappings/:teamKey` request.
+
+## /ai-implement comment trigger
+
+Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label is needed. The comment must be exactly `/ai-implement` (no extra text) and must be posted by a collaborator with write access to the repo.
+
+The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The Linear issue link and PR metadata are preserved from the original run.
+
+<Tip>
+The `/ai-implement` trigger requires `comment-trigger.yml` to be installed in the target repo. This file is synced automatically when you run the sync workflow.
+</Tip>

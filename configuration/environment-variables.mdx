@@ -1,0 +1,58 @@
+---
+title: "Environment variables for AI-Implement"
+description: "All environment variables the AI-Implement orchestrator reads at startup, what each one does, and which are required versus optional."
+---
+
+The AI-Implement orchestrator is configured entirely through environment variables. Set these on the Fly.io app that runs the orchestrator service — either with `fly secrets set` for sensitive values or directly in your `fly.toml` for non-secret configuration. The variables are read at startup; restart the app after changing them.
+
+## Required
+
+These three variables must be set for the orchestrator to start and dispatch workflows.
+
+<ParamField body="LINEAR_API_KEY" type="string" required>
+  Linear personal API key used to poll for issues labeled **AI-Implement** and to update issue status, labels, and comments. Generate one in Linear under **Settings → API → Personal API keys**.
+</ParamField>
+
+<ParamField body="GITHUB_APP_ID" type="string" required>
+  Numeric ID of the GitHub App the orchestrator uses to authenticate with GitHub and dispatch workflows. Find this on the app's settings page under **General → App ID**.
+</ParamField>
+
+<ParamField body="GITHUB_APP_PRIVATE_KEY" type="string" required>
+  RSA private key (PEM format) for the GitHub App, used to generate installation tokens. When passing this as an environment variable, newlines in the PEM file must be replaced with literal `\n` characters.
+</ParamField>
+
+<Note>
+  The private key PEM file contains real newlines. When you set it as an environment variable (e.g. with `fly secrets set`), those newlines must be expressed as the two-character sequence `\n`. Example: `"-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"`.
+</Note>
+
+## Optional
+
+These variables have defaults or are safely omitted. Set them to override the defaults or to enable optional features.
+
+<ParamField body="ADMIN_ACCESS_CODE" type="string">
+  Password for the admin UI at `/admin`. If this variable is not set, the admin UI is disabled entirely and all `/admin` and `/api/` routes return 404.
+</ParamField>
+
+<ParamField body="NOTIFY_TYPE" type="string">
+  Notification provider to use when a dispatch succeeds or fails. Accepted values: `slack` (default) or `teams`. Has no effect if `NOTIFY_WEBHOOK_URL` is not also set.
+</ParamField>
+
+<ParamField body="NOTIFY_WEBHOOK_URL" type="string">
+  Incoming webhook URL for the notification provider. Notifications are skipped silently if this variable is unset. For Slack, this is the URL from your **Incoming Webhooks** app configuration. For Teams, use the connector webhook URL.
+</ParamField>
+
+<ParamField body="POLL_INTERVAL_MS" type="string">
+  How often the orchestrator polls Linear for new AI-Implement issues, in milliseconds. Default: `60000` (one minute). Lower values increase Linear API usage; values below `10000` are not recommended.
+</ParamField>
+
+<ParamField body="DEDUP_DB_PATH" type="string">
+  Absolute path to the SQLite file used for deduplication, dispatch logging, and team-to-repo mappings. Default: `/data/dedup.sqlite` in production (the Fly.io volume mount point) and `./dedup.sqlite` when running locally. Change this only if you are mounting the volume at a different path.
+</ParamField>
+
+<ParamField body="PORT" type="string">
+  HTTP port the orchestrator listens on. Default: `8080`. The Fly.io internal proxy routes traffic to this port automatically, so you typically do not need to change it.
+</ParamField>
+
+<ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
+  HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Configure a webhook in each target repo (or at the org level) pointing to `https://<orchestrator-host>/api/github/webhook` with this secret. If unset, webhook signature validation is skipped.
+</ParamField>

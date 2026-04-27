@@ -1,0 +1,54 @@
+---
+title: "AI-Implement: Turn Linear tickets into pull requests"
+description: "AI-Implement watches your Linear backlog and automatically opens pull requests by running Claude Code against your labeled issues."
+---
+
+AI-Implement connects your Linear workspace to your GitHub repositories. Label any issue `AI-Implement`, and within minutes Claude Code checks out the repo, implements the ticket, opens a pull request, and posts a gap analysis comparing what was built to what was asked. Your team reviews in the tools they already use — nothing changes about how you ship.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get from zero to your first AI-generated PR in under 30 minutes.
+  </Card>
+  <Card title="How It Works" icon="diagram-project" href="/how-it-works">
+    Understand the full lifecycle from Linear label to merged PR.
+  </Card>
+  <Card title="Setup Guide" icon="wrench" href="/setup/prerequisites">
+    Step-by-step instructions for connecting Linear, GitHub, and your runner.
+  </Card>
+  <Card title="Customize Prompts" icon="pen-to-square" href="/customize/workflow-md">
+    Tailor the WORKFLOW.md and PLANNING.md templates for your stack.
+  </Card>
+</CardGroup>
+
+## How it works in 60 seconds
+
+<Steps>
+  <Step title="Label an issue">
+    Add the `AI-Implement` label to any Linear issue. Write a clear, focused ticket — that's your prompt.
+  </Step>
+  <Step title="Claude implements it">
+    The orchestrator picks up the issue, dispatches a GitHub Actions workflow in your target repo, and Claude Code reads your codebase and implements the change.
+  </Step>
+  <Step title="Review the PR">
+    A pull request appears in your repo with a gap analysis comment showing what was implemented and what (if anything) still needs attention.
+  </Step>
+  <Step title="Iterate with /ai-implement">
+    Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch.
+  </Step>
+</Steps>
+
+## What makes it different
+
+AI-Implement is built for teams, not individual developers. The ticket is the prompt, and your existing Linear backlog is the context. Every run produces a PR, a gap analysis, and a Linear status update — so reviewers always know exactly what was attempted and why.
+
+<CardGroup cols={3}>
+  <Card title="Works in your CI" icon="shield-check">
+    Runs inside GitHub Actions with your own secrets. Nothing leaves your infrastructure.
+  </Card>
+  <Card title="Multiple repos & orgs" icon="sitemap">
+    One orchestrator, many repos across many GitHub organizations.
+  </Card>
+  <Card title="AWS Bedrock support" icon="aws">
+    Use Anthropic's API, Claude OAuth, or AWS Bedrock — configured per repo.
+  </Card>
+</CardGroup>

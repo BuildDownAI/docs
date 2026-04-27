@@ -1,0 +1,98 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "AI-Implement",
+  "theme": "luma",
+  "favicon": "/logo/favicon.svg",
+  "colors": {
+    "primary": "#0aa6cf",
+    "light": "#6ee2ff",
+    "dark": "#04404f"
+  },
+"navbar": {
+  "primary": {
+    "type": "button",
+    "label": "Start the builddown",
+    "href": "https://builddown.ai/start"
+  },
+  "links": [
+    {
+      "label": "GitHub",
+      "href": "https://github.com/BuildDownAI/AI-Implement"
+    }
+  ]
+},
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "how-it-works"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "setup/prerequisites",
+              "setup/github-app",
+              "setup/deploy",
+              "setup/target-repo"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/team-repo-mappings",
+              "configuration/workflow-templates",
+              "configuration/planning"
+            ]
+          },
+          {
+            "group": "Providers",
+            "pages": [
+              "providers/anthropic",
+              "providers/aws-bedrock"
+            ]
+          },
+          {
+            "group": "Customize",
+            "pages": [
+              "customize/workflow-md",
+              "customize/planning-md",
+              "customize/custom-steps",
+              "customize/runner-image"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/admin-ui",
+              "reference/labels",
+              "reference/gap-analysis",
+              "reference/notifications",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "background": {
+    "decoration": "gradient"
+  },
+"fonts": {
+  "heading": {
+    "family": "Space Grotesk",
+    "weight": 600
+  },
+  "body": {
+    "family": "Inter Tight",
+    "weight": 400
+  }
+}
+}

@@ -1,0 +1,96 @@
+---
+title: "Create a GitHub App for AI-Implement"
+description: "How to create the GitHub App that AI-Implement uses to authenticate, dispatch workflows, and open pull requests under the app's identity."
+---
+
+AI-Implement uses a GitHub App — not a personal access token — to authenticate workflow dispatches and to open pull requests. Using an App identity is what makes the `/ai-implement` comment trigger work correctly: the PR is opened by the bot, so subsequent comments on it can be reliably attributed and re-dispatched.
+
+## Create the GitHub App
+
+<Steps>
+  <Step title="Open the GitHub App creation page">
+    Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**.
+
+    If you want the App to be owned by a GitHub organization rather than your personal account, navigate to your organization's settings page first, then go to **Developer settings → GitHub Apps → New GitHub App**.
+  </Step>
+
+  <Step title="Name the App and set the homepage URL">
+    Give the App a name such as `ai-implement-bot`. The name appears in PR authorship and comment attribution, so choose something your team will recognize.
+
+    Set the homepage URL to any valid URL — for example, the AI-Implement GitHub repository.
+
+    Uncheck **Webhook active** unless you intend to configure webhook delivery separately. AI-Implement polls Linear directly and does not require incoming webhooks from GitHub to function.
+  </Step>
+
+  <Step title="Set repository permissions">
+    Under **Repository permissions**, configure the following:
+
+    | Permission | Level |
+    |---|---|
+    | Contents | Read and write |
+    | Pull requests | Read and write |
+    | Issues | Read and write |
+    | Workflows | Read and write |
+
+    Leave all other permissions at their defaults (no access).
+  </Step>
+
+  <Step title="Choose where the App can be installed">
+    Under **Where can this GitHub App be installed?**, select **Only on this account** if you want to restrict the App to your own organization. Select **Any account** if you plan to install it across multiple organizations.
+  </Step>
+
+  <Step title="Create the App and note the App ID">
+    Click **Create GitHub App**. On the resulting page, note the **App ID** — you will need it as `AI_IMPLEMENT_APP_ID` (for the workflow secrets) and as `GITHUB_APP_ID` (for the orchestrator).
+  </Step>
+
+  <Step title="Generate a private key">
+    Scroll to the **Private keys** section and click **Generate a private key**. GitHub downloads a `.pem` file to your computer.
+
+    Keep this file secure. You will paste its contents as the `AI_IMPLEMENT_PRIVATE_KEY` secret in your target repos and as the `GITHUB_APP_PRIVATE_KEY` variable in the orchestrator.
+
+    <Warning>
+      The private key grants full access to everything the App is installed on. Store it in a secrets manager or environment variable, never in source control.
+    </Warning>
+  </Step>
+
+  <Step title="Install the App on your target repos">
+    Go to the App's **Install App** tab and install it on the GitHub organization or personal account that owns your target repositories. You can choose **All repositories** or restrict to specific repos — install it on at least the repos you intend to connect to AI-Implement.
+  </Step>
+</Steps>
+
+## Add secrets to your target repos
+
+The workflow templates that AI-Implement syncs into target repos read the following secrets. Add them at the organization level (recommended) so all target repos inherit them, or add them individually per repo under **Settings → Secrets and variables → Actions**.
+
+| Secret | Description |
+|---|---|
+| `AI_IMPLEMENT_APP_ID` | The numeric App ID from the GitHub App page |
+| `AI_IMPLEMENT_PRIVATE_KEY` | The full PEM private key content, including the `-----BEGIN RSA PRIVATE KEY-----` header and footer |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token — used in preference to the API key when both are set |
+| `ANTHROPIC_API_KEY` | Anthropic API key — used as a fallback when no OAuth token is present |
+| `LINEAR_API_KEY` | Linear personal API key — used by the workflow to update issue status and post comments |
+
+<Note>
+  `CLAUDE_CODE_OAUTH_TOKEN` takes precedence over `ANTHROPIC_API_KEY` when both secrets are set. You only need one Claude authentication method, but having both configured gives you a fallback.
+</Note>
+
+## Enable pull request creation in target repos
+
+Each target repo must allow GitHub Actions to create and approve pull requests. Without this setting, the workflow will fail when it tries to open the PR.
+
+In each target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
+
+<Warning>
+  This setting must be enabled in every repo you connect to AI-Implement. It is not inherited from organization-level settings.
+</Warning>
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Deploy the orchestrator" icon="rocket" href="/setup/deploy">
+    Run the orchestrator on Fly.io or locally with the credentials you just created.
+  </Card>
+  <Card title="Connect a target repo" icon="git-branch" href="/setup/target-repo">
+    Sync workflow templates into a repo and map it to a Linear team.
+  </Card>
+</CardGroup>

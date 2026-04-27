@@ -1,0 +1,114 @@
+---
+title: "Use Anthropic API or Claude OAuth with AI-Implement"
+description: "Configure AI-Implement to use the Anthropic API or Claude Code OAuth token as the Claude provider, with auth precedence and model selection explained."
+---
+
+By default, AI-Implement uses the Anthropic provider, which supports two authentication methods: `ANTHROPIC_API_KEY` (API key) and `CLAUDE_CODE_OAUTH_TOKEN` (Claude Code OAuth token). You do not need to configure a provider explicitly — `anthropic` is the default when you add a repo mapping in the admin UI. This page explains how to set up the required secrets and how to control which model Claude uses for each run.
+
+## Authentication methods
+
+The workflow selects an auth method automatically based on which secrets are present. The precedence order is:
+
+1. **Bedrock** — used if the orchestrator sets `provider=bedrock` (see [AWS Bedrock](/providers/aws-bedrock))
+2. **Claude Code OAuth token** — used if `CLAUDE_CODE_OAUTH_TOKEN` is set
+3. **Anthropic API key** — used if only `ANTHROPIC_API_KEY` is set
+
+<Tip>
+  The OAuth token is preferred over the API key when both are present. If you have a Claude Code subscription, set `CLAUDE_CODE_OAUTH_TOKEN` — the API key will be used as a fallback only when the OAuth token is absent.
+</Tip>
+
+## Required GitHub Actions secrets
+
+Both the implementation workflow (`claude-implement.yml`) and the planning workflow (`claude-plan.yml`) read the same set of secrets. Add these as **organization secrets** (or repository secrets on each target repo):
+
+| Secret | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key. Used as a fallback when `CLAUDE_CODE_OAUTH_TOKEN` is not set. |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token. Preferred over the API key when present. |
+| `LINEAR_API_KEY` | Linear API key for posting status updates and planning comments. |
+| `AI_IMPLEMENT_APP_ID` | GitHub App numeric ID used to authenticate workflow actions. |
+| `AI_IMPLEMENT_PRIVATE_KEY` | GitHub App RSA private key (PEM format, with newlines escaped as `\n`). |
+
+## Choosing between API key and OAuth token
+
+<Tabs>
+  <Tab title="Claude Code OAuth token (preferred)">
+    Use the OAuth token if your team has a Claude Code subscription. The token is scoped to your Claude account and does not consume API credits separately.
+
+    <Steps>
+      <Step title="Get your OAuth token">
+        Sign in to Claude Code and copy your OAuth token from your account settings.
+      </Step>
+      <Step title="Add the secret">
+        In your GitHub organization (or target repo), go to **Settings → Secrets and variables → Actions** and add a secret named `CLAUDE_CODE_OAUTH_TOKEN` with the token value.
+      </Step>
+      <Step title="Verify the workflow picks it up">
+        The workflow's auth detection step checks for the presence of `CLAUDE_CODE_OAUTH_TOKEN`. If it is set, the OAuth path is used automatically — no other configuration is required.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Anthropic API key (fallback)">
+    Use the API key if you do not have a Claude Code subscription, or as a fallback when the OAuth token is not available.
+
+    <Steps>
+      <Step title="Generate an API key">
+        Sign in to the Anthropic console and create an API key for your organization.
+      </Step>
+      <Step title="Add the secret">
+        In your GitHub organization (or target repo), go to **Settings → Secrets and variables → Actions** and add a secret named `ANTHROPIC_API_KEY` with the key value.
+      </Step>
+      <Step title="Leave CLAUDE_CODE_OAUTH_TOKEN unset">
+        If `CLAUDE_CODE_OAUTH_TOKEN` is not set, the workflow falls back to `ANTHROPIC_API_KEY` automatically.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Setting the provider in the admin UI
+
+The provider is configured per repo mapping, not globally. To confirm or change the provider for a repo:
+
+<Steps>
+  <Step title="Open the admin UI">
+    Navigate to your orchestrator's `/admin` page and log in with your access code.
+  </Step>
+  <Step title="Edit the repo mapping">
+    Find the team/repo mapping and open the edit form. The **Provider** field defaults to `anthropic`.
+  </Step>
+  <Step title="Save">
+    Leave **Provider** set to `anthropic` and save. No **AWS Region** is required for the Anthropic provider.
+  </Step>
+</Steps>
+
+## Selecting a model
+
+The model Claude uses is controlled by the `model:` key in the front matter of your repo's `WORKFLOW.md` (and `PLANNING.md` if planning is enabled). The value is passed verbatim to `claude-code --model`, so any model ID that Anthropic's API or your OAuth token accepts is valid.
+
+```yaml
+---
+model: claude-sonnet-4-6
+---
+```
+
+**Default behavior:**
+
+- If `model:` is not set in `WORKFLOW.md`, the implementation workflow defaults to `claude-sonnet-4-6`.
+- The gap analysis step defaults to `claude-haiku-4-5-20251001` when no `gap_analysis_model:` is specified.
+
+**Example model IDs for the Anthropic provider:**
+
+```yaml
+---
+# Use Sonnet for implementation (default)
+model: claude-sonnet-4-6
+
+# Optional: use a cheaper model for gap analysis
+gap_analysis_model: claude-haiku-4-5-20251001
+---
+```
+
+Other valid Anthropic model IDs include `claude-opus-4-7` and `claude-haiku-4-5-20251001`. New Anthropic model releases flow through without requiring a workflow template update — the model ID is not validated by the workflow.
+
+<Note>
+  The seed `WORKFLOW.md` that AI-Implement syncs to your repo already includes `model: claude-sonnet-4-6`, so new repos work out of the box without any model configuration.
+</Note>

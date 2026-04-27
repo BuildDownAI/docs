@@ -1,0 +1,112 @@
+---
+title: "How AI-Implement works: the full lifecycle"
+description: "The end-to-end flow from applying the AI-Implement label in Linear to a merged PR with gap analysis, including planning, labels, and gap-fill runs."
+---
+
+AI-Implement connects three systems — Linear, GitHub Actions, and Claude Code — through a small Node.js orchestrator. Understanding how these pieces fit together helps you write better tickets, configure the service correctly, and know what to expect at each stage of a run.
+
+## The full lifecycle
+
+Here is what happens from the moment you apply the `AI-Implement` label to when the PR is ready for your review.
+
+<Steps>
+
+  <Step title="Orchestrator polls Linear">
+    The orchestrator polls your Linear workspace every 60 seconds (configurable via `POLL_INTERVAL_MS`). It looks for issues that have the `AI-Implement` label and are not blocked by any unresolved dependencies.
+
+    Per-team concurrency limits apply: by default, no more than 3 issues per team can be in progress at once. You can change this limit per team in the admin UI. If a team is at capacity, eligible issues wait until a slot opens.
+  </Step>
+
+  <Step title="Issue is picked up and marked In Progress">
+    When the orchestrator selects an issue, it marks it **In Progress** in Linear and adds the **AI-Working** label. The AI-Working label signals to your team that a run is active on this issue.
+
+    A deduplication check prevents the same issue from being dispatched more than once in a 24-hour window, even if the label is re-applied.
+  </Step>
+
+  <Step title="Planning phase (if enabled)">
+    If planning is enabled for the team's repo mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
+
+    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to three structured comments to the Linear issue:
+
+    - **Architecture Analysis** — how the codebase is structured and what changes are needed
+    - **Test Plan** — what tests should be written or updated
+    - **Cross-Story Context** — relevant context from related issues (if available)
+
+    These comments appear on the Linear issue with the **Plan-Complete** label added when the planning run finishes. If `autoApprovePlans` is enabled (the default), implementation starts automatically after planning. If disabled, a human must approve before implementation proceeds.
+
+    <Info>
+      Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so Claude has full context when it starts writing code.
+    </Info>
+  </Step>
+
+  <Step title="Implementation workflow is dispatched">
+    The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event. The workflow receives the issue ID, identifier (e.g. `ENG-123`), title, and description as inputs.
+
+    Two execution modes are supported, configured per team in the admin UI:
+
+    - **GitHub Actions** (default) — runs Claude Code inside a standard `ubuntu-latest` runner.
+    - **Fly Machines** — boots a dedicated Fly.io machine for the run, useful for repos that need more resources or a custom runtime environment.
+  </Step>
+
+  <Step title="Claude checks out the repo and implements the issue">
+    Inside the GitHub Actions runner, Claude Code:
+
+    1. Checks out the repo using the GitHub App token.
+    2. Reads `WORKFLOW.md` (your per-repo implementation prompt template) for instructions.
+    3. Reads any planning context fetched from the Linear issue comments.
+    4. Implements the issue — creating a branch, writing code, and committing changes.
+    5. Opens a pull request with the title `IDENTIFIER: Title` (e.g. `ENG-123: Add user export`) and a body that includes `Fixes IDENTIFIER` so Linear auto-closes the issue on merge.
+
+    Claude uses the model specified in your `WORKFLOW.md` front matter. The default for new repos is `claude-sonnet-4-6`. You can override this per repo by editing the `model:` field in `WORKFLOW.md`.
+
+    <Tip>
+      You can add `setup:`, `verify:`, and `teardown:` script hooks in your `WORKFLOW.md` front matter to run custom scripts before and after the Claude pass — useful for installing project dependencies or running tests.
+    </Tip>
+  </Step>
+
+  <Step title="Gap analysis is posted to the PR">
+    After the PR is opened, a second Claude pass runs automatically. This is the gap analysis: Claude reads the PR diff and the original ticket, then posts a structured comment to the PR with three sections:
+
+    - **Implemented** — requirements from the ticket that are fully addressed in the diff
+    - **Gaps / Partial Implementation** — requirements that are missing or only partially done
+    - **Manual Steps Required** — human actions needed, such as setting environment variables, running migrations, or configuring external services
+
+    The gap analysis uses a lighter model by default (`claude-haiku-4-5-20251001` on the Anthropic provider) to keep costs low. You can override this with the `gap_analysis_model:` field in `WORKFLOW.md`.
+  </Step>
+
+  <Step title="Linear issue is updated to Ready for Review">
+    Once the PR is open, the workflow posts a comment on the Linear issue with a link to the PR, then adds the **Ready for Review** label. The **AI-Working** label is removed.
+
+    Your team can now review the PR and the gap analysis in GitHub, and see the status change in Linear — no context-switching required.
+  </Step>
+
+  <Step title="Gap-fill runs with /ai-implement">
+    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+
+    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the gap analysis comment is updated automatically.
+
+    <Info>
+      Gap-fill runs do not create new PRs or new branches. All work goes onto the existing PR branch, keeping your review history clean.
+    </Info>
+  </Step>
+
+</Steps>
+
+## Linear label reference
+
+| Label | What it means |
+|---|---|
+| `AI-Implement` | You apply this to trigger a run. The orchestrator polls for issues with this label. |
+| `AI-Working` | Added by the orchestrator when a run is active. Removed when the run finishes (success or failure). |
+| `Plan-Complete` | Added when the planning phase finishes. Indicates planning comments are posted and ready for review. |
+| `Ready for Review` | Added by the workflow when a PR is successfully opened. The Linear issue also gets a comment with the PR link. |
+
+## Authentication options
+
+The workflow supports three authentication paths for Claude, selected in order of precedence:
+
+1. **AWS Bedrock** — when the orchestrator dispatches with `provider=bedrock`, the workflow uses OIDC to assume an IAM role and calls Claude via Bedrock. Requires `AWS_BEDROCK_ROLE_ARN` as a repo secret and a `model:` set in `WORKFLOW.md` (there is no safe Bedrock default).
+2. **Claude Code OAuth token** — when `CLAUDE_CODE_OAUTH_TOKEN` is set as a repo or org secret, it takes precedence over an API key.
+3. **Anthropic API key** — the fallback when neither Bedrock nor OAuth is configured. Set `ANTHROPIC_API_KEY` as a repo or org secret.
+
+See [Providers](/providers/anthropic) and [AWS Bedrock](/providers/aws-bedrock) for setup details.

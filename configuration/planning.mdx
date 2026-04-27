@@ -1,0 +1,62 @@
+---
+title: "AI planning phase: architecture analysis"
+description: "How the AI planning phase works, what structured architecture and test plan comments it posts to Linear, and how to enable, disable, or configure it per team."
+---
+
+When `planningEnabled=true` (the default), AI-Implement runs a planning pass before handing an issue to the implementation workflow. Claude reads your codebase in read-only mode and posts structured analysis directly to the Linear issue. That analysis is then fetched by the implementation workflow and injected into the Claude prompt, giving the implementation run a head start on architectural decisions, files to change, and known risks.
+
+## How the planning phase works
+
+<Steps>
+  <Step title="Orchestrator dispatches the planning workflow">
+    When the orchestrator picks up an eligible issue, it dispatches `claude-plan.yml` in the target repo with the issue details as workflow inputs.
+  </Step>
+
+  <Step title="Claude explores the codebase read-only">
+    Claude uses `Read`, `Glob`, and `Grep` to explore the codebase. It does not create any branches, files, or commits during this phase.
+  </Step>
+
+  <Step title="Claude posts structured planning comments to Linear">
+    Claude posts up to three comments on the Linear issue, each with a fixed header that the implementation workflow can locate later:
+
+    - **Architecture Analysis** (`## 🏗️ AI Planning: Architecture Analysis`) — approach, specific files to create or modify, key architectural decisions, and risks or open questions.
+    - **Test Plan** (`## 🧪 AI Planning: Test Plan`) — unit tests, integration tests, and a manual verification checklist.
+    - **Cross-Story Context** (`## 🔗 AI Planning: Cross-Story Context`) — posted only when the issue has dependencies or sibling stories with meaningful coordination needs, covering upstream dependencies, downstream impact, and coordination notes.
+  </Step>
+
+  <Step title="Linear issue receives the Plan-Complete label">
+    After the planning workflow finishes successfully, the orchestrator removes the **AI-Planning** label and adds a **Plan-Complete** label to the Linear issue.
+  </Step>
+
+  <Step title="Implementation starts automatically (if autoApprovePlans=true)">
+    With the default setting of `autoApprovePlans=true`, the orchestrator immediately dispatches the implementation workflow. If you set `autoApprovePlans=false`, a team member must manually trigger implementation after reviewing the plan.
+  </Step>
+
+  <Step title="Implementation workflow injects planning context">
+    `claude-implement.yml` fetches the planning comments from Linear, sanitizes them, and prepends them to the Claude prompt. Claude is instructed to follow the planning decisions unless it discovers a concrete reason not to, and to explain any deviations in the PR description.
+  </Step>
+</Steps>
+
+## Disabling the planning phase
+
+To skip planning for a specific team, set `planningEnabled=false` on that team's mapping in the admin UI at `/admin`. Implementation will dispatch directly without a preceding planning run.
+
+## Choosing a planning model
+
+Set the `model:` key in `PLANNING.md` front matter to control which model Claude uses during planning:
+
+```yaml
+---
+model: claude-sonnet-4-6
+---
+```
+
+For `provider=bedrock`, this field is required and must be a valid Bedrock model ID or inference-profile ARN. For `provider=anthropic`, it defaults to `claude-sonnet-4-6` when omitted.
+
+## Customizing the planning prompt
+
+`PLANNING.md` in the target repo is your planning prompt template. After the initial sync, AI-Implement never overwrites it. Edit the **Repo context** section to focus Claude on the directories, patterns, and conventions that matter most for your codebase.
+
+<Tip>
+  Well-written planning output directly improves implementation quality. Customize `PLANNING.md` to point Claude at the areas of your codebase where architectural decisions are most consequential — for example, schema migration directories, shared API contracts, or modules with strict backward-compatibility requirements.
+</Tip>

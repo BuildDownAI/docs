@@ -1,0 +1,93 @@
+/* ============================================================
+   AI-IMPLEMENT — typography + brand accents
+   Layered on top of Mintlify's luma theme
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bd-cyan-400: #2cc8ee;
+  --bd-cyan-500: #0aa6cf;
+  --bd-summit-500: #e8761a;
+  --bd-rope-400:   #d94a3a;
+  --bd-glacier-500:#2ea985;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Heading tracking */
+h1, h2 { letter-spacing: -0.03em; }
+h3, h4, h5, h6 { letter-spacing: -0.02em; }
+
+/* Code in JetBrains Mono */
+code, pre, kbd, samp {
+  font-family: var(--font-mono) !important;
+}
+
+/* Sidebar group labels — the "// GET STARTED" convention
+   styled as mono caps in cyan. Selector hits luma's group heading. */
+nav [class*="group"] [class*="heading"],
+nav [class*="GroupHeading"],
+aside h3 {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase;
+  color: var(--bd-cyan-500) !important;
+  opacity: 0.9;
+}
+
+/* Eyebrow utility — use at top of pages / sections */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--bd-cyan-500);
+  display: inline-block;
+  margin: 0 0 12px 0;
+}
+.eyebrow::before { content: "// "; }
+
+/* Mono tick — smaller, for metadata/coordinates */
+.tick {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(138, 151, 164, 0.9);
+}
+
+/* Accent callouts — apply to <Note>, <Tip>, <Warning>, <Danger> */
+.bd-accent-cyan    { border-left: 2px solid var(--bd-cyan-500)    !important; }
+.bd-accent-glacier { border-left: 2px solid var(--bd-glacier-500) !important; }
+.bd-accent-summit  { border-left: 2px solid var(--bd-summit-500)  !important; }
+.bd-accent-rope    { border-left: 2px solid var(--bd-rope-400)    !important; }
+
+/* Blueprint grid — opt-in utility for hero sections only */
+.bd-grid {
+  background-image:
+    linear-gradient(to right,  rgba(10, 166, 207, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 166, 207, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+  border-radius: 8px;
+  padding: 48px 32px;
+}
+
+/* Corner ticks — opt-in for cards that want the drafting motif */
+.bd-corners { position: relative; }
+.bd-corners::before,
+.bd-corners::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--bd-cyan-400);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.bd-corners::before { top: 0; left:  0; border-right: 0; border-bottom: 0; }
+.bd-corners::after  { bottom: 0; right: 0; border-left:  0; border-top:    0; }
+
+/* Wordmark .ai accent — for when you render builddown.ai in HTML */
+.bd-tld { color: var(--bd-cyan-400); }

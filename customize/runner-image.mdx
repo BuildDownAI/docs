@@ -1,0 +1,76 @@
+---
+title: "Use a custom Fly Machine runner image"
+description: "How to point AI-Implement at a custom Docker runner image when your repo needs tools or language runtimes not included in the default Fly Machine environment."
+---
+
+If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image by committing `.ai-implement/image.yml` to the default branch of your target repo. When AI-Implement starts a session for your repo, it reads this file and boots the Fly Machine using your image instead of the default.
+
+## How it works
+
+Create a file at `.ai-implement/image.yml` in the default branch of your target repo:
+
+```yaml
+image: ghcr.io/your-org/your-runner:v1
+```
+
+The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+
+The default base image is:
+
+```
+ghcr.io/builddownai/ai-implement-runner:latest
+```
+
+## Building a custom image
+
+Build your image `FROM` the published base image so you inherit all the tools and configuration the default runner provides. Then add whatever your repo needs on top:
+
+```dockerfile
+FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+# Add your tools
+RUN apt-get update && apt-get install -y --no-install-recommends terraform
+```
+
+## Setup steps
+
+<Steps>
+  <Step title="Create a Dockerfile">
+    Start from the base image and add the tools or runtimes your repo requires.
+
+    ```dockerfile
+    FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        terraform \
+        && rm -rf /var/lib/apt/lists/*
+    ```
+  </Step>
+
+  <Step title="Build and push to a public registry">
+    Build the image and push it to a registry where it can be pulled without authentication. GitHub Container Registry (`ghcr.io`) is a common choice.
+
+    ```bash
+    docker build -t ghcr.io/your-org/your-runner:v1 .
+    docker push ghcr.io/your-org/your-runner:v1
+    ```
+  </Step>
+
+  <Step title="Commit .ai-implement/image.yml">
+    Create the file in your target repo pointing at the image you just pushed:
+
+    ```yaml
+    image: ghcr.io/your-org/your-runner:v1
+    ```
+
+    Commit this to your default branch. AI-Implement reads it from there on the next run.
+  </Step>
+</Steps>
+
+<Note>
+  This mechanism only applies to the **fly-machines** execution mode. GitHub Actions runs use the `ubuntu-latest` runner provided by GitHub and are not affected by `.ai-implement/image.yml`.
+</Note>
+
+<Tip>
+  Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
+</Tip>

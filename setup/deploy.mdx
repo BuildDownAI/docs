@@ -1,0 +1,146 @@
+---
+title: "Deploy the AI-Implement orchestrator"
+description: "How to run the AI-Implement orchestrator locally for development or deploy it as a persistent service on Fly.io for production use."
+---
+
+The orchestrator is a Node.js service that polls Linear, dispatches GitHub Actions workflows, and serves the admin UI. You can run it locally during setup or deploy it to Fly.io for persistent production use. Both paths are covered below.
+
+## Local development
+
+Running locally is the fastest way to test a configuration before committing to a cloud deployment.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/BuildDownAI/AI-Implement.git
+    cd AI-Implement
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    ```bash
+    cp .env.example .env
+    ```
+
+    Open `.env` and fill in at minimum the three required variables:
+
+    ```bash
+    LINEAR_API_KEY=lin_api_...
+    GITHUB_APP_ID=123456
+    GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+    ```
+
+    See [Environment variables](#environment-variables) below for the full list.
+  </Step>
+
+  <Step title="Install dependencies and start the server">
+    ```bash
+    npm install
+    npm run dev
+    ```
+
+    This starts the polling loop and HTTP server on port 8080.
+  </Step>
+
+  <Step title="Verify it is running">
+    Check the health endpoint:
+
+    ```bash
+    curl http://localhost:8080/
+    ```
+
+    Open the admin UI in your browser at `http://localhost:8080/admin`. You will be prompted for the `ADMIN_ACCESS_CODE` value from your `.env` file.
+
+    <Note>
+      If `ADMIN_ACCESS_CODE` is not set, the admin UI is disabled entirely.
+    </Note>
+  </Step>
+</Steps>
+
+## Fly.io deployment
+
+For production use, deploy the orchestrator as a Fly.io app. Each client (team or tenant) runs as a separate Fly app defined by a `.toml` file in the `clients/` directory.
+
+<Steps>
+  <Step title="Install the Fly CLI and log in">
+    Follow the [Fly.io CLI installation guide](https://fly.io/docs/hands-on/install-flyctl/) and run `fly auth login`.
+  </Step>
+
+  <Step title="Provision a new client">
+    The `scripts/provision-client.sh` script walks you through creating a new Fly app interactively:
+
+    ```bash
+    ./scripts/provision-client.sh <client-slug>
+    ```
+
+    Alternatively, copy the example client config and create resources manually:
+
+    ```bash
+    cp clients/example-client.toml clients/<slug>.toml
+    fly apps create <app_name> --org <org>
+    fly volumes create dedup_data --size 1 --region iad --app <app_name>
+    ```
+  </Step>
+
+  <Step title="Set Fly secrets">
+    The orchestrator reads its credentials from Fly secrets at runtime:
+
+    ```bash
+    fly secrets set \
+      LINEAR_API_KEY=lin_api_... \
+      GITHUB_APP_ID=123456 \
+      GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..." \
+      --app <app_name>
+    ```
+
+    Add `ADMIN_ACCESS_CODE` and any notification variables if needed.
+  </Step>
+
+  <Step title="Deploy the app">
+    Commit your new `clients/<slug>.toml` and push to trigger an automated deploy, or deploy manually at any time:
+
+    ```bash
+    fly deploy --remote-only --app <app_name>
+    ```
+  </Step>
+</Steps>
+
+### Fly.io infrastructure details
+
+Each Fly app uses:
+
+- **Machine size**: `shared-cpu-1x` with 256 MB of memory — sufficient for the polling loop and admin UI
+- **Volume**: A `dedup_data` volume mounted at `/data` for SQLite persistence (deduplication, team mappings, and dispatch log)
+- **HTTP service**: Internal port 8080, HTTPS enforced, minimum one machine always running
+
+## Environment variables
+
+The table below covers all variables the orchestrator reads. Required variables must be set before the service will start successfully.
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `LINEAR_API_KEY` | Yes | — | Linear personal API key for polling issues and updating status |
+| `GITHUB_APP_ID` | Yes | — | GitHub App numeric ID used to generate installation tokens |
+| `GITHUB_APP_PRIVATE_KEY` | Yes | — | GitHub App RSA private key in PEM format, with newlines escaped as `\n` |
+| `ADMIN_ACCESS_CODE` | No | — | Password for the admin UI at `/admin`. If unset, the admin UI is disabled |
+| `NOTIFY_TYPE` | No | — | Notification provider: `slack` or `teams` |
+| `NOTIFY_WEBHOOK_URL` | No | — | Incoming webhook URL for Slack or Teams notifications. Notifications are skipped if unset |
+| `POLL_INTERVAL_MS` | No | `60000` | How often the orchestrator polls Linear for new issues, in milliseconds |
+| `PORT` | No | `8080` | HTTP port the orchestrator listens on |
+| `DEDUP_DB_PATH` | No | `/data/dedup.sqlite` | Path to the SQLite database file |
+| `GITHUB_WEBHOOK_SECRET` | No | — | HMAC-SHA256 secret for validating incoming GitHub webhook payloads |
+
+<Tip>
+  When running on Fly.io, set secrets with `fly secrets set` rather than committing them in `.toml` files. The `clients/<slug>.toml` file should contain only non-sensitive configuration.
+</Tip>
+
+## What's next
+
+<CardGroup cols={2}>
+  <Card title="Connect a target repo" icon="git-branch" href="/setup/target-repo">
+    Sync workflow templates into a GitHub repo and map it to a Linear team in the admin UI.
+  </Card>
+  <Card title="Environment variables reference" icon="code" href="/configuration/environment-variables">
+    Full reference for every environment variable the orchestrator supports.
+  </Card>
+</CardGroup>

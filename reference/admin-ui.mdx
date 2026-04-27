@@ -1,0 +1,143 @@
+---
+title: "Admin UI reference for AI-Implement"
+description: "What the AI-Implement admin dashboard lets you manage, including team/repo mappings, active sessions, secrets, and the dispatch audit log."
+---
+
+The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is protected by the `ADMIN_ACCESS_CODE` environment variable — if that variable is not set, the UI is disabled. All management tasks described on this page can be performed either through the browser UI or programmatically via the JSON API documented at the bottom of this page.
+
+## Team/repo mappings
+
+The mappings panel is where you connect Linear teams to GitHub repositories and control how each team's issues are dispatched.
+
+Each mapping includes the following fields:
+
+| Field | Description | Default |
+|---|---|---|
+| `teamKey` | Linear team key (e.g. `ENG`) | — |
+| `owner` | GitHub org or user owning the target repo | — |
+| `repo` | GitHub repository name | — |
+| `workflowFile` | Workflow file to dispatch | `claude-implement.yml` |
+| `defaultBranch` | Branch to check out | `main` |
+| `maxInProgressAiIssues` | Max issues with AI-Working simultaneously | `3` |
+| `executionMode` | `github-actions` or `fly-machines` | `github-actions` |
+| `sessionMode` | `autonomous`, `interactive`, or `hybrid` | `autonomous` |
+| `machineCpus` | Fly Machine CPU count (fly-machines mode only) | `2` |
+| `machineMemoryMb` | Fly Machine memory in MB (fly-machines mode only) | `4096` |
+| `planningEnabled` | Run the planning phase before implementation | `true` |
+| `planningWorkflowFile` | Workflow file for the planning phase | `claude-plan.yml` |
+| `autoApprovePlans` | Automatically proceed to implementation after planning | `true` |
+| `provider` | Claude provider: `anthropic` or `bedrock` | `anthropic` |
+| `awsRegion` | AWS region for Bedrock (required when provider is `bedrock`) | — |
+| `extraEnv` | Extra environment variables injected at dispatch time | — |
+
+<Warning>
+Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`. You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo and set the `AI_IMPLEMENT_PROVIDER` and `AI_IMPLEMENT_AWS_REGION` repo variables so comment-triggered gap-fill runs use the same auth path.
+</Warning>
+
+## Dispatch log
+
+The dispatch log shows the last 500 dispatches across all teams. Each entry records which issue was dispatched, to which repo, when, and the outcome. Use this log to audit activity or diagnose why an issue was or was not picked up.
+
+## Active sessions
+
+The sessions panel lists all Fly Machine sessions that are currently in the `started`, `starting`, or `created` state. Each row shows the machine ID, region, and — where available — the Linear issue and repo it is working on.
+
+You can destroy a stuck session directly from this panel. Destroying a session also removes the `AI-Working` label from the associated Linear issue and clears it from the deduplication window, so the orchestrator can pick it up again on the next poll.
+
+<Tip>
+If a Fly Machine appears stuck and is not progressing, destroying it from the sessions panel is the cleanest recovery path.
+</Tip>
+
+## Deduplication
+
+Issues are deduplicated for 24 hours after dispatch to prevent the orchestrator from picking up the same issue repeatedly. The dedup panel shows every issue currently in the dedup window.
+
+You can manually remove an issue from the window if you want the orchestrator to re-dispatch it before the 24-hour window expires.
+
+## Runner mode
+
+The runner mode panel lets you get or set the orchestrator's runner mode. If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over the database value — the UI will indicate when this is the case.
+
+<Note>
+If you change runner mode via the API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the environment variable is removed and the orchestrator is restarted.
+</Note>
+
+## Orchestrator settings
+
+The settings panel manages two orchestrator-level values:
+
+- **`flySessionsApp`** — the Fly.io app name used for Fly Machine sessions
+- **`flySessionsRegion`** — the default region for new Fly Machine sessions
+
+Both values can be overridden at the environment level via `FLY_SESSIONS_APP` and `FLY_SESSIONS_REGION`. When an env override is active, the UI shows the current runtime value alongside the database value and flags that the env var is winning. Changes to settings that differ from the running process take effect after a restart.
+
+## Secrets
+
+### Per-team secrets
+
+Each team mapping has its own secrets panel at `/api/mappings/:teamKey/secrets`. Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secret named `MY_TOKEN` for team `ENG` is stored as `ENG_MY_TOKEN`). Secret names must contain only letters, digits, and underscores.
+
+### Global secrets
+
+Global secrets are Fly app secrets that do not belong to any specific team. They are listed, created, and deleted from `/api/global-secrets`. Global secret names must not start with any team key prefix.
+
+---
+
+## Admin API reference
+
+All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours.
+
+### Authentication
+
+<Steps>
+  <Step title="Obtain a bearer token">
+    POST your access code to `/api/auth`:
+
+    ```bash
+    curl -s -X POST https://your-orchestrator/api/auth \
+      -H "Content-Type: application/json" \
+      -d '{"code": "your-access-code"}' \
+      | jq -r '.token'
+    ```
+
+    The response contains a `token` field. Store it for subsequent requests.
+  </Step>
+  <Step title="Pass the token on subsequent requests">
+    Include the token as a `Bearer` header:
+
+    ```bash
+    TOKEN="<token from previous step>"
+    curl -s https://your-orchestrator/api/mappings \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+  </Step>
+</Steps>
+
+### Endpoint reference
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
+| `GET` | `/api/mappings` | List all team/repo mappings |
+| `POST` | `/api/mappings` | Create or update a mapping |
+| `PATCH` | `/api/mappings/:teamKey` | Update a mapping's concurrency cap |
+| `DELETE` | `/api/mappings/:teamKey` | Delete a mapping |
+| `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
+| `GET` | `/api/sessions` | List active Fly Machine sessions |
+| `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the Linear issue |
+| `GET` | `/api/dedup` | List issues in the 24-hour dedup window |
+| `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+| `GET` | `/api/runner-mode` | Get current runner mode |
+| `POST` | `/api/runner-mode` | Set runner mode |
+| `GET` | `/api/settings` | Get orchestrator settings |
+| `POST` | `/api/settings` | Update orchestrator settings |
+| `GET` | `/api/global-secrets` | List global Fly secrets |
+| `POST` | `/api/global-secrets` | Set a global Fly secret |
+| `DELETE` | `/api/global-secrets/:name` | Delete a global Fly secret |
+| `GET` | `/api/mappings/:teamKey/secrets` | List per-team Fly secrets |
+| `POST` | `/api/mappings/:teamKey/secrets` | Set a per-team Fly secret |
+| `DELETE` | `/api/mappings/:teamKey/secrets/:name` | Delete a per-team Fly secret |
+
+<Note>
+`/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+</Note>

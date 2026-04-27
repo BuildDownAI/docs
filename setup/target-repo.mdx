@@ -1,0 +1,94 @@
+---
+title: "Connect a GitHub repo to AI-Implement"
+description: "How to sync workflow templates into a target GitHub repo, map it to a Linear team in the admin UI, and label your first issue to trigger an AI-generated PR."
+---
+
+Connecting a GitHub repository to AI-Implement involves two things: syncing the workflow templates into the repo so GitHub Actions knows how to run Claude, and adding a team-to-repo mapping in the orchestrator's admin UI so the polling loop knows where to dispatch issues. Follow the steps below in order.
+
+<Steps>
+  <Step title="Sync workflow templates into the target repo">
+    From the AI-Implement repository, run the `sync-workflow.yml` workflow against your target repo:
+
+    ```bash
+    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+    ```
+
+    This opens a pull request in the target repo that adds the following files to `.github/workflows/` and the repo root:
+
+    - `claude-implement.yml` — the main implementation workflow
+    - `claude-plan.yml` — the planning workflow
+    - `comment-trigger.yml` — the `/ai-implement` comment trigger
+    - `WORKFLOW.md` — the Claude implementation prompt template
+    - `PLANNING.md` — the Claude planning prompt template
+
+    <Note>
+      `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
+    </Note>
+  </Step>
+
+  <Step title="Review and merge the PR in the target repo">
+    Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.
+  </Step>
+
+  <Step title="Enable pull request creation in the target repo">
+    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
+
+    Without this setting, the implementation workflow will fail when it attempts to open a PR.
+
+    <Warning>
+      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
+    </Warning>
+  </Step>
+
+  <Step title="Install the GitHub App on the target repo">
+    If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
+  </Step>
+
+  <Step title="Add the team-to-repo mapping in the admin UI">
+    Open the admin UI at `http://localhost:8080/admin` (or your Fly.io app URL) and add a new mapping. Fill in the following fields:
+
+    | Field | Description |
+    |---|---|
+    | **Team key** | Your Linear team key (the short identifier shown in Linear, e.g. `ENG`) |
+    | **Owner** | The GitHub organization or user that owns the repo |
+    | **Repo** | The repository name without the owner prefix |
+    | **Execution mode** | `github-actions` (default) to dispatch via GitHub Actions |
+    | **Concurrency limit** | Maximum number of issues AI-Implement will work on in parallel for this team (default: 3) |
+    | **Provider** | `anthropic` (default) or `bedrock` |
+
+    Save the mapping. The orchestrator will begin dispatching issues from that Linear team to that repo on its next poll cycle.
+  </Step>
+
+  <Step title="Create the AI-Implement label in Linear">
+    In your Linear workspace, create a label named exactly `AI-Implement`. The orchestrator matches on this exact string — capitalisation matters.
+
+    You can create labels from **Settings → Labels** in your Linear workspace.
+  </Step>
+
+  <Step title="Label an issue and watch it run">
+    Apply the `AI-Implement` label to any Linear issue in the mapped team. Within 60 seconds (one poll cycle), the orchestrator picks it up, dispatches the workflow, and Claude Code starts working on the implementation.
+
+    The issue moves to **In Progress** in Linear while Claude works, then to **Ready for Review** once the PR is open, with a comment linking to the PR.
+
+    <Tip>
+      For best results, label issues that are focused and well-specified. Claude performs well on issues that clearly describe what should change and why — and less well on vague or sprawling tickets.
+    </Tip>
+  </Step>
+</Steps>
+
+## After your first run
+
+Once the PR appears, you can:
+
+- Review the gap analysis comment that Claude posts automatically, showing what was implemented and what (if anything) still needs attention
+- Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch
+- Merge the PR to close the Linear issue automatically (the PR body includes a `Fixes` reference to the issue identifier)
+
+<CardGroup cols={2}>
+  <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
+    Edit the Claude prompt template to match your repo's stack and conventions.
+  </Card>
+  <Card title="Admin UI reference" icon="sliders" href="/reference/admin-ui">
+    Full reference for all fields available in the team-to-repo mapping form.
+  </Card>
+</CardGroup>

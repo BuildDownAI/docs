@@ -1,0 +1,106 @@
+{
+  "projectType": "saas",
+  "projectName": "AI-Implement",
+  "projectDescription": "An orchestrator that watches your Linear backlog and automatically opens pull requests by running Claude Code against labeled issues in your GitHub repos.",
+  "theme": "luma",
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "how-it-works"
+            ]
+          },
+          {
+            "group": "Setup",
+            "pages": [
+              "setup/prerequisites",
+              "setup/github-app",
+              "setup/deploy",
+              "setup/target-repo"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/team-repo-mappings",
+              "configuration/workflow-templates",
+              "configuration/planning"
+            ]
+          },
+          {
+            "group": "Providers",
+            "pages": [
+              "providers/anthropic",
+              "providers/aws-bedrock"
+            ]
+          },
+          {
+            "group": "Customize",
+            "pages": [
+              "customize/workflow-md",
+              "customize/planning-md",
+              "customize/custom-steps",
+              "customize/runner-image"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/admin-ui",
+              "reference/labels",
+              "reference/gap-analysis",
+              "reference/notifications",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Polls Linear every 60 seconds for issues labeled AI-Implement and automatically dispatches implementation runs",
+    "Runs Claude Code via GitHub Actions or Fly Machines to implement tickets and open pull requests",
+    "Posts a gap analysis comment on every PR comparing the diff to the original issue specification",
+    "Comment /ai-implement on any PR to trigger a gap-fill run on the existing branch",
+    "Planning phase: Claude reads the codebase and posts architecture analysis and test plan comments to Linear before implementation",
+    "Admin UI for managing team-to-repo mappings, concurrency limits, and orchestrator settings",
+    "Supports Anthropic API, Claude OAuth, and AWS Bedrock as Claude providers",
+    "Per-repo WORKFLOW.md and PLANNING.md prompt templates that teams own and customise",
+    "Extensible via custom/ directory for custom pipeline steps and providers",
+    "Per-repo custom runner images for repos needing extra runtimes or tools"
+  ],
+  "publicApiSurface": [
+    "Linear label: AI-Implement (triggers implementation run)",
+    "Linear label: AI-Planning (triggers planning run)",
+    "PR comment: /ai-implement (triggers gap-fill run on existing PR)",
+    "Admin UI: GET/POST /admin — web dashboard for managing mappings and settings",
+    "Admin API: GET /api/mappings — list all team→repo mappings",
+    "Admin API: POST /api/mappings — create or update a team→repo mapping",
+    "Admin API: PATCH /api/mappings/:teamKey — update concurrency cap",
+    "Admin API: DELETE /api/mappings/:teamKey — remove a mapping",
+    "Admin API: GET /api/log — dispatch audit log",
+    "Admin API: GET /api/sessions — list active Fly Machine sessions",
+    "Admin API: DELETE /api/sessions/:machineId — destroy a running session",
+    "Admin API: GET/POST /api/runner-mode — get or set runner mode",
+    "Admin API: GET/POST /api/settings — orchestrator-level settings",
+    "Admin API: GET/POST/DELETE /api/global-secrets — manage global Fly secrets",
+    "Admin API: GET/POST/DELETE /api/mappings/:teamKey/secrets — manage per-team Fly secrets",
+    "GitHub webhook: POST /api/github/webhook — receives GitHub events",
+    "WORKFLOW.md front matter: model, gap_analysis_model, setup, verify, teardown",
+    "PLANNING.md front matter: model",
+    "custom/pipelines/ — override pipeline YAML definitions",
+    "custom/steps/ — override or add pipeline step modules",
+    "custom/providers/ — override provider modules",
+    ".ai-implement/image.yml — per-repo custom Fly Machine runner image"
+  ]
+}

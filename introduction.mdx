@@ -1,0 +1,55 @@
+---
+title: "AI-Implement: From Linear tickets to pull requests"
+description: "AI-Implement turns your Linear backlog into pull requests by running Claude Code against labeled issues. Your tickets are the prompts."
+---
+
+AI-Implement is an orchestration service that connects your Linear workspace to one or more GitHub repositories. You label an issue `AI-Implement`, and within minutes Claude Code checks out the right repo, reads your codebase, implements the ticket, opens a pull request, and posts a gap analysis comparing what was built to what you asked for. Your team reviews everything in the tools they already use — Linear and GitHub — without learning a new interface.
+
+## Who it's for
+
+AI-Implement is built for software teams, not individual developers. If you already manage work in Linear and want well-specified tickets to turn into PRs without manually opening them yourself, this is designed for you.
+
+You'll get the most value if:
+
+- Your team runs tickets through Linear and wants AI output to land in your existing review process.
+- You have focused, well-specified issues where the requirement fits in a single pass.
+- You're comfortable operating a small Node.js service on Fly.io (or similar infrastructure).
+- You want Claude to run inside your own CI, with your own secrets, against your own provider.
+
+<Note>
+  AI-Implement works best with clearly scoped tickets. Claude handles focused, well-specified issues well and struggles with sprawling or vague ones. The quality of the ticket is the quality of the prompt.
+</Note>
+
+## What you need to get started
+
+Before you can run AI-Implement, you'll need accounts and credentials across four services:
+
+- **Linear workspace** — where your issues live and where the `AI-Implement` label gets applied
+- **GitHub App** — authenticates the orchestrator to dispatch workflows and open PRs
+- **Fly.io account** — where the orchestrator service runs (a single shared-cpu-1x machine is enough)
+- **Anthropic API key** — or an AWS Bedrock setup with the appropriate IAM role
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get from zero to your first AI-generated PR in under 30 minutes.
+  </Card>
+  <Card title="How it works" icon="diagram-project" href="/how-it-works">
+    Understand the full lifecycle from Linear label to merged PR.
+  </Card>
+  <Card title="Prerequisites" icon="list-check" href="/setup/prerequisites">
+    Everything you need to set up before deploying the orchestrator.
+  </Card>
+  <Card title="Customize prompts" icon="pen-to-square" href="/customize/workflow-md">
+    Tailor the WORKFLOW.md and PLANNING.md templates for your stack.
+  </Card>
+</CardGroup>
+
+## Key concepts
+
+**The ticket is the prompt.** Writing well-specified tickets is something teams already know how to do. AI-Implement uses that skill — and the cross-issue structure in your Linear backlog — instead of asking anyone to learn prompt engineering.
+
+**The PR is the work product.** Every run produces a pull request, a gap analysis comment, and a Linear status change. Reviewers see exactly what was attempted and where it fell short of the spec.
+
+**One orchestrator, many repos.** A single AI-Implement service can dispatch workflows across multiple repos in multiple GitHub organizations. Team-to-repo mappings are managed in the admin UI.
+
+**Gap-fill on demand.** After reviewing a PR, comment `/ai-implement` on it to send Claude back in for a second pass on the same branch. The gap analysis comment updates automatically.

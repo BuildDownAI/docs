@@ -1,0 +1,9 @@
+<svg viewBox="0 0 720 160" xmlns="http://www.w3.org/2000/svg" aria-label="builddown.ai">
+  
+  <g transform="translate(20 30)">
+    <path d="M15 25 L55 95 L95 25 Z" fill="none" stroke="#6ee2ff" stroke-width="6" stroke-linejoin="round"></path>
+    <path d="M35 25 L55 60 L75 25 Z" fill="#0aa6cf" fill-opacity="0.20" stroke="#2cc8ee" stroke-width="4" stroke-linejoin="round"></path>
+  </g>
+  
+  <text x="140" y="105" font-family="&#39;Space Grotesk&#39;, &#39;Inter Tight&#39;, system-ui, -apple-system, Segoe UI, sans-serif" font-weight="500" font-size="92" letter-spacing="-3" fill="#eef1f4">builddown<tspan fill="#2cc8ee" font-weight="600">.ai</tspan></text>
+</svg>

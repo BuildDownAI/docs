@@ -1,0 +1,80 @@
+---
+title: "Configure Slack and Teams notifications"
+description: "How to configure AI-Implement to send Slack or Microsoft Teams webhook notifications when issues are dispatched and when implementation runs complete or fail."
+---
+
+AI-Implement can send notifications to Slack or Microsoft Teams when issues are dispatched and when runs complete. Notifications are optional — if you do not configure a webhook URL, the orchestrator continues to work normally and simply skips sending notifications.
+
+## Configuration
+
+Two environment variables control notifications:
+
+| Variable | Values | Description |
+|---|---|---|
+| `NOTIFY_TYPE` | `slack` (default) or `teams` | The notification provider to use |
+| `NOTIFY_WEBHOOK_URL` | Incoming webhook URL | If unset, notifications are silently skipped |
+
+Set these on your orchestrator's Fly app (or in your `.env` file when running locally):
+
+```bash
+fly secrets set NOTIFY_TYPE=slack NOTIFY_WEBHOOK_URL=https://hooks.slack.com/services/... --app your-app
+```
+
+<Note>
+If `NOTIFY_WEBHOOK_URL` is not set, notifications are silently skipped. No error is raised and the orchestrator continues to dispatch and poll normally.
+</Note>
+
+## What triggers a notification
+
+AI-Implement sends notifications at two points in the run lifecycle:
+
+- **Dispatch** — when the orchestrator picks up an issue and dispatches a workflow run. The notification includes the issue identifier, title, and target repository.
+- **Completion** — when a workflow run finishes. The notification includes the outcome (`completed`, `failed`, or `timed_out`), a link to the PR (if one was opened), a link to the GitHub Actions run, and the run duration.
+
+## Setting up Slack
+
+<Steps>
+  <Step title="Create a Slack app with an incoming webhook">
+    Go to [api.slack.com/apps](https://api.slack.com/apps) and create a new app. Choose **From scratch**, give it a name, and select your workspace.
+  </Step>
+  <Step title="Activate incoming webhooks">
+    In the app settings, open **Incoming Webhooks** and toggle **Activate Incoming Webhooks** on.
+  </Step>
+  <Step title="Add a webhook to your workspace">
+    Click **Add New Webhook to Workspace**, choose the channel where you want notifications to appear, and click **Allow**.
+  </Step>
+  <Step title="Copy the webhook URL">
+    Copy the webhook URL that appears on the Incoming Webhooks page. It looks like `https://hooks.slack.com/services/T.../B.../...`.
+  </Step>
+  <Step title="Set the environment variables">
+    ```bash
+    fly secrets set NOTIFY_TYPE=slack NOTIFY_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL --app your-app
+    ```
+  </Step>
+</Steps>
+
+## Setting up Microsoft Teams
+
+<Steps>
+  <Step title="Open the target Teams channel">
+    In Microsoft Teams, navigate to the channel where you want notifications to appear.
+  </Step>
+  <Step title="Add an incoming webhook connector">
+    Click the **...** (More options) next to the channel name, select **Connectors**, find **Incoming Webhook**, and click **Configure**.
+  </Step>
+  <Step title="Name the webhook and save">
+    Give the webhook a name (e.g. `AI-Implement`), optionally upload an icon, and click **Create**.
+  </Step>
+  <Step title="Copy the webhook URL">
+    Copy the webhook URL shown on the confirmation screen.
+  </Step>
+  <Step title="Set the environment variables">
+    ```bash
+    fly secrets set NOTIFY_TYPE=teams NOTIFY_WEBHOOK_URL=https://your-tenant.webhook.office.com/... --app your-app
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+Teams notifications use Adaptive Cards, which render a structured fact-set with the issue, repo, PR link, and run duration — the same information as Slack, formatted for the Teams card UI.
+</Tip>

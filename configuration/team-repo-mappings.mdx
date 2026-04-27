@@ -1,0 +1,90 @@
+---
+title: "Configure team-to-repo mappings"
+description: "How to map Linear teams to GitHub repos in the admin UI, including concurrency limits, execution mode, session mode, and provider settings."
+---
+
+A team-to-repo mapping connects a Linear team identifier to a target GitHub repository and controls exactly how AI-Implement dispatches and runs implementations for that team. Each mapping is stored in the orchestrator's SQLite database and can be created, edited, or deleted through the admin UI at `/admin`. You need at least one mapping for the orchestrator to do any work.
+
+<Tip>
+  To find your Linear team identifier, go to **Settings → Teams**, select your team, and look for the **Identifier** field — it is the short code shown in issue numbers (e.g. `ENG` in `ENG-42`).
+</Tip>
+
+## Mapping fields
+
+<ParamField body="teamKey" type="string" required>
+  Your Linear team identifier (e.g. `ENG`). This is the short prefix shown in Linear issue identifiers. The orchestrator uses this key to match issues polled from Linear to the correct GitHub repo.
+</ParamField>
+
+<ParamField body="owner" type="string" required>
+  GitHub organization name or username that owns the target repository (e.g. `my-org`).
+</ParamField>
+
+<ParamField body="repo" type="string" required>
+  Name of the target GitHub repository (e.g. `my-api`). Combined with `owner`, this tells the orchestrator where to dispatch workflow runs.
+</ParamField>
+
+<ParamField body="workflowFile" type="string">
+  Name of the GitHub Actions workflow file to dispatch for implementation runs. Default: `claude-implement.yml`. Change this only if you have renamed or customized the workflow file in the target repo.
+</ParamField>
+
+<ParamField body="defaultBranch" type="string">
+  Branch that Claude creates pull requests against. Default: `main`. Set this to `master` or your primary branch name if it differs.
+</ParamField>
+
+<ParamField body="maxInProgressAiIssues" type="number">
+  Maximum number of AI implementation runs that can be in progress simultaneously for this team. If the limit is reached, newly eligible issues are held until a slot opens. Default: `3`.
+</ParamField>
+
+<ParamField body="executionMode" type="string">
+  Where implementation runs execute. Default: `github-actions`.
+
+  - `github-actions` — Claude runs inside a standard GitHub Actions job in the target repo. No additional infrastructure required.
+  - `fly-machines` — Claude runs inside a Fly Machine launched by the orchestrator. Requires the Fly sessions app to be configured.
+</ParamField>
+
+<ParamField body="sessionMode" type="string">
+  How the Claude session behaves during a run. Default: `autonomous`.
+
+  - `autonomous` — Claude works to completion without human interaction.
+  - `interactive` — Claude pauses and waits for feedback at decision points.
+  - `hybrid` — Claude proceeds autonomously but surfaces questions when it is uncertain.
+</ParamField>
+
+<ParamField body="machineCpus" type="number">
+  Number of CPUs allocated to the Fly Machine for each run. Only applies when `executionMode` is `fly-machines`. Default: `2`.
+</ParamField>
+
+<ParamField body="machineMemoryMb" type="number">
+  Memory allocated to the Fly Machine in megabytes. Only applies when `executionMode` is `fly-machines`. Minimum: `256`. Default: `4096`.
+</ParamField>
+
+<ParamField body="planningEnabled" type="boolean">
+  Whether to run a planning phase before implementation. When enabled, the orchestrator dispatches the planning workflow first, Claude posts structured analysis to Linear, and then implementation proceeds. Default: `true`. See [AI planning phase](/configuration/planning) for details.
+</ParamField>
+
+<ParamField body="planningWorkflowFile" type="string">
+  Name of the GitHub Actions workflow file dispatched for the planning phase. Default: `claude-plan.yml`. Only relevant when `planningEnabled` is `true`.
+</ParamField>
+
+<ParamField body="autoApprovePlans" type="boolean">
+  When `true`, the orchestrator automatically triggers implementation after the planning workflow completes without waiting for human review of the plan. When `false`, a team member must manually approve the plan before implementation starts. Default: `true`.
+</ParamField>
+
+<ParamField body="extraEnv" type="object">
+  A flat key-value object of additional environment variables to inject into the Fly Machine environment at dispatch time. Only applies when `executionMode` is `fly-machines`. Example: `{"DATABASE_URL": "postgres://..."}`.
+</ParamField>
+
+<ParamField body="provider" type="string">
+  The Claude provider used by the dispatched workflow. Default: `anthropic`.
+
+  - `anthropic` — Uses the Anthropic API or Claude Code OAuth token, whichever is configured as an org secret in the target repo.
+  - `bedrock` — Uses AWS Bedrock via GitHub OIDC. Requires `awsRegion` to also be set.
+</ParamField>
+
+<ParamField body="awsRegion" type="string">
+  AWS region that hosts your Bedrock inference profile (e.g. `us-west-2`). Required when `provider` is `bedrock`. Ignored for the `anthropic` provider.
+</ParamField>
+
+<Note>
+  `provider=bedrock` is not supported when `executionMode` is `fly-machines`. Use `executionMode=github-actions` for Bedrock runs.
+</Note>

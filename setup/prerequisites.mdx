@@ -1,0 +1,65 @@
+---
+title: "Prerequisites for running AI-Implement"
+description: "What accounts, credentials, and access you need before installing AI-Implement — Linear, GitHub, a Claude provider, and a place to run the orchestrator."
+---
+
+Before you install AI-Implement, gather everything in the checklist below. Each item maps to a later setup step, so having them ready in advance makes the process significantly smoother.
+
+<Steps>
+  <Step title="Linear workspace with label permissions">
+    You need a Linear workspace where you can create labels. AI-Implement relies on the `AI-Implement` label to identify issues to process. You do not need admin access to the workspace — member-level access with the ability to create labels is sufficient.
+  </Step>
+
+  <Step title="GitHub organization or account, and a GitHub App you control">
+    AI-Implement uses a GitHub App to authenticate workflow dispatches and to open pull requests under the app's identity (which is what allows the `/ai-implement` comment trigger to work correctly). You need either:
+
+    - A GitHub organization where you can create a GitHub App, or
+    - A personal GitHub account with the ability to create a GitHub App
+
+    You will create the App during setup. See [Create a GitHub App](/setup/github-app) for the full walkthrough.
+  </Step>
+
+  <Step title="Somewhere to run the orchestrator">
+    The orchestrator is a small Node.js service. You have two options:
+
+    <CardGroup cols={2}>
+      <Card title="Fly.io (recommended)" icon="cloud">
+        A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/setup/deploy) for instructions.
+      </Card>
+      <Card title="Any server running Node.js" icon="server">
+        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/setup/deploy).
+      </Card>
+    </CardGroup>
+  </Step>
+
+  <Step title="A Claude provider">
+    AI-Implement supports three ways to authenticate with Claude. You need at least one:
+
+    | Provider | What you need |
+    |---|---|
+    | Anthropic API (fallback) | An `ANTHROPIC_API_KEY` from [console.anthropic.com](https://console.anthropic.com) |
+    | Claude Code OAuth (preferred) | A `CLAUDE_CODE_OAUTH_TOKEN` — preferred over the API key when both are present |
+    | AWS Bedrock | An AWS account with Bedrock access and an IAM role configured for GitHub OIDC |
+
+    <Note>
+      You configure the provider per target repo, not globally. If you are just getting started, an Anthropic API key is the simplest path.
+    </Note>
+  </Step>
+
+  <Step title="Node.js 20 or later (for local development)">
+    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 20 or later installed on your machine. For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
+  </Step>
+</Steps>
+
+## What's next
+
+Once you have everything above, work through the setup in order:
+
+<CardGroup cols={2}>
+  <Card title="Create a GitHub App" icon="github" href="/setup/github-app">
+    Create and configure the GitHub App that AI-Implement uses to authenticate with GitHub and open PRs.
+  </Card>
+  <Card title="Deploy the orchestrator" icon="rocket" href="/setup/deploy">
+    Run the orchestrator locally or deploy it to Fly.io.
+  </Card>
+</CardGroup>

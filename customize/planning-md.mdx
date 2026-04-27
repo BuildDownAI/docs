@@ -1,0 +1,120 @@
+---
+title: "Customize PLANNING.md for architecture analysis"
+description: "How to customize PLANNING.md: control what Claude explores and what architecture and test plan comments it posts to Linear before each implementation run."
+---
+
+`PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis and test plan comments to Linear. When the planning workflow (`claude-plan.yml`) runs for a Linear issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
+
+## File structure
+
+Like `WORKFLOW.md`, `PLANNING.md` has two parts:
+
+**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. Stripped before Claude sees anything.
+
+**Markdown body** — everything after the front matter. Processed with `envsubst` and sent to Claude as the prompt.
+
+## Front matter keys
+
+<AccordionGroup>
+  <Accordion title="model">
+    The model ID passed to `claude-code --model`. Accepts any ID your configured provider supports.
+
+    ```yaml
+    # Anthropic API or OAuth
+    model: claude-sonnet-4-6
+
+    # AWS Bedrock (replace with your model ID or inference-profile ARN)
+    model: anthropic.claude-sonnet-4-6-20250805-v1:0
+    ```
+
+    This key is **required when using Bedrock** — there is no safe default for Bedrock model IDs. The workflow hard-fails if you omit it on a Bedrock-mapped repo. For the Anthropic provider it defaults to `claude-sonnet-4-6` if omitted.
+  </Accordion>
+</AccordionGroup>
+
+## Variables available in the body
+
+The markdown body is processed with `envsubst` before being sent to Claude. You can reference any of these variables anywhere in the body:
+
+| Variable | Description |
+|---|---|
+| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_TITLE}` | Issue title |
+| `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
+| `${ISSUE_ID}` | Linear UUID — used in `curl` commands to post comments |
+| `${PARENT}` | Parent issue as `- IDENTIFIER: Title`, or `None` |
+| `${SIBLINGS}` | Sibling stories (other children of the same parent), newline-separated, or `None` |
+| `${DEPENDENCIES}` | Related issues as `- [type] IDENTIFIER: Title`, newline-separated, or `None` |
+
+## Comment types Claude must post
+
+Claude posts up to three structured comments to your Linear issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
+
+<Steps>
+  <Step title="Architecture Analysis">
+    Header: `## 🏗️ AI Planning: Architecture Analysis`
+
+    Required sections in this comment:
+
+    - **Approach** — 1–3 sentences describing the implementation strategy
+    - **Files to Create/Modify** — specific file paths with a one-line description of each change
+    - **Key Decisions** — architectural choices and rationale
+    - **Risks & Open Questions** — edge cases, unknowns, potential problems
+  </Step>
+
+  <Step title="Test Plan">
+    Header: `## 🧪 AI Planning: Test Plan`
+
+    Required sections in this comment:
+
+    - **Unit Tests** — individual components or functions to test
+    - **Integration Tests** — end-to-end or cross-component scenarios
+    - **Manual Verification** — step-by-step human verification checklist
+  </Step>
+
+  <Step title="Cross-Story Context (conditional)">
+    Header: `## 🔗 AI Planning: Cross-Story Context`
+
+    Claude only posts this comment when `${DEPENDENCIES}` or `${SIBLINGS}` is not `None` **and** there is meaningful coordination needed between stories.
+
+    Required sections when posted:
+
+    - **Upstream Dependencies** — what must be completed before this story
+    - **Downstream Impact** — stories or systems that will depend on this work
+    - **Coordination Notes** — specific actions needed to coordinate with other teams or stories
+  </Step>
+</Steps>
+
+## Customizing the "Repo context" section
+
+The `## Repo context` section is where you point Claude at the right parts of your codebase and establish the conventions that matter for architectural decisions.
+
+```markdown
+## Repo context
+
+- **Stack:** Node.js 20, TypeScript 5, PostgreSQL 16, Prisma ORM, Vitest
+- **Key conventions:**
+  - All database access goes through the repository layer in `src/repositories/`
+  - API routes live in `src/api/routes/`; middleware in `src/api/middleware/`
+  - Avoid introducing new dependencies without good reason
+- **Areas to always check:** `src/models/`, `src/api/`, `migrations/`
+```
+
+<Tip>
+  Use the **Areas to always check** field to direct Claude to the directories most likely to be relevant for any given issue. This reduces analysis time and keeps the architecture comments grounded in your actual code structure rather than generic advice.
+</Tip>
+
+## Example: adding analysis prompts
+
+You can add repo-specific analysis instructions anywhere in the body. For example, to always have Claude check the migration directory when database changes are involved:
+
+```markdown
+## Repo context
+
+- **Areas to always check:** `src/models/`, `src/api/`, `migrations/`
+- If the issue involves data changes, check `migrations/` for the latest schema
+  and assess whether a new migration is needed.
+```
+
+<Note>
+  The sync workflow seeds `PLANNING.md` into your repo once and never overwrites it. Every change you make is permanent — future syncs will not touch this file.
+</Note>
