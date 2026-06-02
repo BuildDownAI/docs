@@ -1,9 +1,9 @@
 ---
 title: "Customize PLANNING.md for architecture analysis"
-description: "How to customize PLANNING.md: control what Claude explores and what architecture and test plan comments it posts to Linear before each implementation run."
+description: "How to customize PLANNING.md: control what Claude explores and what architecture, test plan, work units, and cross-story comments it posts to your ticketing system before each implementation run."
 ---
 
-`PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis and test plan comments to Linear. When the planning workflow (`claude-plan.yml`) runs for a Linear issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
+`PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis, test plan, work units, and cross-story comments back to your ticketing system. When the planning workflow (`claude-plan.yml`) runs for an issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
 
 ## File structure
 
@@ -37,17 +37,17 @@ The markdown body is processed with `envsubst` before being sent to Claude. You 
 
 | Variable | Description |
 |---|---|
-| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_IDENTIFIER}` | Ticketing-system identifier — `ENG-42` for Linear, `PROJ-42` for Jira |
 | `${ISSUE_TITLE}` | Issue title |
 | `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
-| `${ISSUE_ID}` | Linear UUID — used in `curl` commands to post comments |
+| `${ISSUE_ID}` | Issue UUID — used in API calls to post comments |
 | `${PARENT}` | Parent issue as `- IDENTIFIER: Title`, or `None` |
 | `${SIBLINGS}` | Sibling stories (other children of the same parent), newline-separated, or `None` |
 | `${DEPENDENCIES}` | Related issues as `- [type] IDENTIFIER: Title`, newline-separated, or `None` |
 
 ## Comment types Claude must post
 
-Claude posts up to three structured comments to your Linear issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
+Claude posts up to four structured comments to your ticketing issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
 
 <Steps>
   <Step title="Architecture Analysis">
@@ -69,6 +69,30 @@ Claude posts up to three structured comments to your Linear issue. The headers a
     - **Unit Tests** — individual components or functions to test
     - **Integration Tests** — end-to-end or cross-component scenarios
     - **Manual Verification** — step-by-step human verification checklist
+  </Step>
+
+  <Step title="Work Units">
+    Header: `## 🔧 AI Planning: Work Units`
+
+    Decompose the issue into work units that subagents can implement in parallel during the implementation phase.
+    
+    Required sections in this comment:
+
+    - **Independent (can be implemented in parallel)** — units with no dependencies on other units.
+    - **Sequential (must follow independent units)** — units that depend on the independent ones completing first.
+
+    Each unit must specify a name, description, files touched, and dependencies (or `No dependencies`), formatted as follows:
+
+    ```markdown
+    - **WU-1: Add the user-export endpoint** — Files: `src/api/export.ts`. No dependencies.
+    - **WU-2: Update the schema migration** — Files: `migrations/0042-export.sql`. No dependencies.
+    - **WU-3: Update the frontend to reflect new schema** — Files: `src/app/export/page.tsx`. Depends on: WU-2.
+
+    ```
+
+    <Note>
+      Claude may omit this comment when the issue doesn't naturally decompose — for example, when all the work is sequential or tightly coupled across files. Implementation falls back to a single-pass run in that case.
+    </Note>
   </Step>
 
   <Step title="Cross-Story Context (conditional)">

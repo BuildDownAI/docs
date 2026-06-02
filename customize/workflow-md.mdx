@@ -3,7 +3,7 @@ title: "Customize WORKFLOW.md for your codebase"
 description: "How to customize WORKFLOW.md: set the model, repo context, quality checklist, and lifecycle hooks Claude follows for every implementation run in your repo."
 ---
 
-`WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up a Linear issue, it renders this file and sends the result to Claude as its implementation instructions. You control the model, the repo context Claude reads, and every detail of how Claude approaches your codebase.
+`WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up an issue from your ticketing system (Linear or Jira), it renders this file and sends the result to Claude as its implementation instructions. You control the model, the repo context Claude reads, and every detail of how Claude approaches your codebase.
 
 ## File structure
 
@@ -73,11 +73,12 @@ The markdown body is processed with `envsubst` before being sent to Claude. You 
 
 | Variable | Description |
 |---|---|
-| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_IDENTIFIER}` | Ticketing-system identifier — `ENG-42` for Linear, `PROJ-42` for Jira |
 | `${ISSUE_TITLE}` | Issue title |
 | `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
-| `${ISSUE_ID}` | Linear UUID — useful if you want Claude to call the Linear API directly |
+| `${ISSUE_ID}` | Issue UUID — useful if you want Claude to call the ticketing API directly |
 | `${PR_NUMBER}` | Set on gap-fill re-runs; empty on first run |
+| `${PLANNING_CONTEXT}` | Concatenated planning comments fetched from the ticket and sanitized. Empty when planning is disabled or no planning comments are present. |
 
 ## New implementation vs gap-fill runs
 
@@ -150,6 +151,10 @@ Before opening or updating the PR, verify:
 - [ ] PR description explains the approach, not just the what
 - [ ] No unrelated files changed
 ````
+
+<Note>
+  The starter template's `Fixes ${ISSUE_IDENTIFIER}` line triggers GitHub's auto-close integration with Linear when the PR merges. Jira issues won't auto-close on merge through this mechanism (GitHub doesn't auto-recognize Jira keys) — set up Jira automation if you want similar behavior.
+</Note>
 
 ## Customizing the "Repo context" section
 

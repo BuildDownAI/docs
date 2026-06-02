@@ -6,8 +6,20 @@ description: "What accounts, credentials, and access you need before installing 
 Before you install AI-Implement, gather everything in the checklist below. Each item maps to a later setup step, so having them ready in advance makes the process significantly smoother.
 
 <Steps>
-  <Step title="Linear workspace with label permissions">
-    You need a Linear workspace where you can create labels. AI-Implement relies on the `AI-Implement` label to identify issues to process. You do not need admin access to the workspace — member-level access with the ability to create labels is sufficient.
+  <Step title="Linear or Jira workspace">
+    <Tabs>
+      <Tab title="Linear">
+        You need a Linear workspace where you can create labels. AI-Implement relies on the `AI-Implement` label to identify issues to process. You do not need admin access to the workspace — member-level access with the ability to create labels is sufficient.
+      </Tab>
+
+      <Tab title="Jira">
+        You need an Atlassian Jira Cloud workspace where you can create custom select fields. AI-Implement requires two custom fields (`AI-Implement Status` and `AI-Implement Repo`) to identify and route issues, plus permission to add them to your project's issue screens.
+        
+        <Info>
+          See [Jira manual setup](/setup/target-repo#jira-manual-custom-field-setup) for the full custom-field walkthrough; you'll do that during the target-repo connection step.
+        </Info>
+      </Tab>
+    </Tabs>
   </Step>
 
   <Step title="GitHub organization or account, and a GitHub App you control">

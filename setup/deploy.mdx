@@ -39,6 +39,10 @@ Running locally is the fastest way to test a configuration before committing to 
     npm run dev
     ```
 
+    <Note>
+      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration, so variables in `.env` are ignored unless you load them yourself. Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell first with `set -a; source .env; set +a` before running `npm run dev`.
+    </Note>
+
     This starts the polling loop and HTTP server on port 8080.
   </Step>
 
@@ -105,6 +109,14 @@ For production use, deploy the orchestrator as a Fly.io app. Each client (team o
   </Step>
 </Steps>
 
+### Auto-deploy on push (`FLY_API_TOKEN`)
+
+The `deploy-clients.yml` workflow in the orchestrator repo deploys every client in `clients/*.toml` on each push to `main`. It authenticates with a single GitHub Actions secret, `FLY_API_TOKEN`, set on the orchestrator repo under **Settings → Secrets and variables → Actions**.
+
+<Note>
+  This is **not the same token as `FLY_SESSIONS_TOKEN`**. `FLY_API_TOKEN` is a CI secret used only to run `flyctl deploy`. `FLY_SESSIONS_TOKEN` is a runtime environment variable the orchestrator reads to spawn Fly Machine session machines.
+</Note>
+
 ### Fly.io infrastructure details
 
 Each Fly app uses:
@@ -116,6 +128,7 @@ Each Fly app uses:
 ## Environment variables
 
 The table below covers all variables the orchestrator reads. Required variables must be set before the service will start successfully.
+See [Environment variables for AI-Implement](/configuration/environment-variables) for more detailed information on each variable.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
