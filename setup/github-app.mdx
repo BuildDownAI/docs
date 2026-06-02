@@ -12,6 +12,10 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
     Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**.
 
     If you want the App to be owned by a GitHub organization rather than your personal account, navigate to your organization's settings page first, then go to **Developer settings → GitHub Apps → New GitHub App**.
+    
+    <Note>
+      You can transfer App ownership between personal accounts and organizations if desired, so either creation method will work for initial setup.
+    </Note>
   </Step>
 
   <Step title="Name the App and set the homepage URL">
@@ -19,7 +23,13 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
 
     Set the homepage URL to any valid URL — for example, the AI-Implement GitHub repository.
 
-    Uncheck **Webhook active** unless you intend to configure webhook delivery separately. AI-Implement polls Linear directly and does not require incoming webhooks from GitHub to function.
+    Uncheck **Webhook active** unless you intend to configure webhook delivery separately. AI-Implement polls your ticketing provider directly and does not require incoming webhooks from GitHub to function.
+
+    <Tip>
+      If `GITHUB_WEBHOOK_SECRET` is set on the orchestrator, AI-Implement *does* process incoming webhooks (e.g. to react to PR merges in real time without waiting for the next poll).
+      
+      To enable that path, leave **Webhook active** checked and point the webhook URL at `https://<your-orchestrator>/api/github/webhook` with the matching secret.
+    </Tip>
   </Step>
 
   <Step title="Set repository permissions">
@@ -27,16 +37,25 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
 
     | Permission | Level |
     |---|---|
+    | Actions | Read and write |
     | Contents | Read and write |
-    | Pull requests | Read and write |
     | Issues | Read and write |
+    | Pull requests | Read and write |
     | Workflows | Read and write |
 
     Leave all other permissions at their defaults (no access).
+
+    <Warning>
+      Both **Actions** and **Workflows** permissions are needed for GitHub Actions to function. **Workflows** allows `sync-workflow.yml` to write workflows to target repos, and **Actions** allows the orchestrator to run those workflows.
+    </Warning>
   </Step>
 
   <Step title="Choose where the App can be installed">
     Under **Where can this GitHub App be installed?**, select **Only on this account** if you want to restrict the App to your own organization. Select **Any account** if you plan to install it across multiple organizations.
+
+    <Warning>
+      If a personal account creates an App intended for an organization, you must select **Any account** — otherwise the org cannot install it.
+    </Warning>
   </Step>
 
   <Step title="Create the App and note the App ID">
@@ -61,6 +80,8 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
 ## Add secrets to your target repos
 
 The workflow templates that AI-Implement syncs into target repos read the following secrets. Add them at the organization level (recommended) so all target repos inherit them, or add them individually per repo under **Settings → Secrets and variables → Actions**.
+
+See [Credentials at a glance](/configuration/environment-variables#credentials-at-a-glance) for an overview on how these secrets map to the orchestrator's runtime environment variables.
 
 | Secret | Description |
 |---|---|

@@ -9,11 +9,75 @@ There are two extension points: `custom/steps/` for step modules and `custom/pip
 
 ## custom/steps/ — override or add a step
 
-You can either replace a built-in step or introduce an entirely new one by dropping a TypeScript file in `custom/steps/`.
+You can either **replace** a built-in step or **introduce an entirely new one** by dropping a TypeScript file in `custom/steps/`.
+- To override a built-in step, create a file named after its step ID — for example, `custom/steps/install.ts` replaces the built-in `install` step.
+- To add a new step, give the file a name that doesn't match any built-in ID and reference it from a custom pipeline (see below).
 
-**Built-in step keys you can override:** `clone`, `install`, `feedback-loop`, `preflight`, `push`
+<Info>
+  Overrides are discovered at startup by **filename match** — there is no plugin manifest or registration call.
+</Info>
 
-To override a built-in, create a file named after its key: for example, `custom/steps/install.ts` replaces the built-in `install` step. To add a new step, give the file a name that doesn't match any built-in key.
+### Built-in step IDs
+
+The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
+
+<AccordionGroup>
+  <Accordion title="architecture-analysis">
+    Runs Claude during the planning phase to produce the **Architecture Analysis** comment posted to the issue. Override to change the prompt, model, or how the analysis is shaped.
+  </Accordion>
+
+  <Accordion title="clone">
+    Clones the target repo into the workspace at the start of an implementation run. Override if you need custom checkout logic (e.g. shallow clones, submodule init).
+  </Accordion>
+
+  <Accordion title="cross-story-context">
+    Planning step that produces the **Cross-Story Context** comment when the issue has dependencies or sibling stories with meaningful coordination needs. Skipped automatically when no related issues exist.
+  </Accordion>
+
+  <Accordion title="explore-codebase">
+    Read-only codebase exploration during the planning phase. Builds the context that feeds into the architecture analysis and test plan.
+  </Accordion>
+
+  <Accordion title="feedback-loop">
+    Wraps the implementation loop — runs `implement` → `review` and iterates until the review approves the diff or the iteration cap is hit. Common override target for adjusting iteration limits, custom acceptance criteria, or swapping the review model.
+  </Accordion>
+
+  <Accordion title="implement">
+    The main implementation Claude session. Reads the planning context and, when **Work Units** are present, appends instructions for Claude to use parallel subagents. The subagents run *inside* the single Claude session via the Task tool — not as separate processes — so AI-Implement can't observe their individual progress.
+  </Accordion>
+
+  <Accordion title="install">
+    Runs your repo-specific install/setup script(s) before Claude starts. Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
+  </Accordion>
+
+  <Accordion title="post-push-review">
+    Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
+  </Accordion>
+
+  <Accordion title="post-to-ticketing">
+    Posts the four structured planning comments (Architecture Analysis, Test Plan, Work Units, Cross-Story Context) back to the ticketing system. Used by the planning workflow.
+  </Accordion>
+
+  <Accordion title="preflight">
+    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run.
+  </Accordion>
+
+  <Accordion title="push">
+    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Override to customize commit message format, branch naming, or PR body construction.
+  </Accordion>
+
+  <Accordion title="review">
+    A code-review sub-step executed inside `feedback-loop`. Evaluates Claude's diff against the issue requirements and returns an approval verdict plus an issues list that drives the loop's next iteration. **Distinct from the post-PR gap analysis** (which is the `post-push-review` step) — `review` runs *during* the implementation loop to drive iteration; `post-push-review` runs *after* the PR is opened to report on completeness.
+  </Accordion>
+
+  <Accordion title="test-plan">
+    Runs Claude during the planning phase to produce the **Test Plan** comment posted to the issue.
+  </Accordion>
+
+  <Accordion title="work-unit-decomposition">
+    Runs Claude during the planning phase to produce the **Work Units** comment, splitting the issue into parallelizable subagent tasks. See [AI planning phase](/configuration/planning) for the downstream parallel-implementation behavior.
+  </Accordion>
+</AccordionGroup>
 
 Every step file must export a `StepModule` as its default export:
 

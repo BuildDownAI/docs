@@ -29,6 +29,8 @@ Both the implementation workflow (`claude-implement.yml`) and the planning workf
 | `AI_IMPLEMENT_APP_ID` | GitHub App numeric ID used to authenticate workflow actions. |
 | `AI_IMPLEMENT_PRIVATE_KEY` | GitHub App RSA private key (PEM format, with newlines escaped as `\n`). |
 
+See [Environment variables for AI-Implement](/configuration/environment-variables) for more detailed information on each variable.
+
 ## Choosing between API key and OAuth token
 
 <Tabs>
@@ -37,7 +39,11 @@ Both the implementation workflow (`claude-implement.yml`) and the planning workf
 
     <Steps>
       <Step title="Get your OAuth token">
-        Sign in to Claude Code and copy your OAuth token from your account settings.
+        On a machine with the Claude CLI installed, run `claude setup-token`. Your browser opens to authenticate; after you approve, the token is printed to your terminal.
+
+        <Warning>
+        Copy the token immediately after it is generated — it's only shown once and not saved on terminal exit.
+        </Warning>
       </Step>
       <Step title="Add the secret">
         In your GitHub organization (or target repo), go to **Settings → Secrets and variables → Actions** and add a secret named `CLAUDE_CODE_OAUTH_TOKEN` with the token value.
