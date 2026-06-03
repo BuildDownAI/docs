@@ -10,6 +10,16 @@ Two short-lived branches off `june-doc-update`:
 
 Both implement the same v2 deltas on `reference/admin-ui.mdx`: per-project run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) and the required `defaultBranch` change. These are real testing-branch changes, not contrived.
 
+## What the slice demonstrates
+
+The "latest" version of `reference/admin-ui.mdx` shows three concrete content changes — these render identically on both patterns; only the versioning machinery routing them differs.
+
+![Experimental version banner at the top of every latest page](images/latest-admin-ui-deltas-1.png)
+
+![New-in-latest callout in the Projects section, listing the run-cap fields and Default Branch change](images/latest-admin-ui-deltas-2.png)
+
+![Caps table inside the Capacity step description, showing maxTurns / maxIterations / maxJobMinutes defaults](images/latest-admin-ui-deltas-3.png)
+
 ## TL;DR
 
 | Pattern | Verdict |
@@ -26,6 +36,8 @@ Both implement the same v2 deltas on `reference/admin-ui.mdx`: per-project run c
 - Top-level `versions` array in `docs.json` with two entries: `stable` (default) and `latest`
 - All 22 docs pages duplicated into `stable/` and `latest/` directories
 - Snippet at `snippets/experimental-banner.mdx` imported into each `latest/*.mdx` page
+
+![Pattern A: version dropdown appears at the top of every page, regardless of section](images/pattern-a-dropdown.png)
 
 ### Pros
 - Dropdown UI persists across all navigation; pick once, stays selected
@@ -51,6 +63,10 @@ All pages prefixed with version slug: `/stable/reference/admin-ui`, `/latest/ref
 - `versions` array inside the `Reference` tab; other tabs version-free
 - 5 Reference pages duplicated into `reference/latest/`; other 17 pages exist exactly once
 - Same banner snippet, imported only on versioned pages
+
+![Pattern B: Reference promoted to its own top-level tab — removed from the Docs sidebar](images/pattern-b-tab-promotion.png)
+
+![Pattern B: version dropdown only surfaces when reading a Reference page, scoped to the versioned tab](images/pattern-b-dropdown-in-reference.png)
 
 ### Pros
 - Fewer files duplicated (5 vs 22)
