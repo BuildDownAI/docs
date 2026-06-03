@@ -1,0 +1,194 @@
+---
+title: "Connect a GitHub repo to AI-Implement"
+description: "How to sync workflow templates into a target GitHub repo, map it to a Linear team in the admin UI, and label your first issue to trigger an AI-generated PR."
+---
+
+Connecting a GitHub repository to AI-Implement involves two things: syncing the workflow templates into the repo so GitHub Actions knows how to run Claude, and adding a project mapping in the orchestrator's admin UI so the polling loop knows where to dispatch issues. Follow the steps below in order.
+
+<Steps>
+  <Step title="Install the GitHub App on the target repo">
+    If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
+  </Step>
+
+  <Step title="Sync workflow templates into the target repo">
+    From the AI-Implement repository, run the `sync-workflow.yml` workflow against your target repo:
+
+    ```bash
+    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+    ```
+
+    <Note>
+      The target repo must have a default branch — `sync-workflow.yml` opens its PR against the existing default. If the repo is empty, push at least an initial commit first.
+    </Note>
+
+    This opens a pull request in the target repo that adds the following files to `.github/workflows/` and the repo root:
+
+    - `claude-implement.yml` — the main implementation workflow
+    - `claude-plan.yml` — the planning workflow
+    - `comment-trigger.yml` — the `/ai-implement` comment trigger
+    - `WORKFLOW.md` — the Claude implementation prompt template
+    - `PLANNING.md` — the Claude planning prompt template
+
+    <Note>
+      `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
+    </Note>
+  </Step>
+
+  <Step title="Review and merge the PR in the target repo">
+    Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.
+  </Step>
+
+  <Step title="Enable pull request creation in the target repo">
+    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
+
+    Without this setting, the implementation workflow will fail when it attempts to open a PR.
+
+    <Warning>
+      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
+    </Warning>
+  </Step>
+
+  <Step title="Set up the trigger in your ticketing system">
+    <Tabs>
+      <Tab title="Linear">
+        In your Linear workspace, create a label named `AI-Implement`.
+
+        You can create labels from **Settings → Labels** in your Linear workspace. The orchestrator auto-creates the in-progress labels (`AI-Working`, `AI-Planning`, `Plan-Complete`) on first use, plus `Ready for Review` workspace-wide.
+      </Tab>
+
+      <Tab title="Jira">
+        Create the two required custom fields in your Jira instance — `AI-Implement Status` and `AI-Implement Repo`.
+        
+        Add both fields to your project's screens.
+        
+        <Note>
+          See [Jira: manual custom-field setup](#jira-manual-custom-field-setup) below for a detailed walkthrough.
+        </Note>
+      </Tab>
+    </Tabs>
+
+    <Warning>
+      Ensure the triggers are entered exactly as written. The orchestrator matches on those exact strings — capitalization matters.
+    </Warning>
+  </Step>
+
+  <Step title="Create a project mapping in the admin UI">
+    Open the admin UI at `http://localhost:8080/admin` (or your Fly.io app URL) and click **Configure → Projects → + New project**. The stepper walks through 8 steps; for a first connection, the key inputs are:
+
+    <Tabs>
+      <Tab title="Linear">
+        - **Ticketing System** — `Linear`
+        - **Ticketing Config → Linear Team Key** — your Linear team key (e.g. `ENG`)
+        - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
+        - **Source → Repository Name** — the target repository's name without the owner prefix
+      </Tab>
+
+      <Tab title="Jira">
+        - **Ticketing System** — `Jira`
+        - **Ticketing Config → JQL** — a JQL clause that scopes which Jira issues this project mapping watches (e.g. `project = ACME`)
+        - **Ticketing Config → Repo Field Value** — the option value of the `AI-Implement Repo` field for issues belonging to this project mapping
+        - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
+        - **Source → Repository Name** — the target repository's name without the owner prefix
+      </Tab>
+    </Tabs>
+
+    Step through the remaining steps accepting defaults for a first run, then **Create project**.
+
+    The orchestrator will begin watching the configured scope on its next poll cycle.
+    
+    <Note>
+      See [Admin UI reference](/reference/admin-ui) for the full field list and defaults.
+    </Note>
+  </Step>
+
+  <Step title="Trigger a run and watch it">
+    <Tabs>
+      <Tab title="Linear">
+        Apply the `AI-Implement` label to any Linear issue in the mapped team.
+      </Tab>
+
+      <Tab title="Jira">
+        Open any Jira issue that matches your project mapping's JQL and has its `AI-Implement Repo` field set to the mapping's repo value, then set its `AI-Implement Status` to `Ready`.
+      </Tab>
+    </Tabs>
+
+    Within 60 seconds (one poll cycle), the orchestrator picks it up, dispatches the workflow, and Claude Code starts working on the implementation.
+
+    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label added; Jira: `AI-Implement Status` set to `PR Ready`), with a comment linking to the PR.
+
+    <Tip>
+      For best results, target issues that are focused and well-specified. Claude performs well on issues that clearly describe what should change and why — and less well on vague or sprawling tickets.
+    </Tip>
+  </Step>
+</Steps>
+
+## Jira: manual custom-field setup
+
+**Linear users can skip this section** — the orchestrator auto-creates Linear labels on first use, but Jira custom fields must exist before the orchestrator can pick up any issue.
+
+AI-Implement requires two custom select fields in your Jira instance: one for the run lifecycle status, `AI-Implement Status`, and one for scoping issues to a target repo, `AI-Implement Repo`. 
+
+<Steps>
+  <Step title="Create the AI-Implement Status custom field">
+    In Jira, navigate to **Settings → Issues → Custom fields → Create custom field**. Choose **Select List (single choice)** and name the field exactly `AI-Implement Status`.
+
+    Add the following options. Order doesn't matter to the orchestrator, but the spellings do:
+
+    - `Ready`
+    - `Planning`
+    - `Plan Approved`
+    - `Implementing`
+    - `PR Ready`
+    - `Planning Failed`
+    - `Implementation Failed`
+
+    {/* <Info>
+      The field also supports an optional eighth option, `Awaiting Approval`, as a manual park-state. The orchestrator never sets it itself, but you can move issues into it yourself to pause auto-dispatch (the orchestrator's poll filter accepts only `Ready` and `Plan Approved`). Add it now if you want that option available; skip it for a first run.
+    </Info> */}
+
+    <Warning>
+      Field name and option spellings must be exact — the orchestrator matches them literally. A typo will surface as either a missing-field error at startup or as issues silently not getting picked up.
+    </Warning>
+  </Step>
+
+  <Step title="Create the AI-Implement Repo custom field">
+    Create a second **Select List (single choice)** custom field named exactly `AI-Implement Repo`.
+
+    Add one option per target repo you intend to connect, using a convention you'll keep consistent across mappings (e.g. `your-org/backend`, `your-org/api`). Each option's value becomes the **Repo Field Value** you'll enter in the admin UI's project mapping.
+  </Step>
+
+  <Step title="Add both fields to your project's screens">
+    Both fields must appear on the create, edit, and view screens of the Jira project(s) where you'll use AI-Implement, so users can set their values.
+
+    Go to **Project settings → Screens** (or the equivalent for your project's screen scheme) and add both `AI-Implement Status` and `AI-Implement Repo` to the relevant screens.
+  </Step>
+
+  <Step title="(Optional) Note the field IDs for explicit overrides">
+    **Most installations don't need this step** — the orchestrator auto-discovers both fields by name. You only need explicit field IDs when your Jira instance has multiple fields sharing one of these names (e.g. left over from another tool).
+
+    To find a field's ID, hover over the field name in the custom-fields admin list and Jira shows the URL containing `customfield_NNNNN`. The Jira REST `GET /rest/api/3/field` endpoint also returns every field with its ID. You'll paste these into the optional **Status Field Override** / **Repo Field Override** inputs on the admin UI's Ticketing Config step.
+  </Step>
+</Steps>
+
+## After your first run
+
+Once the PR appears, you can:
+
+- Review the gap analysis comment that Claude posts automatically, showing what was implemented and what (if anything) still needs attention
+- Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch
+- Merge the PR to close the issue.
+
+<Tip>
+  **Linear** closes issues automatically since the PR body includes a `Fixes` reference to the issue identifier.
+
+  **Jira** users can create the same effect via Jira automation if desired.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
+    Edit the Claude prompt template to match your repo's stack and conventions.
+  </Card>
+  <Card title="Admin UI reference" icon="sliders" href="/reference/admin-ui">
+    Full reference for all fields available in the project mapping form.
+  </Card>
+</CardGroup>
