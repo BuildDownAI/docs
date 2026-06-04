@@ -1,125 +1,160 @@
 # Audit Prompt Development Notes
 
-Working log of prompt-design decisions, test runs, and operational lessons. Finalized as the mentor-handoff artifact at block close (Step 7).
+The mentor-handoff artifact for the docs-audit automation. Top section is the relay summary. Detailed sections below are reference material captured during the Block 4 dev cycle.
 
-## Operational fixes applied to `audit.yml` during testing
+## Block summary (mentor handoff)
 
-These are infrastructure changes layered onto the original Step 1 workflow YAML during Step 4 testing. Each is worth surfacing to the mentor at handoff.
+### What landed
 
-- **`actions/checkout` v4 → v5 and `actions/create-github-app-token` v1 → v3** — Node 20 deprecation; June 16, 2026 forced-switch deadline. Required version bumps before that date.
-- **`app-id` → `client-id`** on `create-github-app-token@v3`. The v3 major-version rename. Now references a new secret `DOCS_AUDIT_APP_CLIENT_ID` instead of the legacy `DOCS_AUDIT_APP_ID` (App ID and Client ID are different values on a GitHub App; the latter is the string `Iv23li...`-form identifier).
-- **`timeout-minutes: 3` on Install Claude Code CLI** — npm postinstall on `@anthropic-ai/claude-code` can hang silently on Linux runners while downloading the platform-native binary (known issue, [#5209](https://github.com/anthropics/claude-code/issues/5209)). Three-minute cap means a future hang fails fast.
-- **`claude --version` verification** appended to the Install step. Confirms the binary landed on PATH and is callable. If postinstall silently breaks, this errors with a clear message.
-- **`timeout-minutes: 25` on Run audit** — bounds a hung run (network issue, OAuth token retry loop, etc.) so the job doesn't sit for the default 360 minutes.
-- **`continue-on-error: true` on Run audit** — allows the `peter-evans/create-pull-request` step to run even when Claude exhausts `--max-turns`. Partial output beats no output for diagnostic value.
-- **`--permission-mode acceptEdits` on the `claude -p` invocation** — required for non-interactive runs. Without it, file writes (Edit, Write tools) trigger permission prompts that have nowhere to be answered in `-p` mode, so Claude completes the audit mentally but never writes `audit-report.md` or applies edits. `acceptEdits` auto-approves edits within the working directory while still respecting protected paths (`.git`, `.claude`, etc.) — safer than `--dangerously-skip-permissions`.
+- **Workflow** at `.github/workflows/audit.yml` — scheduled cron (Mondays 14:00 UTC) + manual dispatch with `branch` (main/testing) and `max_turns` (override) inputs. Mints a GitHub App installation token, checks out both repos, runs the Claude CLI audit, opens a draft PR via peter-evans.
+- **Prompt** at `.github/audit-prompt.md` (v1.1) — 5-layer structure: role + permission gates, inputs, repo context, task instructions, quality checklist.
+- **Reference** at `.github/audit-reference.md` — priority rubric + 3 worked HIGH examples (removal, addition, refactor) + 1 worked LOW-format example + anti-pattern list + areas-of-common-drift hints.
+- **Tested** end-to-end against AI-Implement `main`: CI Run 3 opened a draft PR with applied HIGH edit + structured audit report. Local Run 4 reproduced clean output with the v1.1 reference.
 
-## Reminder for production handoff
+### Key insights worth relaying
 
-Before transferring App ownership to BuildDownAI:
+1. **Run the audit multiple times per cycle for real drift coverage.** Across three runs of the same prompt on the same source state, all three HIGH findings were different — and all three were real, substantive drift issues. A single-run audit consistently misses real findings other runs would catch. Operational implication: scheduled cron runs once weekly, but a thorough audit (e.g., pre-release) should dispatch 2–3 times manually and union the findings. Costs more API quota; yields meaningfully better coverage.
 
-- The `schedule:` cron (`0 14 * * 1`) is currently active on the user's fork's `main`. Verify it's intended behavior on production before transfer, or disable temporarily.
-- Three workflow YAML fields must change from dev to production values:
-  - `owner: rigonzal530` → `owner: BuildDownAI`
-  - `repository: rigonzal530/AI-Implement` → `repository: BuildDownAI/AI-Implement`
-  - `base: june-doc-update` → `base: main`
-- BuildDownAI should rotate the App's private key after taking ownership so the dev-phase key (held locally) becomes inert.
-- The `DOCS_AUDIT_APP_CLIENT_ID`, `DOCS_AUDIT_APP_PRIVATE_KEY`, and `CLAUDE_CODE_OAUTH_TOKEN` secrets need to be set on `BuildDownAI/docs` (not just the fork).
+2. **Default `--max-turns` calibrated to 75 (main) / 100 (testing).** Workflow's hybrid resolver applies per-branch defaults plus a manual override input. Bump if completion rates drop; a maxed-out turn count is the right signal that prompt scope or codebase has drifted.
 
-## Run history
+3. **`--permission-mode acceptEdits` is required for headless audits.** Without it, file writes silently hang on permission prompts that have nowhere to be answered. Documented in CI workflow; required in any local iteration too.
 
-### Run 1 — `main` branch, prompt v1, `--max-turns 30`
+### One step deferred
 
-- **Outcome:** Hit `--max-turns` at 9m 7s. Exit code 1. peter-evans skipped (subsequent steps didn't run on step failure). **No PR opened.**
-- **Tokens / cost:** Subscription (OAuth token); no per-token cost. Wall time 9m 7s.
-- **Turn efficiency:** ~18s per turn average.
-- **Diagnostic value:** Limited — no PR, no artifacts. Tells us 30 turns is insufficient for `main`-scope audit with the current prompt's 7-area survey + edit + report breadth.
+Step 6 of the original block plan — a testing-branch calibration run — was deferred pending a manual pass on testing-aligned docs. Running the audit against testing now would mostly surface findings already catalogued in Block 3 Appendix A (the manual audit of testing-vs-main drift) rather than produce calibration data. The audit becomes a meaningful calibration tool *after* the manual pass narrows the known gap; reschedule Step 6 then.
 
-### Run 2 — `main` branch, prompt v1, `--max-turns 50`
+### Production handoff checklist
 
-- **Outcome:** Audit completed mentally at 10m 20s, **well under the 50-turn cap**. But Claude could not write `audit-report.md` or apply edits — `-p` mode's permission prompts had nowhere to be answered. peter-evans then failed: `File 'audit-report.md' does not exist`.
-- **Diagnostic value:** Very high — Claude shared the complete audit transcript in stdout. The prompt is mostly working; only the I/O surface was blocked.
-- **Findings produced (held in transcript only, not committed):**
-  - **H-1:** Platform → Secrets panel documented as if fully implemented (`reference/admin-ui.mdx:234-252`), but `src/admin-ui/pages/stubs.ts:75-86` renders a "coming soon" stub. Real secrets management lives in Settings (global) and Projects (per-team). Draft `<Note>` proposed.
-  - **M-1:** `Settings` panel docs omit Global Machine Secrets card (`src/admin-ui/pages/settings.ts:34-56` vs `reference/admin-ui.mdx:254-264`).
-  - **M-2:** Configure sidebar group listing in `reference/admin-ui.mdx:9-17` lists 3 items; `src/admin-ui/sidebar.ts:18-20` has 5 (missing Triggers & channels, Policies & risk stubs).
-  - **M-3:** Developer sidebar group listing similarly incomplete (missing MCP server, Webhooks, Updates stubs at `stubs.ts:87-113`).
-  - **M-4:** `setup/target-repo.mdx:13-35` directs users to `gh workflow run sync-workflow.yml` as primary sync path; `CLAUDE.md` says admin UI Sync workflows button should be preferred.
-  - **LOW (3 aggregate):** stepper walkthrough combines steps 0/1/2; "Pipelines (jobs)" heading vs "Pipelines" sidebar label; `ensureTeamLabel()` developer-only.
-- **Quality assessment:** Strong v1 output. Categorization is correct (HIGH for active-misleading docs; MEDIUM for coverage gaps; LOW for cosmetic). Citations are real and precise. The proposed MDX edit for H-1 uses the right component (`<Note>`) and the correct `{/* AUDIT H-1: */}` marker convention.
-- **Fix applied:** Added `--permission-mode acceptEdits` to the Claude invocation.
+When transferring App ownership to BuildDownAI and rolling out to production repos:
 
-### Run 3 — `main` branch, prompt v1, `--max-turns 50` + `acceptEdits`
+1. **Workflow YAML — three field changes** at `audit.yml`:
+   - `owner: rigonzal530` → `owner: BuildDownAI` (in the token-mint step)
+   - `repository: rigonzal530/AI-Implement` → `repository: BuildDownAI/AI-Implement` (in the AI-Implement checkout step)
+   - `base: june-doc-update` → `base: main` (in the peter-evans step)
+2. **Secrets on `BuildDownAI/docs`** — set: `DOCS_AUDIT_APP_CLIENT_ID`, `DOCS_AUDIT_APP_PRIVATE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`.
+3. **Rotate the App's private key** after taking ownership so the dev-phase key (held locally during this block) becomes inert.
+4. **Branch protection on `BuildDownAI/docs:main`** — confirm an approving review is required. Without it, the workflow's draft PR could technically self-merge given the App's `Pull requests: write` permission. The branch protection rule is the actual gate; the draft status is a soft signal.
+5. **Schedule cron decision** — `0 14 * * 1` is currently active on the fork's `main`. Confirm intended behavior on production or disable until production is ready.
 
-- **Outcome:** Completed successfully. PR #1 opened in `rigonzal530/docs` with `docs-audit` label, draft status, base `june-doc-update`. `audit-report.md` is the PR body. One HIGH edit applied to `customize/runner-image.mdx` with `{/* AUDIT H-1: */}` marker. 5 MEDIUM, 4 LOW (aggregate) reported.
-- **HIGH finding (different from Run 2):** GHA-mode runner image is customizable via `AI_IMPLEMENT_RUNNER_IMAGE` repo/org variable, but `customize/runner-image.mdx:71` claims the feature is fly-machines-only. The applied edit replaces the incorrect Note with accurate guidance and mentions `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES`. Real, well-cited finding.
-- **MEDIUM findings:** Linear-only language in `workflow-templates.mdx` and `team-repo-mappings.mdx`; admin-ui sidebar listing omits 5 stub panels (same gap Run 2 found, now categorized MEDIUM); `GAP_FILL_TRIGGER_SECRET` description cites comment-trigger.yml as the caller but the workflow no longer POSTs to that endpoint; Linear `transitionToInProgressIfMovable` auto-transition undocumented.
-- **LOW findings:** `:next` vs `:latest` default runner-image inconsistency between workflows; `${ISSUE_IDENTIFIER}`/`${ISSUE_ID}` Linear-only labels; comment-trigger permission check accepts `maintain`/`admin` beyond docs' "write access" claim; `workflow-templates.mdx` describes `sync-workflow.yml` as primary while `reference/admin-ui.mdx` says admin UI Sync is primary.
-- **Diff noise:** PR also staged a gitlink `ai-implement` entry (mode 160000) pointing at AI-Implement's HEAD SHA. This is an `actions/checkout` + `peter-evans/create-pull-request` artifact, not Claude's doing — the AI-Implement checkout's `.git/` directory caused the parent docs repo to see it as a nested repo when `git add -A` ran.
-- **Fix applied:** Added `add-paths: ['audit-report.md', '**/*.mdx']` to peter-evans step to whitelist what gets staged.
-- **Wall time:** ~10–12 min audit + ~2 min infrastructure.
-- **Quality assessment:** Strong v1 baseline. Categorization sharp, citations precise, applied edit is reader-focused (no source links in the rendered prose).
+## How to update this prompt later — 5-step runbook
 
-## Local-iteration gotcha — AI-Implement branch state is implicit locally
+1. **Identify one specific issue from recent audit PRs.** Wrong categorization, missing finding type, schema drift, verbose LOW section, etc. Single observed failure mode per iteration — don't address multiple at once.
 
-When iterating locally, the AI-Implement repo's currently-checked-out branch is what gets audited. The CI workflow makes this explicit via the `branch:` input to `workflow_dispatch`; locally it's whatever you last did `git checkout` on. **A 50-turn cap that comfortably fits a `main`-branch audit will exhaust on a `testing`-branch audit** because the testing branch carries +9.5k LOC of additional surface.
+2. **Choose the lever — prompt vs. reference.** Format/shape issues → edit `audit-reference.md` (examples teach shape). Rules/criteria issues → edit `audit-prompt.md` (rules constrain criteria). Reference edits land more reliably; prompt edits are higher-leverage but easier to over-tighten.
 
-Before each local audit, verify the expected source branch:
+3. **Test locally before pushing.** Setup once (sibling clone of AI-Implement + symlink into docs + `.gitignore` the symlink):
+   ```bash
+   cd <docs-repo>
+   ln -s ../AI-Implement ai-implement
+   echo "ai-implement" >> .gitignore
+   ```
+   Then per-iteration:
+   ```bash
+   git -C ../AI-Implement checkout <main|testing>
+   claude -p "$(cat .github/audit-prompt.md)" \
+     --max-turns 75 \
+     --permission-mode acceptEdits \
+     --add-dir ../AI-Implement
+   ```
+   Inspect `audit-report.md` and `.mdx` edits in the working tree. Revert with `git checkout -- <files>` between iterations.
 
-```bash
-git -C ../AI-Implement branch --show-current
+4. **Run 2–3 times to assess variance.** Single runs are samples, not verdicts. The lever has landed if the targeted change is consistent across runs. If MEDIUM/LOW findings differ but HIGH stays variable, that's expected — HIGH carries more variance than MEDIUM (priority calls are more subjective).
+
+5. **Commit and roll out.** Edit on `BuildDownAI/docs` via PR. Next scheduled cron or manual dispatch picks up the new prompt automatically; no workflow restart needed.
+
+---
+
+## Detailed sections (reference material)
+
+### Operational fixes layered onto the workflow during dev
+
+Each was discovered and patched during Step 4 testing. Listed here in case the same issue resurfaces during production rollout or future Claude Code CLI updates:
+
+- **`actions/checkout` v4 → v5 and `actions/create-github-app-token` v1 → v3** — Node 20 deprecation; June 16, 2026 forced-switch deadline.
+- **`app-id` → `client-id`** on `create-github-app-token@v3`. Different values on a GitHub App; the Client ID is the string `Iv23li...`-form identifier shown next to App ID in the App's settings.
+- **`timeout-minutes: 3` on Install Claude Code CLI** — `npm install -g @anthropic-ai/claude-code` has a postinstall script that downloads a platform-native binary; can hang silently on Linux runners ([anthropics/claude-code#5209](https://github.com/anthropics/claude-code/issues/5209)). Tight timeout fails fast.
+- **`claude --version` verification** appended to Install step. Confirms binary is on PATH; silent postinstall failure becomes a loud error.
+- **`timeout-minutes: 45` on Run audit** — bounds a hung run (network issue, OAuth-token retry loop, etc.). 45 minutes covers up to ~125 turns at peak-load 25s/turn pace.
+- **`continue-on-error: true` on Run audit** — peter-evans still runs even if Claude exhausts `--max-turns`. Partial output reaches a PR for diagnostic value; without this, an exit-code-1 step skips PR creation entirely.
+- **`--permission-mode acceptEdits` on the Claude invocation** — required for non-interactive (`-p`) mode. `acceptEdits` is safer than `--dangerously-skip-permissions` (still respects protected paths like `.git`, `.claude`).
+- **`add-paths` on peter-evans** — whitelists `audit-report.md` and `**/*.mdx`. Without this, the AI-Implement checkout's `.git/` directory caused the parent docs repo to stage `ai-implement` as a gitlink (mode 160000) during `git add -A`.
+- **Workflow file MUST exist on the default branch** for `workflow_dispatch` to be available via `gh workflow run`. Fork's default branch (`main`) had to receive a fast-forward push of `automation/audit-workflow` before triggering became possible.
+
+### Hybrid max-turns resolver — how the workflow picks a value
+
+The workflow's `env.MAX_TURNS` expression:
+
+```yaml
+MAX_TURNS: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '75' || '100') }}
 ```
 
-For Step 6's testing-branch audit, expect `--max-turns 50` to be insufficient. Bump to 75 or 100 and document the actual turn usage.
+Resolves as:
 
-## Variance observations across runs
+| Trigger / inputs | MAX_TURNS |
+|---|---|
+| Schedule (no inputs) | `100` — falls through to testing default |
+| Manual: `branch=main`, no override | `75` (main default) |
+| Manual: `branch=testing`, no override | `100` (testing default) |
+| Manual: any branch + `max_turns=125` | `125` (override wins) |
 
-Run 2 and Run 3 used the **same prompt v1** with different turn budgets — and produced **different HIGH findings**:
-- Run 2 (truncated at 30 turns): Secrets-panel-as-stub
-- Run 3 (completed at 50 turns): runner-image GHA customization
+Override input lets you bump for edge cases without editing the YAML — useful when prompt scope grows or one-off heavy runs are needed.
 
-Both findings are real and legitimately HIGH. The variance comes from two sources:
-1. **Run 2 was truncated.** Claude was mid-survey and reported the first HIGH it produced. Run 3 had budget to complete the full survey and re-rank based on the broader picture.
-2. **LLM output is non-deterministic at the same temperature.** Even completed runs would produce different finding orderings on different invocations.
+### Run history
 
-**Implications for prompt evaluation:**
-- A single run is a sample, not ground truth. Compare prompt versions across 2–3 runs each, not 1 vs 1.
-- MEDIUM findings show higher overlap across runs than HIGH — likely because MEDIUM categorization is less subjective. HIGH findings represent priority calls, which carry more variance.
-- For production confidence, either accept the variance and review thoroughly, OR run audits multiple times and union the findings.
+#### Run 1 — main, prompt v1, `--max-turns 30`
+Hit cap at 9m 7s. No PR (step failure cascaded). Confirmed 30 turns is insufficient for `main`-scope audit with the v1 prompt's 7-area survey.
 
-## Cost / rate calibration (for mentor)
+#### Run 2 — main, prompt v1, `--max-turns 50`, missing `acceptEdits`
+Completed mentally at 10m 20s but couldn't write files; permission prompts had nowhere to be answered. Stdout transcript contained full audit findings, including H-1: Secrets-panel-stub discrepancy. Surfaced the `--permission-mode acceptEdits` requirement.
 
-Calibration data from Run 2 (50 turns, `main` branch):
-- **Wall time:** 10m 20s (matches Run 1's ~18s/turn; turn count was well under cap)
-- **Turn cost:** ~12s/turn average at this scope (improved over Run 1's 18s/turn — likely because Claude found the work fit comfortably and didn't need to backtrack)
-- **Cost lever assessment:** `--max-turns 50` is comfortable headroom for `main`. The constraint that mattered was not turn budget but I/O permissions. **Prompt efficiency tuning isn't urgent** — the prompt already fits within budget. Save efficiency work for if `testing` runs exceed 50.
-- **OAuth-token usage:** Subscription-tier; one `main`-branch audit is a small fraction of weekly quota. `testing`-branch (102 files, +9.5k LOC) likely 2–3× this run; still bounded.
+#### Run 3 — main, prompt v1, `--max-turns 50`, `acceptEdits`
+First clean run. PR #1 opened on `rigonzal530/docs`. 1 HIGH (runner-image GHA customization undocumented), 5 MEDIUM, 4 LOW. Edit applied to `customize/runner-image.mdx`. Diff also staged the spurious `ai-implement` gitlink — surfaced the `add-paths` fix.
 
-## Prompt iteration history
+#### Run 4 — main, prompt v1.1 (with LOW worked-example), `--max-turns 50`, local
+Hit max-turns at 50 — variance produced more HIGH-priority findings than Run 3 did, exceeding the previous comfortable budget. Confirmed 50 is at-the-edge for main; informed the bump to 75. Partial output included an H-1 on `custom-steps.mdx` listing 14 overridable steps when only 6 actually are. Reverted before commit pending the upcoming manual pass.
 
-- **v1**: 5-layer structure (role, inputs, repo context, task, quality checklist). Reference file grounds finding shape via three worked HIGH examples (removal, addition, refactor). HIGH-only edits with `{/* AUDIT H-<n>: */}` markers.
-  - **Run 2 evidence:** prompt produces high-quality, well-cited findings. Categorization sharp. Strong baseline.
-- **v1.1** (current): Added a worked LOW-format example + anti-pattern list to `audit-reference.md`. Targets the LOW section's verbosity — Run 3 produced paragraph-per-finding under the v1 reference, which mismatched the prompt's "aggregate, no per-finding detail" schema directive. Reference now models one-sentence bullets with inline parenthetical citations.
-  - **Run 4 evidence (local, main branch, max-turns 50):** Iteration landed. LOW section is now one-sentence bullets at ~30 words each (down from ~50 words paragraph-style in Run 3). Inline `file:line` citations present. The 15-word target from the reference example was aggressive; ~30-word sentences are the actual landing zone and preserve finding substance better than aggressive compression would.
+#### Run 5 — main, prompt v1.1, `--max-turns 50`, local (LOW-format iteration test)
+Completed cleanly. LOW section now produces one-sentence bullets with inline parenthetical citations (~30 words each), down from Run 3's paragraph-per-finding format (~50 words each). The v1.1 reference edit landed.
 
-### Variance observation across three runs (same prompt v1+ on main)
+### Variance observation across three completed runs (same prompt, same source state)
 
 | Run | HIGH found | Source area |
 |---|---|---|
-| 2 (truncated) | Secrets panel stub vs. fully-documented | `src/admin-ui/pages/stubs.ts` |
+| 2 (no-edit run) | Secrets panel stub vs. fully documented | `src/admin-ui/pages/stubs.ts` |
 | 3 (CI complete) | GHA runner-image customization undocumented | `workflows/*.yml` |
-| 4 (local complete) | `custom-steps.mdx` lists 14 overridable step IDs; only 6 actually are | `src/pipeline/default-pipeline.ts` |
+| 5 (local complete) | `custom-steps.mdx` lists 14 overridable steps; only 6 actually are | `src/pipeline/default-pipeline.ts` |
 
-All three are real, substantive HIGH findings — none overlap. The audit produces meaningfully different output across runs. **Operational implication for mentor:** consider running the audit 2–3 times per audit cycle and unioning the findings; a single run consistently misses real drift that other runs catch. Costs more API quota but yields significantly better coverage.
+All three are real, substantive HIGH findings — none overlap. Audit produces meaningfully different output across runs. Drives the "run 2–3 times and union the findings" operational guidance.
 
-## Open questions for mentor / future-self
+MEDIUM findings show higher cross-run overlap than HIGH (categorization is less subjective). LOW findings show the highest overlap because they catalog factual gaps rather than priority calls.
 
-- Is 50 turns the right budget, or do we need 75+ for `testing`-branch breadth?
-- Does the prompt over-explore (read too many files per finding) or under-explore (miss areas)?
-- Should the prompt explicitly tell Claude to batch tool calls?
-- For findings beyond a count cap (e.g. >15 HIGH findings), should the prompt split into multiple PRs vs. accept one large PR?
-- Are MDX comment markers (`{/* AUDIT H-<n>: */}`) the right review-aid, or should we use a different convention?
+### Prompt iteration history
 
-## How to update this prompt later (5-step runbook)
+- **v1**: 5-layer structure with three worked HIGH examples in the reference. Strong baseline (Run 2 transcript, Run 3 PR).
+- **v1.1**: Added a worked LOW-format example + anti-pattern list to `audit-reference.md`. Targets LOW-section verbosity — Run 3 produced paragraph-per-finding under v1, mismatching the prompt's "aggregate, no per-finding detail" schema directive. Reference now models one-sentence bullets with inline parenthetical citations. Run 5 confirms landing.
 
-_Will draft in Step 7 once iteration patterns are clearer._
+### Cost / rate calibration
+
+- **Per-turn average:** 12–15s typical, 18–25s under peak API load.
+- **Wall time on main:** 10–12 min completed runs at 50 turns; expect 15–19 min at 75 turns.
+- **Wall time on testing (projected):** 25–32 min at 100 turns; 42–52 min worst-case at 125 turns.
+- **OAuth-token consumption:** subscription-tier (no per-token cost). Each completed main-branch audit is a small fraction of weekly quota. Testing-branch likely 2–3× heavier.
+- **Cost lever:** `--max-turns` cap is the right control. Tighter caps surface scope drift early; looser caps protect against spurious failures from variance. The override input gives per-dispatch flexibility for edge cases.
+
+### Local-iteration gotchas
+
+- **AI-Implement branch state is implicit locally.** CI dispatches with an explicit `branch:` input; local runs use whatever `git -C ../AI-Implement checkout` last did. A 50-turn cap that fits main exhausts on testing. Verify before each local audit:
+  ```bash
+  git -C ../AI-Implement branch --show-current
+  ```
+- **`--add-dir ../AI-Implement` required for the symlink to work.** Claude Code sandboxes the working directory; the symlink at `./ai-implement` resolves to `/home/.../AI-Implement` which is outside the sandbox unless explicitly added.
+- **`.gitignore` the symlink** so git doesn't try to track it as untracked content.
+- **Working-tree partial edits accumulate across failed runs.** Cleanup between iterations with `git checkout -- <files>` and `rm -f audit-report.md`.
+
+### Open questions for follow-up
+
+- Should the prompt explicitly instruct Claude to batch tool calls? (Could reduce turn count via parallel Read/Grep.)
+- For findings beyond a count cap (e.g. >15 HIGH on testing branch initially), should the prompt split into multiple PRs or accept one large PR?
+- Are MDX comment markers (`{/* AUDIT H-<n>: */}`) the right review-aid, or should we adopt a different convention (e.g., PR comments per finding, sidebar annotations)?
+- Could a matrix-based parallel-runs setup capture the variance benefit in a single workflow dispatch (3 audits in parallel, union the findings)?
+- Once the manual testing-pass lands, should the prompt's `Repo context` section be updated with `testing`-specific drift areas?
