@@ -1,0 +1,70 @@
+name: Audit AI-Implement docs vs source
+
+on:
+    schedule:
+        # Weekly: Mondays at 14:00 UTC
+        - cron: '0 14 * * 1'
+    workflow_dispatch:
+        inputs:
+            branch:
+                description: 'AI-Implement branch to audit against'
+                type: choice
+                options:
+                    - main
+                    - testing
+                default: main
+
+# strip out the default GITHUB_TOKEN scope, our own App token is minted below
+permissions: {}
+
+jobs:
+    audit:
+        runs-on: ubuntu-latest
+
+        env:
+            # Falls back to 'testing' when triggered without inputs (like scheduled runs)
+            TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
+
+        steps:
+            - name: Mint GitHub App installation token
+              id: app-token
+              uses: actions/create-github-app-token@v1
+              with:
+                app-id: ${{ secrets.DOCS_AUDIT_APP_ID }}
+                private-key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
+                owner: rigonzal530 # changes to BuildDownAI once ownership is transferred
+                repositories: docs,AI-Implement
+
+            - name: Checkout docs repo
+              uses: actions/checkout@v4
+              with:
+                token: ${{ steps.app-token.outputs.token }}
+
+            - name: Checkout target branch of AI-Implement
+              uses: actions/checkout@v4
+              with:
+                repository: rigonzal530/AI-Implement # changes to BuildDownAI/AI-Implement once ownership is transferred
+                ref: ${{ env.TARGET_BRANCH }}
+                path: ai-implement
+                token: ${{ steps.app-token.outputs.token }}
+            
+            - name: Install Claude Code CLI
+              run: npm install -g @anthropic-ai/claude-code
+
+            - name: Run audit
+              env:
+                CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+              run: |
+                claude -p "$(cat .github/audit-prompt.md)" --max-turns 30
+            
+            - name: Open audit PR
+              uses: peter-evans/create-pull-request@v6
+              with:
+                token: ${{ steps.app-token.outputs.token }}
+                branch: audit/${{ github.run_id }}
+                base: june-doc-update # changes to main once installed on production docs repo (for the main branch of docs repo)
+                title: "Docs audit: AI-Implement ${{ env.TARGET_BRANCH }} branch"
+                body-path: audit-report.md
+                draft: true
+                labels: docs-audit
+                delete-branch: true
