@@ -49,9 +49,43 @@ Before transferring App ownership to BuildDownAI:
 - **Quality assessment:** Strong v1 output. Categorization is correct (HIGH for active-misleading docs; MEDIUM for coverage gaps; LOW for cosmetic). Citations are real and precise. The proposed MDX edit for H-1 uses the right component (`<Note>`) and the correct `{/* AUDIT H-1: */}` marker convention.
 - **Fix applied:** Added `--permission-mode acceptEdits` to the Claude invocation.
 
-### Run 3 — `main` branch, prompt v1, `--max-turns 50` + `acceptEdits` (next)
+### Run 3 — `main` branch, prompt v1, `--max-turns 50` + `acceptEdits`
 
-_Expected: PR opens with applied H-1 edit + audit-report.md as PR body. Use as the real Step 5 iteration baseline._
+- **Outcome:** Completed successfully. PR #1 opened in `rigonzal530/docs` with `docs-audit` label, draft status, base `june-doc-update`. `audit-report.md` is the PR body. One HIGH edit applied to `customize/runner-image.mdx` with `{/* AUDIT H-1: */}` marker. 5 MEDIUM, 4 LOW (aggregate) reported.
+- **HIGH finding (different from Run 2):** GHA-mode runner image is customizable via `AI_IMPLEMENT_RUNNER_IMAGE` repo/org variable, but `customize/runner-image.mdx:71` claims the feature is fly-machines-only. The applied edit replaces the incorrect Note with accurate guidance and mentions `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES`. Real, well-cited finding.
+- **MEDIUM findings:** Linear-only language in `workflow-templates.mdx` and `team-repo-mappings.mdx`; admin-ui sidebar listing omits 5 stub panels (same gap Run 2 found, now categorized MEDIUM); `GAP_FILL_TRIGGER_SECRET` description cites comment-trigger.yml as the caller but the workflow no longer POSTs to that endpoint; Linear `transitionToInProgressIfMovable` auto-transition undocumented.
+- **LOW findings:** `:next` vs `:latest` default runner-image inconsistency between workflows; `${ISSUE_IDENTIFIER}`/`${ISSUE_ID}` Linear-only labels; comment-trigger permission check accepts `maintain`/`admin` beyond docs' "write access" claim; `workflow-templates.mdx` describes `sync-workflow.yml` as primary while `reference/admin-ui.mdx` says admin UI Sync is primary.
+- **Diff noise:** PR also staged a gitlink `ai-implement` entry (mode 160000) pointing at AI-Implement's HEAD SHA. This is an `actions/checkout` + `peter-evans/create-pull-request` artifact, not Claude's doing — the AI-Implement checkout's `.git/` directory caused the parent docs repo to see it as a nested repo when `git add -A` ran.
+- **Fix applied:** Added `add-paths: ['audit-report.md', '**/*.mdx']` to peter-evans step to whitelist what gets staged.
+- **Wall time:** ~10–12 min audit + ~2 min infrastructure.
+- **Quality assessment:** Strong v1 baseline. Categorization sharp, citations precise, applied edit is reader-focused (no source links in the rendered prose).
+
+## Local-iteration gotcha — AI-Implement branch state is implicit locally
+
+When iterating locally, the AI-Implement repo's currently-checked-out branch is what gets audited. The CI workflow makes this explicit via the `branch:` input to `workflow_dispatch`; locally it's whatever you last did `git checkout` on. **A 50-turn cap that comfortably fits a `main`-branch audit will exhaust on a `testing`-branch audit** because the testing branch carries +9.5k LOC of additional surface.
+
+Before each local audit, verify the expected source branch:
+
+```bash
+git -C ../AI-Implement branch --show-current
+```
+
+For Step 6's testing-branch audit, expect `--max-turns 50` to be insufficient. Bump to 75 or 100 and document the actual turn usage.
+
+## Variance observations across runs
+
+Run 2 and Run 3 used the **same prompt v1** with different turn budgets — and produced **different HIGH findings**:
+- Run 2 (truncated at 30 turns): Secrets-panel-as-stub
+- Run 3 (completed at 50 turns): runner-image GHA customization
+
+Both findings are real and legitimately HIGH. The variance comes from two sources:
+1. **Run 2 was truncated.** Claude was mid-survey and reported the first HIGH it produced. Run 3 had budget to complete the full survey and re-rank based on the broader picture.
+2. **LLM output is non-deterministic at the same temperature.** Even completed runs would produce different finding orderings on different invocations.
+
+**Implications for prompt evaluation:**
+- A single run is a sample, not ground truth. Compare prompt versions across 2–3 runs each, not 1 vs 1.
+- MEDIUM findings show higher overlap across runs than HIGH — likely because MEDIUM categorization is less subjective. HIGH findings represent priority calls, which carry more variance.
+- For production confidence, either accept the variance and review thoroughly, OR run audits multiple times and union the findings.
 
 ## Cost / rate calibration (for mentor)
 
@@ -63,9 +97,20 @@ Calibration data from Run 2 (50 turns, `main` branch):
 
 ## Prompt iteration history
 
-- **v1** (current): 5-layer structure (role, inputs, repo context, task, quality checklist). Reference file grounds finding shape via three worked examples (removal, addition, refactor). HIGH-only edits with `{/* AUDIT H-<n>: */}` markers.
-  - **Run 2 evidence:** prompt produces high-quality, well-cited findings. Categorization is sharp. The reference file's worked examples successfully shaped the output. Strong baseline.
-  - **Known unknowns to test in Run 3 onward:** does the prompt over-produce MEDIUM findings on `testing`-branch breadth? Does the surgical-edit policy hold when 5+ HIGH findings need edits? Are MDX comment markers actually useful for human reviewers in a real PR review experience?
+- **v1**: 5-layer structure (role, inputs, repo context, task, quality checklist). Reference file grounds finding shape via three worked HIGH examples (removal, addition, refactor). HIGH-only edits with `{/* AUDIT H-<n>: */}` markers.
+  - **Run 2 evidence:** prompt produces high-quality, well-cited findings. Categorization sharp. Strong baseline.
+- **v1.1** (current): Added a worked LOW-format example + anti-pattern list to `audit-reference.md`. Targets the LOW section's verbosity — Run 3 produced paragraph-per-finding under the v1 reference, which mismatched the prompt's "aggregate, no per-finding detail" schema directive. Reference now models one-sentence bullets with inline parenthetical citations.
+  - **Run 4 evidence (local, main branch, max-turns 50):** Iteration landed. LOW section is now one-sentence bullets at ~30 words each (down from ~50 words paragraph-style in Run 3). Inline `file:line` citations present. The 15-word target from the reference example was aggressive; ~30-word sentences are the actual landing zone and preserve finding substance better than aggressive compression would.
+
+### Variance observation across three runs (same prompt v1+ on main)
+
+| Run | HIGH found | Source area |
+|---|---|---|
+| 2 (truncated) | Secrets panel stub vs. fully-documented | `src/admin-ui/pages/stubs.ts` |
+| 3 (CI complete) | GHA runner-image customization undocumented | `workflows/*.yml` |
+| 4 (local complete) | `custom-steps.mdx` lists 14 overridable step IDs; only 6 actually are | `src/pipeline/default-pipeline.ts` |
+
+All three are real, substantive HIGH findings — none overlap. The audit produces meaningfully different output across runs. **Operational implication for mentor:** consider running the audit 2–3 times per audit cycle and unioning the findings; a single run consistently misses real drift that other runs catch. Costs more API quota but yields significantly better coverage.
 
 ## Open questions for mentor / future-self
 

@@ -65,6 +65,22 @@ These illustrate the audit shape across three different drift types. Use them as
 
 **Suggested edit:** Remove the five planning-step accordions from the overridable-step list. Add a `<Note>` explaining that planning now runs through a dedicated `run-planning.ts` executor and is not part of the customizable autonomous pipeline.
 
+### LOW findings — what aggregate format looks like
+
+LOW findings are terse bullets, max ~25 words each, no per-finding headings, no detailed evidence sections. The goal is to surface that they exist for a human reviewer to skim — not to make a case for each one.
+
+Example:
+
+- Stepper docs combine three UI steps into one (`reference/admin-ui.mdx:104`)
+- Workflow YAMLs use different default image tags (`:next` vs `:latest`) across `claude-implement.yml` and `comment-trigger.yml`
+- Comment-trigger permission check accepts `maintain`/`admin` roles beyond docs' "write access" wording
+- `ensureTeamLabel()` is a Linear-internal helper; no operator docs gap
+
+LOW findings do **not** need:
+- Source / Docs claim / Code reality sub-sections
+- Suggested edits
+- File-and-line context beyond an inline parenthetical
+
 ## Anti-patterns
 
 Do not produce findings that match any of these patterns:
