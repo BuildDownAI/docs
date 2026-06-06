@@ -2,12 +2,16 @@
 title: "Connect a GitHub repo to AI-Implement"
 description: "How to sync workflow templates into a target GitHub repo, map it to a Linear team in the admin UI, and label your first issue to trigger an AI-generated PR."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 Connecting a GitHub repository to AI-Implement involves two things: syncing the workflow templates into the repo so GitHub Actions knows how to run Claude, and adding a project mapping in the orchestrator's admin UI so the polling loop knows where to dispatch issues. Follow the steps below in order.
 
 <Steps>
   <Step title="Install the GitHub App on the target repo">
-    If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
+    If you did not install the GitHub App on all repositories during the [GitHub App setup](/latest/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
   </Step>
 
   <Step title="Sync workflow templates into the target repo">
@@ -97,7 +101,7 @@ Connecting a GitHub repository to AI-Implement involves two things: syncing the 
     The orchestrator will begin watching the configured scope on its next poll cycle.
     
     <Note>
-      See [Admin UI reference](/reference/admin-ui) for the full field list and defaults.
+      See [Admin UI reference](/latest/reference/admin-ui) for the full field list and defaults.
     </Note>
   </Step>
 
@@ -185,10 +189,10 @@ Once the PR appears, you can:
 </Tip>
 
 <CardGroup cols={2}>
-  <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
+  <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/latest/customize/workflow-md">
     Edit the Claude prompt template to match your repo's stack and conventions.
   </Card>
-  <Card title="Admin UI reference" icon="sliders" href="/reference/admin-ui">
+  <Card title="Admin UI reference" icon="sliders" href="/latest/reference/admin-ui">
     Full reference for all fields available in the project mapping form.
   </Card>
 </CardGroup>

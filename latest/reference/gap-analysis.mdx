@@ -2,6 +2,10 @@
 title: "Gap analysis: what Claude posts on every PR"
 description: "How the gap analysis comment works, what it contains, and how to trigger a gap-fill run on an existing AI-Implement PR using the /ai-implement comment."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 After every implementation run, AI-Implement runs a second Claude pass that reviews the PR diff and posts a gap analysis comment. The gap analysis compares what was actually built — as visible in the diff — to what was specified in the original Linear ticket. It gives reviewers a structured summary of what was implemented, what was missed or only partially addressed, and any manual follow-up steps that a human needs to perform.
 

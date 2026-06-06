@@ -2,6 +2,10 @@
 title: "Troubleshoot common AI-Implement problems"
 description: "Common issues when running AI-Implement — missing PRs, stuck sessions, Bedrock errors, and notification problems — with step-by-step resolution guidance."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 This page covers the most common issues you may encounter when running AI-Implement and how to resolve them. If your issue is not listed here, check the dispatch log in the admin UI at `/api/log` and the GitHub Actions run logs in the target repo for additional detail.
 
@@ -47,7 +51,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     Add the IAM role ARN in the target repo at **Settings → Secrets and variables → Actions → New repository secret**. The secret name must be exactly `AWS_BEDROCK_ROLE_ARN`. The role must trust the GitHub OIDC provider for the target repo and grant `bedrock:InvokeModel` on the inference profiles you need.
 
-    See the [AWS Bedrock setup instructions](/providers/aws-bedrock) for the full IAM trust policy shape.
+    See the [AWS Bedrock setup instructions](/latest/providers/aws-bedrock) for the full IAM trust policy shape.
   </Accordion>
 
   <Accordion title="/ai-implement comment does nothing">

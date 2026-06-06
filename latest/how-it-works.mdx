@@ -2,6 +2,10 @@
 title: "How AI-Implement works: the full lifecycle"
 description: "The end-to-end flow from marking an issue in Linear or Jira to a merged PR with gap analysis, including planning, labels, and gap-fill runs."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 AI-Implement connects three systems — **Linear** or **Jira**, GitHub Actions, and Claude Code — through a small Node.js orchestrator. Understanding how these pieces fit together helps you write better tickets, configure the service correctly, and know what to expect at each stage of a run.
 
@@ -52,7 +56,12 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
 
-    A deduplication check prevents the same issue from being dispatched more than once in a 24-hour window, even if the label is re-applied.
+    Two deduplication checks prevent duplicate dispatches:
+
+    - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
+    - **Recent** — even after a job finishes, the same issue won't be re-dispatched within a 24-hour window of its previous dispatch.
+
+    Either condition is enough to skip dispatch.
   </Step>
 
   <Step title="Planning phase (if enabled)">
@@ -89,7 +98,20 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Implementation workflow is dispatched">
-    The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event. The workflow receives the issue ID, identifier (e.g. `ENG-123` for Linear or `PROJ-456` for Jira), title, and description as inputs.
+    The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event.
+
+    The workflow receives a payload with everything Claude needs to start:
+
+    - **Issue context** — issue ID, identifier (e.g. `ENG-123` for Linear, `PROJ-456` for Jira), title, and description
+    - **Related-issue context** — parent issue, sibling issues, and dependencies detected from ticketing-system relationships, when present
+    - **Run caps** — Claude turn cap, implement/review iteration cap, GitHub Actions job timeout — each forwarded only when set on the project mapping
+    - **Provider routing** — Claude provider (`anthropic` or `bedrock`) and AWS region (Bedrock only)
+    - **Runner image override** — a custom container image when the project has one configured
+    - **Callback credentials** — a signed token the runner uses to report final results, plus a separate signed token for streaming step-progress updates back to the admin UI
+
+    <Note>
+      Each field is included only when relevant — the AWS region is omitted on Anthropic mappings, run caps are omitted when not set on the mapping, and so on.
+    </Note>
 
     Two execution modes are supported, configured per project mapping in the admin UI:
 
@@ -149,6 +171,23 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     </Info>
   </Step>
 
+  <Step title="Late review feedback handling">
+    After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave blocking feedback that needs another pass from Claude. AI-Implement watches for this and re-runs Claude automatically; no manual `/ai-implement` comment needed.
+
+    The orchestrator listens to three kinds of GitHub events on the PR:
+
+    - **Pull request reviews** with a *Request changes* verdict or blocking feedback in the body
+    - **Inline review comments** on specific lines of the diff
+    - **Issue comments** on the PR containing actionable feedback
+
+    Each new piece of feedback is deduplicated against what Claude already addressed in earlier passes, then queued for the next follow-up run. The run pushes to the same PR branch — no new PRs or branches — and updates the gap analysis with what was newly addressed.
+
+    <Tip>
+      To make AI-Implement wait for an external review bot's findings before running its own gap analysis (so both reviewers' feedback get folded into one pass), configure the `reviewProviders` field in `.ai-implement/config.yml`.
+      
+      See [Repo-level configuration file](/latest/customize/custom-steps#repo-level-configuration-file).
+    </Tip>
+  </Step>
 </Steps>
 
 ## Status markers
@@ -161,7 +200,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 | `Ready for Review` | `PR Ready` | PR is ready for review |
 
 <Info>
-  See [Triggers and status indicators](/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.
+  See [Triggers and status indicators](/latest/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.
 </Info>
 
 ## Authentication options
@@ -172,4 +211,4 @@ The workflow supports three authentication paths for Claude, selected in order o
 2. **Claude Code OAuth token** — when `CLAUDE_CODE_OAUTH_TOKEN` is set as a repo or org secret, it takes precedence over an API key.
 3. **Anthropic API key** — the fallback when neither Bedrock nor OAuth is configured. Set `ANTHROPIC_API_KEY` as a repo or org secret.
 
-See [Providers](/providers/anthropic) and [AWS Bedrock](/providers/aws-bedrock) for setup details.
+See [Providers](/latest/providers/anthropic) and [AWS Bedrock](/latest/providers/aws-bedrock) for setup details.

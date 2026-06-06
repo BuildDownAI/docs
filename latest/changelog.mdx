@@ -1,0 +1,197 @@
+---
+title: "Changelog"
+description: "What's changed in the latest in-development version of AI-Implement compared to the current stable release."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+This changelog tracks notable changes between AI-Implement's current stable release and the in-development `latest` version. Each entry has its own anchor link — pages elsewhere in this version may link you directly to a relevant entry below. Use the version dropdown at the top of the page to switch back to the stable docs.
+
+<Update label="Planning workflow is ticketing-agnostic" description="Available in latest" tags={["Pipeline", "Internal"]}>
+  `claude-plan.yml` no longer contains Linear-specific code paths. Planning context (parent issue, sibling issues, dependencies) arrives as `workflow_dispatch` inputs, fetched by the orchestrator from whichever ticketing system the project mapping uses.
+
+  No operator action needed — same workflow file serves Linear and Jira mappings, with the orchestrator handling the provider-specific fetching upstream.
+</Update>
+
+<Update label="Synced workflows pin GitHub Actions to commit SHAs" description="Available in latest" tags={["Security", "Internal"]}>
+  Third-party GitHub Actions used by `claude-implement.yml`, `claude-plan.yml`, and `comment-trigger.yml` are now pinned to specific commit SHAs rather than version tags. Supply-chain hardening — pinned actions don't auto-update when their maintainers publish a new release.
+
+  Trade-off: pinned actions need manual SHA bumps to receive upstream bug fixes or security patches. The AI-Implement team handles those on the upstream workflow templates; running `sync-workflow.yml` in your target repo propagates the updates.
+</Update>
+
+<Update label="Runner callback tokens masked in workflow logs" description="Available in latest" tags={["Security", "Internal"]}>
+  The synced `claude-implement.yml` now calls `::add-mask::` on `run_token` and `run_progress_token` before the runner uses them. If either token accidentally surfaces in workflow output (a script logging an env var, an error trace, etc.), GitHub displays it as `***` instead of the literal value.
+
+  No operator action needed.
+</Update>
+
+<Update label="Per-project run caps in admin UI" description="Available in latest" tags={["Configuration", "Pipeline"]}>
+  Project mappings now carry three optional run-cap fields configurable per-mapping in the admin UI's Projects panel:
+
+  - `maxTurns` — cap on Claude turns per implement pass (default `50`)
+  - `maxIterations` — cap on implement/review cycles (default `3` Anthropic, `2` Bedrock)
+  - `maxJobMinutes` — cap on GitHub Actions job timeout in minutes (default `90`)
+
+  Each cap flows into the dispatch payload as a `workflow_dispatch` input on orchestrator-initiated runs. The same caps are configurable as target-repo variables (`AI_IMPLEMENT_MAX_*`) for `/ai-implement` comment-triggered gap-fill runs — same defaults apply to both paths.
+
+  See [Project mappings](/latest/configuration/team-repo-mappings#param-max-turns) for the schema reference.
+</Update>
+
+<Update label="Workflow default runner image changed" description="Available in latest" tags={["Pipeline", "Runner"]}>
+  The built-in default runner image in synced `claude-implement.yml` is now `ghcr.io/builddownai/ai-implement-runner:latest` (previously `:next`).
+  
+  This is the fallback used only when no override mechanism is in play. The following all take precedence:
+  - `.ai-implement/image.yml`
+  - `SESSION_IMAGE` on the orchestrator
+  - `AI_IMPLEMENT_RUNNER_IMAGE` on the target repo
+
+  **If you operate a testing orchestrator** pinned to `:next`-channel code, set `SESSION_IMAGE=ghcr.io/builddownai/ai-implement-runner:next` on the orchestrator. Otherwise repos without other overrides will silently dispatch on `:latest` images (production-stable runner code) while the orchestrator runs testing-branch logic — a mismatch you generally want to avoid.
+</Update>
+
+<Update label="GitHub Actions repo variable for runner image" description="Available in latest" tags={["Pipeline", "Runner"]}>
+  A new `AI_IMPLEMENT_RUNNER_IMAGE` target-repo (or org-level) variable lets you override the runner image for GitHub Actions execution mode without committing `.ai-implement/image.yml` to each repo. Useful for setting an organization-wide default across many repos at once.
+
+  Resolution order on a GHA dispatch (highest precedence to lowest): 
+  1. Orchestrator-forwarded image (from `.ai-implement/image.yml` or `SESSION_IMAGE`)
+  2. `AI_IMPLEMENT_RUNNER_IMAGE`
+  3. The workflow's built-in default
+  
+  See [Alternative: GitHub Actions variable](/latest/customize/runner-image#alternative-github-actions-variable) for the full picture.
+</Update>
+
+<Update label="Runner-progress callback endpoint added" description="Available in latest" tags={["Pipeline", "Reference"]}>
+  A new `POST /runner/progress` endpoint accepts step-by-step progress updates from active runner sessions. Unlike the existing `POST /runner/result` (single-use, fires at the end of a dispatch), the progress token is multi-use so a single runner can post many updates throughout its run.
+
+  This is what powers live step-status updates in the admin UI — previously the UI only learned about a run when the runner completed and posted its final result.
+
+  Both runner-callback endpoints respond `501` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured. Reference: [Runner callback endpoints](/latest/reference/admin-ui#runner-callback-endpoints).
+</Update>
+
+<Update label="Step-progress tracking infrastructure" description="Available in latest" tags={["Internal"]}>
+  A new internal `step_log` table records each pipeline step's status, start/end times, and any structured output. This is what `POST /runner/progress` writes into and what the admin UI's per-job step view reads from.
+
+  **Operational caveat:** the table has no automatic TTL or cleanup mechanism yet — it grows unbounded as dispatches accumulate. For high-volume orchestrators this may eventually need manual pruning or a future retention policy. No operator action needed today.
+</Update>
+
+<Update label="Internal dispatch-correlation tracking" description="Available in latest" tags={["Internal"]}>
+  The `dispatch_log` table now carries a `dispatch_id` column with an index. This lets the orchestrator correlate audit-log entries with the runner results they produced and unifies the path back from a `runner/result` callback to the dispatch that triggered it.
+
+  Internal tracking — not surfaced in the admin UI today. From an operator's perspective, no visible change.
+</Update>
+
+<Update label="Stuck-dispatch retry tracking" description="Available in latest" tags={["Internal"]}>
+  A new `stuck_attempts` table records how many times the orchestrator has retried dispatching each issue, supporting the AII-116 stuck-issue detection work. The orchestrator increments per attempt and clears the row when an issue dispatches successfully.
+
+  Not surfaced in the admin UI today; the data is used internally for stuck-issue surfacing logic.
+</Update>
+
+<Update label="Late review feedback handled automatically" description="Available in latest" tags={["Pipeline", "Review"]}>
+  When reviewers leave blocking feedback on an open PR — as a PR review verdict, inline review comments, or issue comments containing actionable feedback — AI-Implement now detects it via GitHub webhooks and queues a follow-up Claude run automatically. No manual `/ai-implement` comment needed.
+
+  The orchestrator listens to three GitHub event types on the PR:
+
+  - **Pull request reviews** with a *Request changes* verdict or blocking feedback in the body
+  - **Inline review comments** on specific lines of the diff
+  - **Issue comments** on the PR containing actionable feedback
+
+  Each new finding is deduplicated against feedback Claude already addressed in earlier passes (using an internal review ledger), then queued for the next follow-up run. The run pushes to the same PR branch — no new PRs or branches — and updates the gap analysis with what was newly addressed.
+
+  Where this fits in the lifecycle: [How AI-Implement works](/latest/how-it-works).
+</Update>
+
+<Update label="Dispatch payload expanded" description="Available in latest" tags={["Pipeline", "Configuration"]}>
+  The `workflow_dispatch` payload the orchestrator sends to `claude-implement.yml` now carries substantially more context than before. New field categories:
+
+  - **Related-issue context** — parent issue, sibling issues, and dependencies detected from ticketing-system relationships
+  - **Run caps** — Claude turn cap, implement/review iteration cap, GitHub Actions job timeout — each forwarded only when set on the project mapping
+  - **Provider routing** — Claude provider (`anthropic` or `bedrock`) and AWS region (Bedrock only)
+  - **Runner image override** — a custom container image when the project has one configured
+  - **Callback credentials** — a signed token the runner uses to report final results, plus a separate signed token for streaming step-progress updates back to the admin UI
+
+  Each field is included only when relevant — the AWS region is omitted on Anthropic mappings, run caps are omitted when not set on the mapping, and so on.
+
+  **If you maintain a fork of `claude-implement.yml`** that doesn't accept the new `workflow_dispatch` inputs, you'll get "unexpected inputs" rejection on dispatch. Re-sync from the orchestrator to pick them up.
+
+  Where this fits in the lifecycle: [How AI-Implement works](/latest/how-it-works).
+</Update>
+
+<Update label="In-flight dedup added" description="Available in latest" tags={["Pipeline"]}>
+  The orchestrator now skips dispatching an issue if a job for that issue is already actively running, in addition to the existing 24-hour recent-dispatch dedup.
+
+  Operationally invisible most of the time — but useful when you're debugging "why won't my issue dispatch?" and the answer is "because the previous attempt is still running."
+</Update>
+
+<Update label="Linear label updates moved to orchestrator" description="Available in latest" tags={["Internal", "Review"]}>
+  GitHub Actions workflows in target repos no longer call Linear's API directly. All label and status transitions now happen from the orchestrator via a provider abstraction (which also unlocked Jira parity).
+
+  From an operator's perspective the labels still update the same way; the change is internal. AI-Implement developers cross-referencing: the new flow goes through `runner-callback.ts` → `provider.markPlanComplete()` and similar methods.
+</Update>
+
+<Update label="Runner authentication split into result + progress tokens" description="Available in latest" tags={["Internal"]}>
+  The runner-to-orchestrator authentication token now comes in two flavors: a one-time-use `result` token for posting the final dispatch outcome, and a multi-use `progress` token for streaming step-by-step progress updates back to the admin UI.
+
+  Internal plumbing — no operator action needed. Supports live admin-UI streaming while keeping result callbacks single-use.
+</Update>
+
+<Update label="Webhook acknowledges PR synchronize events" description="Available in latest" tags={["Internal"]}>
+  GitHub `pull_request.synchronize` webhook events (fired whenever commits push to a PR) are now acknowledged with a `200 OK` and no further processing. Synchronize alone doesn't trigger a new Claude pass — use a blocking review comment or `/ai-implement` for that.
+</Update>
+
+<Update label="Repo config file gains reviewProviders" description="Available in latest" tags={["Configuration", "Review"]}>
+  `.ai-implement/config.yml` now accepts a `reviewProviders` field that opts the `post-push-review` step into waiting for and integrating findings from external GitHub Actions review checks. Currently `github-claude-code-review` is the only recognized value; unknown providers are silently filtered out.
+
+  The orchestrator's parser for this file was also upgraded internally — quoted YAML values and other standard YAML syntax now work correctly (previously some quoted values were silently misinterpreted). See [Repo-level configuration file](/latest/customize/custom-steps#repo-level-configuration-file) for the full field reference.
+</Update>
+
+<Update label="Orchestrator URL consolidated" description="Available in latest" tags={["Configuration"]}>
+  `ORCHESTRATOR_URL` is no longer something you configure on the orchestrator. Its role is now covered by `RUNNER_CALLBACK_BASE_URL`, which the orchestrator uses both as the runner-callback target and as the URL stamped into dispatch metadata.
+
+  **If you have `ORCHESTRATOR_URL` set in your orchestrator's `.env` or Fly secrets:** you can remove it — the orchestrator no longer reads it at startup. Leaving it set causes no harm.
+</Update>
+
+<Update label="Run caps for comment-triggered gap-fill" description="Available in latest" tags={["Configuration", "Runs"]}>
+  Three new repository variables cap `/ai-implement` comment-triggered gap-fill runs, mirroring the per-project caps that already gate orchestrator-initiated runs in the admin UI:
+
+  - `AI_IMPLEMENT_MAX_TURNS` — cap on Claude turns per implement pass (default `50`)
+  - `AI_IMPLEMENT_MAX_ITERATIONS` — cap on implement/review cycles (default `3` Anthropic, `2` Bedrock)
+  - `AI_IMPLEMENT_MAX_JOB_MINUTES` — cap on GitHub Actions job timeout in minutes (default `90`)
+
+  Configure under **Settings → Secrets and variables → Actions → Variables** on each target repo. See the [Gap-fill run caps](/latest/configuration/environment-variables#gap-fill-run-caps) section for details.
+</Update>
+
+<Update label="Planning relocated" description="Available in latest" tags={["Pipeline", "Customization"]}>
+  Planning steps have moved out of the customizable autonomous pipeline. Planning now runs as a separate workflow (`claude-plan.yml`) with its own executor — synced to your target repo alongside `claude-implement.yml`.
+
+  **Step IDs no longer overridable as pipeline steps:**
+  - `architecture-analysis`
+  - `test-plan`
+  - `work-unit-decomposition`
+  - `cross-story-context`
+  - `post-to-ticketing`
+  - `explore-codebase`
+
+  These IDs are also removed from the `StepType` enum, so custom pipeline YAMLs that referenced any of them as `type:` values will fail to load on this version.
+
+  **What's still overridable:** the implementation-loop steps — `clone`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`. See [Custom pipeline steps](/latest/customize/custom-steps) for the full list and their descriptions.
+
+  **If you previously overrode a planning step** (for example, a custom `architecture-analysis.ts`), the override is dead code on this version. Customizing planning behavior means modifying the planning workflow itself in your target repo, not dropping a file in `custom/steps/`.
+</Update>
+
+<Update label="post-push-review now waits for external reviewers" description="Available in latest" tags={["Pipeline", "Review"]}>
+  The `post-push-review` step (the gap-analysis Claude pass that runs after the PR is opened) now coordinates with external review providers — such as a Claude Code Review GitHub Action running on the same PR — instead of racing them.
+
+  **New behavior:**
+  - Before running its gap analysis, the step waits for any configured external review check to finish (default timeout: 5 minutes, then fails closed).
+  - External reviewer findings are deduplicated against Claude's own analysis and folded into the iteration prompt.
+  - If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to `maxIterations` times (default `3`).
+
+  **New configurable inputs** on the step (settable via your custom pipeline YAML or `.ai-implement/config.yml`):
+  - `reviewProviders` — review-provider IDs to consult
+  - `reviewCheckNames` — GitHub Actions check-run names that identify external review
+  - `reviewWaitPollMs` — poll interval while waiting (default `5000`)
+  - `reviewWaitTimeoutMs` — total wait before failing closed (default `300000`)
+
+  See [`post-push-review`](/latest/customize/custom-steps#post-push-review) on the Custom pipeline steps page for the full input table.
+</Update>

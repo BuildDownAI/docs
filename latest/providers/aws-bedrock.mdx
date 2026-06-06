@@ -2,6 +2,10 @@
 title: "Use AWS Bedrock with AI-Implement"
 description: "Configure AI-Implement to invoke Claude through AWS Bedrock using GitHub OIDC and an IAM role. No static AWS credentials are required or supported."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 AI-Implement supports AWS Bedrock as a provider, letting you invoke Claude models through your AWS account using GitHub OIDC — no static AWS credentials required. When Bedrock is configured, the orchestrator passes `provider=bedrock` and your chosen AWS region to the workflow at dispatch time, and the workflow assumes an IAM role via OIDC before invoking Claude. This page walks through the full setup.
 

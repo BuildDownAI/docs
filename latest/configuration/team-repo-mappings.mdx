@@ -2,6 +2,10 @@
 title: "Configure project mappings"
 description: "How to configure project mappings in the admin UI, including ticketing provider, concurrency limits, execution mode, session mode, and Claude provider settings."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 A **project mapping** connects a ticketing-system scope (a Linear team or a Jira JQL clause) to a target GitHub repository and controls exactly how AI-Implement dispatches and runs implementations for that scope. Each mapping is stored in the orchestrator's SQLite database and can be created, edited, or deleted through the admin UI at `/admin`. You need at least one mapping for the orchestrator to do any work.
 
@@ -64,7 +68,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="planningEnabled" type="boolean">
-  Whether to run a planning phase before implementation. When enabled, the orchestrator dispatches the planning workflow first, Claude posts structured analysis to Linear, and then implementation proceeds. Default: `true`. See [AI planning phase](/configuration/planning) for details.
+  Whether to run a planning phase before implementation. When enabled, the orchestrator dispatches the planning workflow first, Claude posts structured analysis to Linear, and then implementation proceeds. Default: `true`. See [AI planning phase](/latest/configuration/planning) for details.
 </ParamField>
 
 <ParamField body="planningWorkflowFile" type="string">
@@ -121,7 +125,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   - The two `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous.
   
   <Info>
-    See [Jira manual custom-field setup](/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.
+    See [Jira manual custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.
   </Info>
 </ParamField>
 
@@ -130,3 +134,28 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   
   Useful for temporarily disabling a mapping without deleting and recreating it.
 </ParamField>
+
+<ParamField body="maxTurns" type="number" default="50">
+  Cap on Claude conversation turns per implement pass. Applies to both Anthropic and Bedrock providers.
+
+  Lower values surface decisions earlier and cut cost; higher values let Claude work through harder problems without aborting mid-pass.
+</ParamField>
+
+<ParamField body="maxIterations" type="number" default="3 (Anthropic), 2 (Bedrock)">
+  Cap on implement/review cycles in the feedback loop. The Bedrock default is lower for provider reliability.
+
+  Each iteration is one `implement` → `review` pass; the cycle stops early when review approves the diff.
+</ParamField>
+
+<ParamField body="maxJobMinutes" type="number" default="90">
+  Cap on the GitHub Actions job timeout in minutes. GitHub Actions execution mode only — Fly Machines and local Docker have no equivalent timeout.
+</ParamField>
+
+<Tip>
+  These three caps also exist as repo variables for `/ai-implement` comment-triggered gap-fill runs.:
+  - `AI_IMPLEMENT_MAX_TURNS`
+  - `AI_IMPLEMENT_MAX_ITERATIONS`
+  - `AI_IMPLEMENT_MAX_JOB_MINUTES`
+  
+  See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
+</Tip>
