@@ -2,11 +2,15 @@
 title: "Quick start: your first AI-generated PR"
 description: "Set up AI-Implement locally and get your first Claude-generated pull request in about 30 minutes, from cloning the repo to watching the PR appear."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 This guide walks you through running AI-Implement for the first time. By the end, you'll have the orchestrator running locally, a target repo connected, and a Linear issue on its way to becoming a pull request.
 
 <Note>
-  Before you start, make sure you have: a Linear or Jira workspace with API access, a GitHub App you control, a Fly.io account (for the runner), and an Anthropic API key or AWS Bedrock access. See [Prerequisites](/setup/prerequisites) for details on setting each one up.
+  Before you start, make sure you have: a Linear or Jira workspace with API access, a GitHub App you control, a Fly.io account (for the runner), and an Anthropic API key or AWS Bedrock access. See [Prerequisites](/latest/setup/prerequisites) for details on setting each one up.
 </Note>
 
 <Steps>
@@ -77,7 +81,7 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     If you prefer Claude Code OAuth authentication over an API key, add `CLAUDE_CODE_OAUTH_TOKEN` instead of (or in addition to) `ANTHROPIC_API_KEY`. OAuth takes precedence.
 
-    See [Environment variables for AI-Implement](/configuration/environment-variables) for more detailed information on each variable.
+    See [Environment variables for AI-Implement](/latest/configuration/environment-variables) for more detailed information on each variable.
   </Step>
 
   <Step title="Install the GitHub App on the target repo">
@@ -152,7 +156,7 @@ This guide walks you through running AI-Implement for the first time. By the end
         - `AI-Implement Repo` (with one option per mapped repo).
         
         <Note>
-          See [Jira manual setup](/setup/target-repo#jira-manual-custom-field-setup) for the full step-by-step.
+          See [Jira manual setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for the full step-by-step.
         </Note>
       </Tab>
     </Tabs>

@@ -2,6 +2,10 @@
 title: "Use Anthropic API or Claude OAuth with AI-Implement"
 description: "Configure AI-Implement to use the Anthropic API or Claude Code OAuth token as the Claude provider, with auth precedence and model selection explained."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 By default, AI-Implement uses the Anthropic provider, which supports two authentication methods: `ANTHROPIC_API_KEY` (API key) and `CLAUDE_CODE_OAUTH_TOKEN` (Claude Code OAuth token). You do not need to configure a provider explicitly — `anthropic` is the default when you add a repo mapping in the admin UI. This page explains how to set up the required secrets and how to control which model Claude uses for each run.
 
@@ -9,7 +13,7 @@ By default, AI-Implement uses the Anthropic provider, which supports two authent
 
 The workflow selects an auth method automatically based on which secrets are present. The precedence order is:
 
-1. **Bedrock** — used if the orchestrator sets `provider=bedrock` (see [AWS Bedrock](/providers/aws-bedrock))
+1. **Bedrock** — used if the orchestrator sets `provider=bedrock` (see [AWS Bedrock](/latest/providers/aws-bedrock))
 2. **Claude Code OAuth token** — used if `CLAUDE_CODE_OAUTH_TOKEN` is set
 3. **Anthropic API key** — used if only `ANTHROPIC_API_KEY` is set
 
@@ -29,7 +33,7 @@ Both the implementation workflow (`claude-implement.yml`) and the planning workf
 | `AI_IMPLEMENT_APP_ID` | GitHub App numeric ID used to authenticate workflow actions. |
 | `AI_IMPLEMENT_PRIVATE_KEY` | GitHub App RSA private key (PEM format, with newlines escaped as `\n`). |
 
-See [Environment variables for AI-Implement](/configuration/environment-variables) for more detailed information on each variable.
+See [Environment variables for AI-Implement](/latest/configuration/environment-variables) for more detailed information on each variable.
 
 ## Choosing between API key and OAuth token
 

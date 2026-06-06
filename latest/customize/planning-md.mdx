@@ -2,6 +2,10 @@
 title: "Customize PLANNING.md for architecture analysis"
 description: "How to customize PLANNING.md: control what Claude explores and what architecture, test plan, work units, and cross-story comments it posts to your ticketing system before each implementation run."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 `PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis, test plan, work units, and cross-story comments back to your ticketing system. When the planning workflow (`claude-plan.yml`) runs for an issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
 

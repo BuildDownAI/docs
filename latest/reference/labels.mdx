@@ -2,6 +2,10 @@
 title: "Triggers and status indicators"
 description: "How AI-Implement triggers and tracks runs across Linear (labels) and Jira (status fields), what each marker means, and when each is applied automatically."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 AI-Implement tracks runs using **Linear labels** or **Jira custom status fields**, depending on which ticketing system the team mapping uses. Some markers you apply yourself to kick things off; others are applied and removed automatically as a run progresses. Pick your ticketing system below; concurrency and the `/ai-implement` comment trigger work identically for both.
 
@@ -14,8 +18,8 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `AI-Implement` | You | When you want a run to start | Not removed automatically |
     | `AI-Working` | Orchestrator (auto) | When a run is dispatched and in progress | When the run completes (success or failure) |
     | `AI-Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes |
-    | `Plan-Complete` | Workflow (auto) | When planning succeeds | Not removed automatically |
-    | `Ready for Review` | Workflow (auto) | When a PR is opened after implementation | Not removed automatically |
+    | `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
+    | `Ready for Review` | Orchestrator (auto) | When a PR is opened after implementation | Not removed automatically |
 
     ## Label details
 
@@ -43,7 +47,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### Ready for Review
 
-    `Ready for Review` is applied by the implementation workflow after it opens a PR. At the same time, the workflow posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
+    `Ready for Review` is applied after the implementation workflow opens a PR. The orchestrator also posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
   </Tab>
 
   <Tab title="Jira">
@@ -55,14 +59,14 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     |---|---|---|---|
     | `Ready` | You | When you want a run to start | When the orchestrator dispatches the issue |
     | `Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes or fails |
-    | `Plan Approved` | Workflow (auto) | When planning succeeds | When implementation is dispatched |
+    | `Plan Approved` | Orchestrator (auto) | When planning succeeds | When implementation is dispatched |
     | `Implementing` | Orchestrator (auto) | When the implementation run is dispatched | When the run completes or fails |
-    | `PR Ready` | Workflow (auto) | When a PR is opened after implementation | Not changed automatically |
-    | `Planning Failed` | Workflow (auto) | When the planning run errors | Not changed automatically |
-    | `Implementation Failed` | Workflow (auto) | When the implementation run errors | Not changed automatically |
+    | `PR Ready` | Orchestrator (auto) | When a PR is opened after implementation | Not changed automatically |
+    | `Planning Failed` | Orchestrator (auto) | When the planning run errors | Not changed automatically |
+    | `Implementation Failed` | Orchestrator (auto) | When the implementation run errors | Not changed automatically |
 
     <Warning>
-      A second custom field `AI-Implement Repo` is also required — its value scopes each issue to a target repo in the team mapping. Both fields must exist before the orchestrator can pick up issues; see [Jira manual setup](/setup/target-repo#jira-manual-custom-field-setup).
+      A second custom field `AI-Implement Repo` is also required — its value scopes each issue to a target repo in the team mapping. Both fields must exist before the orchestrator can pick up issues; see [Jira manual setup](/latest/setup/target-repo#jira-manual-custom-field-setup).
     </Warning>
 
     {/* <Info>
@@ -91,7 +95,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### PR Ready
 
-    Set by the implementation workflow after it opens a PR. At the same time, the workflow posts a comment on the Jira issue with a link to the PR. The status signals that the AI's work is ready for a human reviewer.
+    Set after the implementation workflow opens a PR. The orchestrator also posts a comment on the Jira issue with a link to the PR. The status signals that the AI's work is ready for a human reviewer.
 
     ### Planning Failed / Implementation Failed
 

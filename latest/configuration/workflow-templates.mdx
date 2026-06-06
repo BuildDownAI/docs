@@ -2,6 +2,10 @@
 title: "Workflow template files and front matter"
 description: "How the workflow files synced to target repos work, the front matter keys they read from WORKFLOW.md and PLANNING.md, and how to run a resync."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
@@ -9,11 +13,19 @@ When you sync AI-Implement to a target repo, it installs three GitHub Actions wo
 
 ### `claude-implement.yml`
 
-The main implementation workflow, placed at `.github/workflows/claude-implement.yml` in the target repo. The orchestrator dispatches this workflow whenever a Linear issue with the **AI-Implement** label is ready to process. It reads `WORKFLOW.md` from the repo root, substitutes issue variables into it, and passes the result to Claude Code as the implementation prompt. After Claude creates a PR, the workflow posts a gap analysis comment and updates the Linear issue.
+The main implementation workflow, placed at `.github/workflows/claude-implement.yml` in the target repo. The orchestrator dispatches this workflow whenever an issue is ready to process — Linear issues with the **AI-Implement** label, or Jira issues with **AI-Implement Status** set to **Ready**.
+
+It reads `WORKFLOW.md` from the repo root, substitutes issue variables into it, and passes the result to Claude Code as the implementation prompt.
+
+After Claude creates a PR, the workflow posts a gap analysis comment to the PR. The originating issue's status and any related comments are updated separately by the orchestrator via its provider-callback mechanism.
 
 ### `claude-plan.yml`
 
-The planning workflow, placed at `.github/workflows/claude-plan.yml`. Dispatched before implementation when `planningEnabled=true` on the team mapping. Claude reads the codebase in read-only mode and posts structured planning comments to the Linear issue. The implementation workflow later fetches those comments and injects them into the Claude prompt. See [AI planning phase](/configuration/planning) for the full flow.
+The planning workflow, placed at `.github/workflows/claude-plan.yml`. Dispatched before implementation when `planningEnabled=true` on the team mapping.
+
+Claude reads the codebase in read-only mode and produces structured planning comments that get posted to the originating issue. The planning context is then included automatically in the implementation prompt when `claude-implement.yml` runs.
+
+See [AI planning phase](/latest/configuration/planning) for the full flow.
 
 ### `comment-trigger.yml`
 
@@ -26,6 +38,14 @@ Your implementation prompt template, placed at the root of the target repo. The 
 ### `PLANNING.md`
 
 Your planning prompt template, seeded once in the same way as `WORKFLOW.md`. Customize the "Repo context" section to tell Claude which directories and patterns matter most for your codebase.
+
+## Security posture
+
+The synced workflow files use two defensive practices worth knowing about:
+
+- **Pinned action versions** — every third-party GitHub Action they call is pinned to a specific commit SHA rather than a version tag. Updates ship through the next `sync-workflow.yml` run rather than auto-applying when upstream releases a new tag.
+- **Token masking** — when the orchestrator passes runner-callback tokens (`run_token` and `run_progress_token`) to a run, the workflow registers them with `::add-mask::` before the runner uses them. If a token accidentally surfaces in workflow output, GitHub displays it as `***`.
+
 
 ## Syncing templates to a repo
 
@@ -85,10 +105,10 @@ After stripping front matter and HTML comments, the workflow runs `envsubst` on 
 
 | Variable | Description |
 |---|---|
-| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_IDENTIFIER}` | Ticketing-system identifier — e.g. `ENG-42` (Linear) or `PROJ-456` (Jira) |
 | `${ISSUE_TITLE}` | Issue title |
 | `${ISSUE_DESCRIPTION}` | Full issue description in Markdown |
-| `${ISSUE_ID}` | Linear UUID for the issue |
+| `${ISSUE_ID}` | Internal identifier — Linear's UUID or Jira's issue key |
 | `${PR_NUMBER}` | Existing PR number on gap-fill runs; empty on the first implementation run |
 
 ## Variable substitution in `PLANNING.md`
@@ -97,10 +117,10 @@ After stripping front matter and HTML comments, the workflow runs `envsubst` on 
 
 | Variable | Description |
 |---|---|
-| `${ISSUE_IDENTIFIER}` | Linear identifier, e.g. `ENG-42` |
+| `${ISSUE_IDENTIFIER}` | Ticketing-system identifier — e.g. `ENG-42` (Linear) or `PROJ-456` (Jira) |
 | `${ISSUE_TITLE}` | Issue title |
 | `${ISSUE_DESCRIPTION}` | Full issue description in Markdown |
-| `${ISSUE_ID}` | Linear UUID |
+| `${ISSUE_ID}` | Internal identifier — Linear's UUID or Jira's issue key |
 | `${PARENT}` | Parent issue as `- IDENTIFIER: Title`, or `None` if there is no parent |
 | `${SIBLINGS}` | Other children of the parent issue, newline-separated, or `None` |
 | `${DEPENDENCIES}` | Related issues as `- [type] IDENTIFIER: Title`, newline-separated, or `None` |

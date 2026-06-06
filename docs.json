@@ -143,7 +143,8 @@
                   "latest/reference/labels",
                   "latest/reference/gap-analysis",
                   "latest/reference/notifications",
-                  "latest/reference/troubleshooting"
+                  "latest/reference/troubleshooting",
+                  "latest/changelog"
                 ]
               }
             ]
