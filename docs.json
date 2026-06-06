@@ -8,19 +8,19 @@
     "light": "#6ee2ff",
     "dark": "#04404f"
   },
-"navbar": {
-  "primary": {
-    "type": "button",
-    "label": "Start the builddown",
-    "href": "https://builddown.ai/start"
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Start the builddown",
+      "href": "https://builddown.ai/start"
+    },
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/BuildDownAI/AI-Implement"
+      }
+    ]
   },
-  "links": [
-    {
-      "label": "GitHub",
-      "href": "https://github.com/BuildDownAI/AI-Implement"
-    }
-  ]
-},
   "navigation": {
     "versions": [
       {
@@ -34,53 +34,53 @@
               {
                 "group": "Get Started",
                 "pages": [
-                  "stable/introduction",
-                  "stable/quickstart",
-                  "stable/how-it-works"
+                  "introduction",
+                  "quickstart",
+                  "how-it-works"
                 ]
               },
               {
                 "group": "Setup",
                 "pages": [
-                  "stable/setup/prerequisites",
-                  "stable/setup/github-app",
-                  "stable/setup/deploy",
-                  "stable/setup/target-repo"
+                  "setup/prerequisites",
+                  "setup/github-app",
+                  "setup/deploy",
+                  "setup/target-repo"
                 ]
               },
               {
                 "group": "Configuration",
                 "pages": [
-                  "stable/configuration/environment-variables",
-                  "stable/configuration/team-repo-mappings",
-                  "stable/configuration/workflow-templates",
-                  "stable/configuration/planning"
+                  "configuration/environment-variables",
+                  "configuration/team-repo-mappings",
+                  "configuration/workflow-templates",
+                  "configuration/planning"
                 ]
               },
               {
                 "group": "Providers",
                 "pages": [
-                  "stable/providers/anthropic",
-                  "stable/providers/aws-bedrock"
+                  "providers/anthropic",
+                  "providers/aws-bedrock"
                 ]
               },
               {
                 "group": "Customize",
                 "pages": [
-                  "stable/customize/workflow-md",
-                  "stable/customize/planning-md",
-                  "stable/customize/custom-steps",
-                  "stable/customize/runner-image"
+                  "customize/workflow-md",
+                  "customize/planning-md",
+                  "customize/custom-steps",
+                  "customize/runner-image"
                 ]
               },
               {
                 "group": "Reference",
                 "pages": [
-                  "stable/reference/admin-ui",
-                  "stable/reference/labels",
-                  "stable/reference/gap-analysis",
-                  "stable/reference/notifications",
-                  "stable/reference/troubleshooting"
+                  "reference/admin-ui",
+                  "reference/labels",
+                  "reference/gap-analysis",
+                  "reference/notifications",
+                  "reference/troubleshooting"
                 ]
               }
             ]
@@ -156,14 +156,14 @@
   "background": {
     "decoration": "gradient"
   },
-"fonts": {
-  "heading": {
-    "family": "Space Grotesk",
-    "weight": 600
-  },
-  "body": {
-    "family": "Inter Tight",
-    "weight": 400
+  "fonts": {
+    "heading": {
+      "family": "Space Grotesk",
+      "weight": 600
+    },
+    "body": {
+      "family": "Inter Tight",
+      "weight": 400
+    }
   }
-}
 }
