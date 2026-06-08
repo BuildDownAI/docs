@@ -110,17 +110,17 @@ Follow this sequence:
    ## HIGH-priority finding details
 
    ### H-1: <one-line title>
-   - Docs `<docs path>` currently <one-line docs claim>
-   - `<src file:line>` — Source shows <one-line reality>.
-   - Applied edit: <one-line summary>.
+   - **Docs**: `<docs path>` currently <one-line docs claim>
+   - **Source**: `<src file:line>` — <one-line reality>
+   - **Edit**: <one-line summary>
 
    ### H-2: ...
 
    ## MEDIUM-priority finding details
 
    ### M-1: <one-line title>
-   - Docs `<docs path>` currently <one-line docs claim>
-   - `<src file:line>` — Source shows <one-line reality>.
+   - **Docs**: `<docs path>` currently <one-line docs claim>
+   - **Source**: `<src file:line>` — <one-line reality>
 
    ### M-2: ...
 
@@ -131,7 +131,7 @@ Follow this sequence:
    - ...
    ```
 
-   Each priority tier uses a consistent visual footprint: HIGH gets 3 bullets per finding, MEDIUM gets 2 bullets, LOW gets 1 line. Numbered IDs (`H-N`, `M-N`, `L-N`) let reviewers cross-reference any finding by short code in subsequent discussion.
+   Each priority tier uses a consistent visual footprint: HIGH gets 3 bullets per finding (Docs / Source / Edit), MEDIUM gets 2 bullets (Docs / Source — no Edit since report-only), LOW gets 1 line. The bolded bullet labels (`**Docs**`, `**Source**`, `**Edit**`) let a reviewer scan the same beat across findings without re-reading the whole line. Numbered IDs (`H-N`, `M-N`, `L-N`) let reviewers cross-reference any finding by short code.
 
    The two top-level tables (Findings at a glance + Edits applied) are the reviewer's primary scan surface. The per-finding sections are deliberately compact (1–2 sentences each) — full detail lives in the source citation, not the report.
 

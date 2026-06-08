@@ -158,3 +158,66 @@ MEDIUM findings show higher cross-run overlap than HIGH (categorization is less 
 - Are MDX comment markers (`{/* AUDIT H-<n>: */}`) the right review-aid, or should we adopt a different convention (e.g., PR comments per finding, sidebar annotations)?
 - Could a matrix-based parallel-runs setup capture the variance benefit in a single workflow dispatch (3 audits in parallel, union the findings)?
 - Once the manual testing-pass lands, should the prompt's `Repo context` section be updated with `testing`-specific drift areas?
+
+---
+
+## Block 6 — Prompt v2 enrichment + bloat audit
+
+### What landed in v2
+
+Built on top of v1.1 baseline (commit `295ae0c` and on):
+
+- **File-scope rule (new H2 in prompt)** — branch-aware editing: `main` audits edit root files only, `testing` audits edit `latest/**` only. Explicit path patterns in the prompt; checklist item verifies.
+- **Reader-focused MDX principles (HIGH-edit step sub-bullets)** — no source paths or internal jargon; semantic component choice (`Note`/`Tip`/`Warning`/`Info`/`Check`); scannable chunking; anchor + cross-link discipline (incl. `/latest/` prefix on `latest/*` pages for both `]( )` Markdown and `href="..."` props).
+- **Internal-only → changelog routing** — for testing audits, internal-only findings get `<Update>` entries in `latest/changelog.mdx` rather than per-page edits. Main audits omit them (no stable changelog by design).
+- **Restructured audit-report shape** — top-level **Findings at a glance** + **Edits applied** tables for scannability across unioned reviews. Bullet-format finding details with bolded labels: HIGH = 3 bullets (`**Docs**:` / `**Source**:` / `**Edit**:`); MEDIUM = 2 bullets (no Edit since report-only); LOW numbered as `**L-N** —` for cross-reference.
+- **Batch tool calls (Task step 2 addition)** — instructs Claude to parallelize independent `Read`/`Grep`/`Glob` calls. Highest-ROI single addition.
+- **Reference Examples D–F** — BAD-vs-GOOD pairs showing (D) reader-focused vs source-citing edit, (E) version-prefix for latest/ cross-links covering both Markdown + href= props, (F) internal-only change as changelog entry.
+- **Reference: Reader-focused principles section + expanded anti-patterns** — supplementary deterrents listing source-paths-in-MDX, internal jargon, default-Note, un-prefixed latest/ links, links to non-anchored elements (`<Step title>`/`<Tab title>`).
+- **Examples A/B/C in reference reformatted** to match the new bullet-format finding shape — same content as v1.1, ported to demonstrate consistent shape.
+- **Quality checklist (4 new items)** — verifying file-scope rule, reader-focused principles, `/latest/` prefix on cross-links, internal-only routing.
+
+### Iteration history (v2)
+
+| Round | What was tested | Result |
+|---|---|---|
+| 1 (local) | First v2 run on `automation/audit-workflow` | Branch-state issue: audit-workflow on stale pre-Block-5 base; findings against outdated docs. Useful only for shape verification. |
+| 2 (local) | v2 prompt + rebased onto `docs-initial-update` | ~7–8m wall time; 2 HIGH / 3 MEDIUM / 6 LOW; file-scope held; reader-focused edits; substantive findings (`AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` runner-image allowlist, `defaultBranch` required mismatch). |
+| 3 (local) | + bullet labels + Examples A-C reformat | ~12–13m wall time; 7 HIGH / 4 MEDIUM / 5 LOW; bullet labels (`**Docs**: / **Source**: / **Edit**:`) landed; new substantive findings (WORKFLOW.md/PLANNING.md template drift, `autoApprovePlans` never-read by dispatch, Bedrock 4-hour STS session, Secrets-panel-stub). **Runner-image allowlist (H-1 in round 2) surfaced AGAIN as H-6 — high-impact findings recur across runs.** |
+
+Key v2 takeaway: cross-run HIGH variance is structural (subjective categorization sampling). MEDIUM variance is lower (less subjective). The "run 2–3 times and union findings" operational pattern from Block 4 continues to apply — it's the right mitigation, not a bug to fix in the prompt.
+
+### Bloat audit (Step 4.5)
+
+Performed against 2 same-state baseline runs (rounds 2 + 3). The discipline guard requires ≥3 runs of pre-cut data; most candidates therefore landed as "inconclusive, defer."
+
+| Addition | Verdict | Reason |
+|---|---|---|
+| File-scope rule | Keep | Held in both runs; zero out-of-scope edits |
+| Batch tool calls | Keep | 3–4× wall-time improvement vs Block 4 baseline |
+| Reader-focused MDX principles (prompt) | Keep | All round-3 edits user-facing; zero source paths in MDX |
+| Component semantic choice | Keep | Round 3 used `Warning` (blocking), `Tip` (relief), `Info` (context) — not defaulting to `Note` |
+| Scannable chunking | Keep | Multi-paragraph component bodies + bulleted lists observed |
+| Anchor + cross-link discipline | Keep | Round-3 H-5 used `/latest/configuration/team-repo-mappings#param-auto-approve-plans` — correct `/latest/` prefix + `#param-<slug>` anchor pattern |
+| Report shape (tables + bullets) | Keep | Both runs produced full table-driven shape |
+| Bullet labels | Keep | Round 3 confirmed |
+| Quality checklist additions | Keep | Self-checking evident via the "Notes on scope" output the audit added to its report |
+| Examples A/B/C reformat | Keep | Reference-quality consistency with D-F shape |
+| **Reader-focused principles section (reference)** | **Cut candidate — DEFERRED** | Mostly duplicates the prompt's HIGH-edit sub-bullets; cut test would need ≥3 baseline runs |
+| **Expanded anti-patterns (5 new)** | **Cut candidate — DEFERRED** | Audit avoided these violations across 2 runs, but can't attribute prevention to the anti-pattern list vs the prompt's positive rules; cut test would need ≥3 baseline runs |
+| **Internal-only → changelog routing** | **Inconclusive — DEFERRED** | Never exercised in 2 runs (no internal-only findings surfaced). Audit explicitly acknowledged the rule (round 3 "Notes on scope" said *"every drift surfaced this cycle was operator-visible"*). Cut would be premature; future-proofing value when a true internal-only finding does appear |
+
+**Decision:** Defer all cut candidates to a follow-up bloat-audit block once weekly CI produces ≥3 same-state baseline runs. Current state pushes to BuildDownAI with all additions intact.
+
+### Production handoff checklist additions (delta from v1)
+
+The v1 production handoff checklist (above, under "Production handoff checklist") still applies. Block 6 adds:
+
+- **Cron cadence consideration** — at round 3's pace (7 HIGH/run), a weekly cron could produce ~20–40 HIGH findings/month for mentor review. Worth discussing cadence (weekly / bi-weekly / monthly / on-demand) before enabling cron in production. Defaults to weekly Mondays 14:00 UTC currently; can be disabled by removing the `schedule:` block from `audit.yml` until cadence is decided.
+- **Multi-run for confidence on important findings** — important drift consistently recurs across runs (e.g., runner-image allowlist surfaced in both rounds 2 and 3). When a pre-release audit needs maximum coverage, dispatch 2–3 times manually and union the findings.
+
+### Open questions added by Block 6
+
+- Are the 5 new anti-patterns and the Reader-focused-principles section in the reference earning their place? Need ≥3 baseline runs to test cut safely.
+- Does the internal-only → changelog routing rule work in practice when a true internal-only finding surfaces? (Round 3 had none.) First testing-CI run that surfaces a runner-telemetry-style finding will tell us.
+- Should the prompt have a soft cap on HIGH findings per run? At ~7 per run, mentor-review load adds up; a cap (e.g., 5–10) with overflow logged as MEDIUM might smooth review pace. Trade-off: lower HIGH count vs lost coverage signal.

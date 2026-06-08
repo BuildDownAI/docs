@@ -39,45 +39,33 @@ These illustrate the audit shape across three different drift types. Use them as
 
 ### Example A — Feature removal (HIGH)
 
-**Title:** `ORCHESTRATOR_URL` no longer read; consolidated into `RUNNER_CALLBACK_BASE_URL`
+**Title**: `ORCHESTRATOR_URL` no longer read; consolidated into `RUNNER_CALLBACK_BASE_URL`
 
-**Source evidence:** `.env.example` (removed lines in the Orchestrator-callback section); `src/index.ts` (no longer reads `process.env.ORCHESTRATOR_URL` anywhere)
+- **Docs**: `configuration/environment-variables.mdx` documents `ORCHESTRATOR_URL` as a separate orchestrator-runtime variable under "Runner callbacks."
+- **Source**: `.env.example` (variable removed); `src/index.ts` (no longer reads `process.env.ORCHESTRATOR_URL`) — `RUNNER_CALLBACK_BASE_URL` now serves the same purpose.
+- **Edit**: Remove the `ORCHESTRATOR_URL` `<ParamField>` block from the Orchestrator-runtime tab. Add a one-line transition note in the surrounding prose: "Previously, `ORCHESTRATOR_URL` was a separate variable; it has been consolidated into `RUNNER_CALLBACK_BASE_URL`."
 
-**Docs claim:** `configuration/environment-variables.mdx` documents `ORCHESTRATOR_URL` as a separate orchestrator-runtime variable under "Runner callbacks."
-
-**Code reality:** The variable is no longer present in `.env.example` and is not read in `src/`. `RUNNER_CALLBACK_BASE_URL` now serves the same purpose.
-
-**Priority:** HIGH — readers setting `ORCHESTRATOR_URL` would expect it to do something; it has no effect.
-
-**Suggested edit:** Remove the `ORCHESTRATOR_URL` `<ParamField>` block from the Orchestrator-runtime tab. Add a one-line transition note in the surrounding prose: "Previously, `ORCHESTRATOR_URL` was a separate variable; it has been consolidated into `RUNNER_CALLBACK_BASE_URL`."
+**Priority rationale**: HIGH — readers setting `ORCHESTRATOR_URL` would expect it to do something; it has no effect.
 
 ### Example B — Feature addition (HIGH)
 
-**Title:** Per-project run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) added to `RepoMapping`
+**Title**: Per-project run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) added to `RepoMapping`
 
-**Source evidence:** `src/config.ts` (new fields on the `RepoMapping` interface around line 52); `src/admin-ui/pages/projects.ts` (stepper exposes the three fields around line 273)
+- **Docs**: `configuration/team-repo-mappings.mdx` lists the mapping fields but does not include the three caps. `reference/admin-ui.mdx` describes the Projects panel without mentioning the Capacity step's new inputs.
+- **Source**: `src/config.ts:52` (new fields on the `RepoMapping` interface); `src/admin-ui/pages/projects.ts:273` (stepper exposes the three fields) — fully wired through schema, database migration, dispatch payload, and admin UI.
+- **Edit**: Add three `<ParamField>` blocks to `configuration/team-repo-mappings.mdx` after `provider`, with per-provider defaults noted (Bedrock=2 vs Anthropic=3 for `maxIterations`). Mention the Capacity-step additions in the Projects panel description of `reference/admin-ui.mdx`.
 
-**Docs claim:** `configuration/team-repo-mappings.mdx` lists the mapping fields but does not include the three caps. `reference/admin-ui.mdx` describes the Projects panel without mentioning the Capacity step's new inputs.
-
-**Code reality:** Fully wired through schema, database migration, dispatch payload, and admin UI. Operators using the latest version see and can set these three fields.
-
-**Priority:** HIGH — operators reading the docs won't learn about a feature explicitly designed to control cost and reliability.
-
-**Suggested edit:** Add three `<ParamField>` blocks to `configuration/team-repo-mappings.mdx` after `provider`, with per-provider defaults noted (Bedrock=2 vs Anthropic=3 for `maxIterations`). Mention the Capacity-step additions in the Projects panel description of `reference/admin-ui.mdx`.
+**Priority rationale**: HIGH — operators reading the docs won't learn about a feature explicitly designed to control cost and reliability.
 
 ### Example C — Structural refactor (HIGH)
 
-**Title:** Planning is now a separate executor; five planning-pipeline steps removed
+**Title**: Planning is now a separate executor; five planning-pipeline steps removed
 
-**Source evidence:** `src/run-planning.ts` (new entry point); `src/pipeline/steps/` (deletion of `test-plan.ts`, `work-unit-decomposition.ts`, `architecture-analysis.ts`, `cross-story-context.ts`, `post-to-ticketing.ts`); `src/pipeline/types.ts` (`StepType` enum lost six values)
+- **Docs**: `customize/custom-steps.mdx` AccordionGroup lists the deleted step IDs (`test-plan`, `work-unit-decomposition`, `architecture-analysis`, `cross-story-context`, `post-to-ticketing`) as override points readers can implement.
+- **Source**: `src/run-planning.ts` (new entry point); `src/pipeline/steps/` (the five step files are deleted from the codebase); `src/pipeline/types.ts` (`StepType` enum lost six values) — planning now runs through a dedicated executor; custom override files using those filenames would never execute.
+- **Edit**: Remove the five planning-step accordions from the overridable-step list. Add a `<Note>` explaining that planning now runs through a dedicated planning workflow (`claude-plan.yml`) and is not part of the customizable autonomous pipeline.
 
-**Docs claim:** `customize/custom-steps.mdx` AccordionGroup lists the deleted step IDs as override points readers can implement.
-
-**Code reality:** The step files are deleted from the codebase. Custom override files using those filenames would never execute. Planning runs through a dedicated executor instead.
-
-**Priority:** HIGH — readers following the custom-steps guide would write code that has no effect.
-
-**Suggested edit:** Remove the five planning-step accordions from the overridable-step list. Add a `<Note>` explaining that planning now runs through a dedicated planning workflow (`claude-plan.yml`) and is not part of the customizable autonomous pipeline.
+**Priority rationale**: HIGH — readers following the custom-steps guide would write code that has no effect.
 
 ### Example D — Reader-focused vs source-citing edit (BAD vs GOOD)
 
