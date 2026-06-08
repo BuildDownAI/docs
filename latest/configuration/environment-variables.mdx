@@ -352,6 +352,33 @@ Pick the tab that matches where you're configuring right now.
     <Note>
       See [Use a custom Fly Machine runner image](/latest/customize/runner-image#alternative-github-actions-variable) for the resolution order between this variable and other override mechanisms.
     </Note>
+
+    {/* AUDIT H-1: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES allowlist not documented */}
+    <ParamField body="AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES" type="string">
+      Comma-separated list of additional image-name prefixes the workflow is allowed to use as a runner image, in addition to the built-in `ghcr.io/builddownai/` allowlist.
+
+      Set this when your custom runner image lives in a registry other than `ghcr.io/builddownai/`. Without it, any image outside that prefix causes the workflow's validation job to fail.
+
+      Example: `ghcr.io/your-org/` — allows any image under your organization's GHCR namespace.
+
+      Multiple prefixes are comma-separated: `ghcr.io/your-org/,docker.io/your-org/`
+    </ParamField>
+
+    ### Runner log verbosity
+
+    {/* AUDIT H-2: AI_IMPLEMENT_LOG_LEVEL target-repo variable not documented */}
+    <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
+      Controls how much detail the runner logs during an implement pass.
+
+      Accepted values:
+
+      - `summary` (default) — logs one result line per Claude invocation: outcome, turns, duration, cost (when reported), and token counts.
+      - `stream` — additionally logs each per-turn tool call (name and truncated input) as it happens.
+
+      Telemetry (turns, cost, tokens, outcome) is captured at both levels; `stream` adds a per-turn activity trace useful for debugging stuck or slow runs.
+
+      Set this as a repository or organization **variable** under **Settings → Secrets and variables → Actions → Variables**, mirroring how `AI_IMPLEMENT_PROVIDER` is configured. It applies to both orchestrator-initiated runs and `/ai-implement` comment-triggered gap-fill runs after the target repo has re-synced `claude-implement.yml`.
+    </ParamField>
   </Tab>
 </Tabs>
 

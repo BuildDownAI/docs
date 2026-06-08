@@ -19,6 +19,17 @@ image: ghcr.io/your-org/your-runner:v1
 
 The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
 
+{/* AUDIT H-1: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES allowlist not documented */}
+<Warning>
+  The `claude-implement.yml` workflow validates the runner image before starting the job. By default, only images whose name begins with `ghcr.io/builddownai/` are allowed.
+
+  To use an image from your own registry, add a GitHub Actions **variable** (not secret) named `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` to the target repo or your organization, containing a comma-separated list of allowed prefixes.
+
+  Example: `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES=ghcr.io/your-org/`
+
+  Without this variable, any image from outside `ghcr.io/builddownai/` causes the validate-runner-image job to fail with a "runner_image is not allowed" error.
+</Warning>
+
 The default base image is:
 
 ```

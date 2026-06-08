@@ -9,6 +9,27 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 This changelog tracks notable changes between AI-Implement's current stable release and the in-development `latest` version. Each entry has its own anchor link — pages elsewhere in this version may link you directly to a relevant entry below. Use the version dropdown at the top of the page to switch back to the stable docs.
 
+{/* AUDIT H-2: AI_IMPLEMENT_LOG_LEVEL runner verbosity variable not documented */}
+<Update label="Runner log verbosity setting" description="Available in latest" tags={["Configuration", "Pipeline"]}>
+  A new target-repo variable `AI_IMPLEMENT_LOG_LEVEL` controls how much detail the runner logs during an implement pass.
+
+  - `summary` (default) — logs one result line per Claude invocation: outcome, turns, duration, cost, and token counts.
+  - `stream` — additionally logs each per-turn tool call as it happens. Useful for debugging stuck or unusually slow runs.
+
+  Set it as a repository or organization variable under **Settings → Secrets and variables → Actions → Variables**, mirroring `AI_IMPLEMENT_PROVIDER`. Applies to both orchestrator-initiated and `/ai-implement` comment-triggered runs after re-syncing `claude-implement.yml`.
+
+  See [Runner log verbosity](/latest/configuration/environment-variables#param-ai-implement-log-level) for the full reference.
+</Update>
+
+{/* AUDIT H-1: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES allowlist not documented */}
+<Update label="Custom runner image allowlist" description="Available in latest" tags={["Runner", "Security"]}>
+  The synced `claude-implement.yml` now validates the runner image against an allowlist before starting the workflow job. By default, only images from `ghcr.io/builddownai/` are permitted.
+
+  To use a custom image from your own registry, add a repository or organization variable named `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` with a comma-separated list of allowed prefixes (for example, `ghcr.io/your-org/`). Without this variable, any image outside `ghcr.io/builddownai/` causes the validate job to fail.
+
+  See [Use a custom runner image](/latest/customize/runner-image) for setup instructions.
+</Update>
+
 <Update label="Planning workflow is ticketing-agnostic" description="Available in latest" tags={["Pipeline", "Internal"]}>
   `claude-plan.yml` no longer contains Linear-specific code paths. Planning context (parent issue, sibling issues, dependencies) arrives as `workflow_dispatch` inputs, fetched by the orchestrator from whichever ticketing system the project mapping uses.
 
