@@ -1,9 +1,9 @@
 name: Audit AI-Implement docs vs source
 
 on:
-    schedule:
-        # Weekly: Mondays at 14:00 UTC
-        - cron: '0 14 * * 1'
+    # schedule:
+    #     # Weekly: Mondays at 14:00 UTC
+    #     - cron: '0 14 * * 1'
     workflow_dispatch:
         inputs:
             branch:
@@ -37,7 +37,7 @@ jobs:
               with:
                 client-id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
                 private-key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
-                owner: rigonzal530 # changes to BuildDownAI once ownership is transferred
+                owner: BuildDownAI
                 repositories: docs,AI-Implement
 
             - name: Checkout docs repo
@@ -48,7 +48,7 @@ jobs:
             - name: Checkout target branch of AI-Implement
               uses: actions/checkout@v5
               with:
-                repository: rigonzal530/AI-Implement # changes to BuildDownAI/AI-Implement once ownership is transferred
+                repository: BuildDownAI/AI-Implement
                 ref: ${{ env.TARGET_BRANCH }}
                 path: ai-implement
                 token: ${{ steps.app-token.outputs.token }}
@@ -76,7 +76,7 @@ jobs:
               with:
                 token: ${{ steps.app-token.outputs.token }}
                 branch: audit/${{ github.run_id }}
-                base: june-doc-update # changes to main once installed on production docs repo (for the main branch of docs repo)
+                base: main
                 title: "Docs audit: AI-Implement ${{ env.TARGET_BRANCH }} branch"
                 body-path: audit-report.md
                 draft: true
