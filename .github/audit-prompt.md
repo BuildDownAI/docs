@@ -58,7 +58,7 @@ Surveying other areas (`./ai-implement/src/log.ts`, `webhook.ts`, low-level util
 
 Follow this sequence:
 
-1. **Read `./.github/audit-reference.md`** to internalize the priority rubric and finding shape.
+1. **Read the grounding files** — first `./.github/audit-reference.md` for the priority rubric and finding shape, then `./ai-implement/CLAUDE.md` (always present in the AI-Implement source) for the codebase architecture, key conventions, and feature boundaries. Read `./ai-implement/AGENTS.md` too if it exists. These help identify deep drift (architectural patterns, feature gaps, behavior-vs-documentation mismatches) rather than just surface-level file-by-file additions. Local Claude Code runs auto-load CLAUDE.md/AGENTS.md from added directories; CI runs must do so explicitly.
 
 2. **Survey the drift areas** using `Glob` for file discovery, `Grep` for symbol searches, and `Read` for file inspection. Compare what the source actually exposes against what the docs currently document.
 
