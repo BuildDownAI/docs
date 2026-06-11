@@ -2,6 +2,10 @@
 title: "AI planning phase: architecture analysis"
 description: "How the AI planning phase works, what structured architecture, test plan, work units, and cross-story comments it posts to your ticketing system, and how to enable, disable, or configure it per project mapping."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 When `planningEnabled=true` (the default), AI-Implement runs a planning pass before handing an issue to the implementation workflow. Claude reads your codebase in read-only mode and posts structured analysis directly to the originating issue (Linear comments or Jira comments, depending on the project mapping's provider). That analysis is then fetched by the implementation workflow and injected into the Claude prompt, giving the implementation run a head start on architectural decisions, files to change, and known risks.
 

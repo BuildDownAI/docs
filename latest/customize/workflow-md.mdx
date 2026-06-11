@@ -2,6 +2,10 @@
 title: "Customize WORKFLOW.md for your codebase"
 description: "How to customize WORKFLOW.md: set the model, repo context, quality checklist, and lifecycle hooks Claude follows for every implementation run in your repo."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 `WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up an issue from your ticketing system (Linear or Jira), it renders this file and sends the result to Claude as its implementation instructions. You control the model, the repo context Claude reads, and every detail of how Claude approaches your codebase.
 

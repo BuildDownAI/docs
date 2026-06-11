@@ -1,0 +1,104 @@
+---
+title: "Use a custom Fly Machine runner image"
+description: "How to point AI-Implement at a custom Docker runner image when your repo needs tools or language runtimes not included in the default Fly Machine environment."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image by committing `.ai-implement/image.yml` to the default branch of your target repo. When AI-Implement starts a session for your repo, it reads this file and boots the Fly Machine using your image instead of the default.
+
+## How it works
+
+Create a file at `.ai-implement/image.yml` in the default branch of your target repo:
+
+```yaml
+image: ghcr.io/your-org/your-runner:v1
+```
+
+The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+
+The default base image is:
+
+```
+ghcr.io/builddownai/ai-implement-runner:latest
+```
+
+## Building a custom image
+
+Build your image `FROM` the published base image so you inherit all the tools and configuration the default runner provides. Then add whatever your repo needs on top:
+
+```dockerfile
+FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+# Add your tools
+RUN apt-get update && apt-get install -y --no-install-recommends terraform
+```
+
+## Setup steps
+
+<Steps>
+  <Step title="Create a Dockerfile">
+    Start from the base image and add the tools or runtimes your repo requires.
+
+    ```dockerfile
+    FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        terraform \
+        && rm -rf /var/lib/apt/lists/*
+    ```
+  </Step>
+
+  <Step title="Build and push to a public registry">
+    Build the image and push it to a registry where it can be pulled without authentication. GitHub Container Registry (`ghcr.io`) is a common choice.
+
+    ```bash
+    docker build -t ghcr.io/your-org/your-runner:v1 .
+    docker push ghcr.io/your-org/your-runner:v1
+    ```
+  </Step>
+
+  <Step title="Commit .ai-implement/image.yml">
+    Create the file in your target repo pointing at the image you just pushed:
+
+    ```yaml
+    image: ghcr.io/your-org/your-runner:v1
+    ```
+
+    Commit this to your default branch. AI-Implement reads it from there on the next run.
+  </Step>
+</Steps>
+
+<Note>
+  `.ai-implement/image.yml` works for **both** execution modes.
+  - In Fly Machines mode, the orchestrator boots the session machine directly on your image.
+  - In GitHub Actions mode, the orchestrator forwards your image to `claude-implement.yml` as the `container.image` for the workflow job.
+</Note>
+
+<Tip>
+  Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
+</Tip>
+
+## Alternative: GitHub Actions variable
+
+Repos using GitHub Actions execution mode have a second image-override mechanism: the `AI_IMPLEMENT_RUNNER_IMAGE` repository variable.
+
+When set, the synced `claude-implement.yml` workflow uses that image as the container for its job.
+
+```yaml
+# In .github/settings or set via the GitHub UI:
+AI_IMPLEMENT_RUNNER_IMAGE: ghcr.io/your-org/your-runner:v1
+```
+
+**Resolution order** when the orchestrator dispatches a GHA-mode run:
+
+1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `SESSION_IMAGE`) is forwarded as the workflow's `runner_image` input, if either is set
+2. Otherwise the workflow falls back to `AI_IMPLEMENT_RUNNER_IMAGE` if that variable is set
+3. Otherwise the built-in default (`ghcr.io/builddownai/ai-implement-runner:latest`) is used
+
+<Tip>
+  Most repos use `.ai-implement/image.yml` because it gives you one mechanism for both execution modes. Reach for `AI_IMPLEMENT_RUNNER_IMAGE` when you want an org-level default that applies across all your repos without committing a file to each one.
+</Tip>
+

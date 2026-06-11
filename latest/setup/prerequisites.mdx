@@ -2,6 +2,10 @@
 title: "Prerequisites for running AI-Implement"
 description: "What accounts, credentials, and access you need before installing AI-Implement — Linear, GitHub, a Claude provider, and a place to run the orchestrator."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 Before you install AI-Implement, gather everything in the checklist below. Each item maps to a later setup step, so having them ready in advance makes the process significantly smoother.
 
@@ -16,7 +20,7 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
         You need an Atlassian Jira Cloud workspace where you can create custom select fields. AI-Implement requires two custom fields (`AI-Implement Status` and `AI-Implement Repo`) to identify and route issues, plus permission to add them to your project's issue screens.
         
         <Info>
-          See [Jira manual setup](/setup/target-repo#jira-manual-custom-field-setup) for the full custom-field walkthrough; you'll do that during the target-repo connection step.
+          See [Jira manual setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for the full custom-field walkthrough; you'll do that during the target-repo connection step.
         </Info>
       </Tab>
     </Tabs>
@@ -28,7 +32,7 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
     - A GitHub organization where you can create a GitHub App, or
     - A personal GitHub account with the ability to create a GitHub App
 
-    You will create the App during setup. See [Create a GitHub App](/setup/github-app) for the full walkthrough.
+    You will create the App during setup. See [Create a GitHub App](/latest/setup/github-app) for the full walkthrough.
   </Step>
 
   <Step title="Somewhere to run the orchestrator">
@@ -36,10 +40,10 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
 
     <CardGroup cols={2}>
       <Card title="Fly.io (recommended)" icon="cloud">
-        A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/setup/deploy) for instructions.
+        A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/latest/setup/deploy) for instructions.
       </Card>
       <Card title="Any server running Node.js" icon="server">
-        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/setup/deploy).
+        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/latest/setup/deploy).
       </Card>
     </CardGroup>
   </Step>
@@ -68,10 +72,10 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
 Once you have everything above, work through the setup in order:
 
 <CardGroup cols={2}>
-  <Card title="Create a GitHub App" icon="github" href="/setup/github-app">
+  <Card title="Create a GitHub App" icon="github" href="/latest/setup/github-app">
     Create and configure the GitHub App that AI-Implement uses to authenticate with GitHub and open PRs.
   </Card>
-  <Card title="Deploy the orchestrator" icon="rocket" href="/setup/deploy">
+  <Card title="Deploy the orchestrator" icon="rocket" href="/latest/setup/deploy">
     Run the orchestrator locally or deploy it to Fly.io.
   </Card>
 </CardGroup>

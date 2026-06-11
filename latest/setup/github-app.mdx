@@ -2,6 +2,10 @@
 title: "Create a GitHub App for AI-Implement"
 description: "How to create the GitHub App that AI-Implement uses to authenticate, dispatch workflows, and open pull requests under the app's identity."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 AI-Implement uses a GitHub App — not a personal access token — to authenticate workflow dispatches and to open pull requests. Using an App identity is what makes the `/ai-implement` comment trigger work correctly: the PR is opened by the bot, so subsequent comments on it can be reliably attributed and re-dispatched.
 
@@ -81,7 +85,7 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
 
 The workflow templates that AI-Implement syncs into target repos read the following secrets. Add them at the organization level (recommended) so all target repos inherit them, or add them individually per repo under **Settings → Secrets and variables → Actions**.
 
-See [Credentials at a glance](/configuration/environment-variables#credentials-at-a-glance) for an overview on how these secrets map to the orchestrator's runtime environment variables.
+See [Credentials at a glance](/latest/configuration/environment-variables#credentials-at-a-glance) for an overview on how these secrets map to the orchestrator's runtime environment variables.
 
 | Secret | Description |
 |---|---|
@@ -108,10 +112,10 @@ In each target repo, go to **Settings → Actions → General** and enable **All
 ## What's next
 
 <CardGroup cols={2}>
-  <Card title="Deploy the orchestrator" icon="rocket" href="/setup/deploy">
+  <Card title="Deploy the orchestrator" icon="rocket" href="/latest/setup/deploy">
     Run the orchestrator on Fly.io or locally with the credentials you just created.
   </Card>
-  <Card title="Connect a target repo" icon="git-branch" href="/setup/target-repo">
+  <Card title="Connect a target repo" icon="git-branch" href="/latest/setup/target-repo">
     Sync workflow templates into a repo and map it to a Linear team.
   </Card>
 </CardGroup>

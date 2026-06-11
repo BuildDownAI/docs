@@ -2,6 +2,10 @@
 title: "AI-Implement: From tickets to pull requests"
 description: "AI-Implement turns your Linear or Jira backlog into pull requests by running Claude Code against marked issues. Your tickets are the prompts."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 AI-Implement is an orchestration service that connects your **Linear** or **Jira** workspace to one or more GitHub repositories. You mark an issue with the `AI-Implement` label (Linear) or set its `AI-Implement Status` to `Ready` (Jira), and within minutes Claude Code checks out the right repo, reads your codebase, implements the ticket, opens a pull request, and posts a gap analysis comparing what was built to what you asked for. Your team reviews everything in the tools they already use — Linear or Jira, plus GitHub — without learning a new interface.
 
@@ -30,16 +34,16 @@ Before you can run AI-Implement, you'll need accounts and credentials across fou
 - **Anthropic API key** — or an AWS Bedrock setup with the appropriate IAM role
 
 <CardGroup cols={2}>
-  <Card title="Quick start" icon="rocket" href="/quickstart">
+  <Card title="Quick start" icon="rocket" href="/latest/quickstart">
     Get from zero to your first AI-generated PR in under 30 minutes.
   </Card>
-  <Card title="How it works" icon="diagram-project" href="/how-it-works">
+  <Card title="How it works" icon="diagram-project" href="/latest/how-it-works">
     Understand the full lifecycle from ticket to merged PR.
   </Card>
-  <Card title="Prerequisites" icon="list-check" href="/setup/prerequisites">
+  <Card title="Prerequisites" icon="list-check" href="/latest/setup/prerequisites">
     Everything you need to set up before deploying the orchestrator.
   </Card>
-  <Card title="Customize prompts" icon="pen-to-square" href="/customize/workflow-md">
+  <Card title="Customize prompts" icon="pen-to-square" href="/latest/customize/workflow-md">
     Tailor the WORKFLOW.md and PLANNING.md templates for your stack.
   </Card>
 </CardGroup>

@@ -8,74 +8,145 @@
     "light": "#6ee2ff",
     "dark": "#04404f"
   },
-"navbar": {
-  "primary": {
-    "type": "button",
-    "label": "Start the builddown",
-    "href": "https://builddown.ai/start"
-  },
-  "links": [
-    {
-      "label": "GitHub",
-      "href": "https://github.com/BuildDownAI/AI-Implement"
-    }
-  ]
-},
-  "navigation": {
-    "tabs": [
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Start the builddown",
+      "href": "https://builddown.ai/start"
+    },
+    "links": [
       {
-        "tab": "Docs",
-        "groups": [
+        "label": "GitHub",
+        "href": "https://github.com/BuildDownAI/AI-Implement"
+      }
+    ]
+  },
+  "navigation": {
+    "versions": [
+      {
+        "version": "stable",
+        "default": true,
+        "tag": "Stable",
+        "tabs": [
           {
-            "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart",
-              "how-it-works"
+            "tab": "Docs",
+            "groups": [
+              {
+                "group": "Get Started",
+                "pages": [
+                  "introduction",
+                  "quickstart",
+                  "how-it-works"
+                ]
+              },
+              {
+                "group": "Setup",
+                "pages": [
+                  "setup/prerequisites",
+                  "setup/github-app",
+                  "setup/deploy",
+                  "setup/target-repo"
+                ]
+              },
+              {
+                "group": "Configuration",
+                "pages": [
+                  "configuration/environment-variables",
+                  "configuration/team-repo-mappings",
+                  "configuration/workflow-templates",
+                  "configuration/planning"
+                ]
+              },
+              {
+                "group": "Providers",
+                "pages": [
+                  "providers/anthropic",
+                  "providers/aws-bedrock"
+                ]
+              },
+              {
+                "group": "Customize",
+                "pages": [
+                  "customize/workflow-md",
+                  "customize/planning-md",
+                  "customize/custom-steps",
+                  "customize/runner-image"
+                ]
+              },
+              {
+                "group": "Reference",
+                "pages": [
+                  "reference/admin-ui",
+                  "reference/labels",
+                  "reference/gap-analysis",
+                  "reference/notifications",
+                  "reference/troubleshooting"
+                ]
+              }
             ]
-          },
+          }
+        ]
+      },
+      {
+        "version": "latest",
+        "tag": "Latest",
+        "tabs": [
           {
-            "group": "Setup",
-            "pages": [
-              "setup/prerequisites",
-              "setup/github-app",
-              "setup/deploy",
-              "setup/target-repo"
-            ]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "configuration/environment-variables",
-              "configuration/team-repo-mappings",
-              "configuration/workflow-templates",
-              "configuration/planning"
-            ]
-          },
-          {
-            "group": "Providers",
-            "pages": [
-              "providers/anthropic",
-              "providers/aws-bedrock"
-            ]
-          },
-          {
-            "group": "Customize",
-            "pages": [
-              "customize/workflow-md",
-              "customize/planning-md",
-              "customize/custom-steps",
-              "customize/runner-image"
-            ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-              "reference/admin-ui",
-              "reference/labels",
-              "reference/gap-analysis",
-              "reference/notifications",
-              "reference/troubleshooting"
+            "tab": "Docs",
+            "groups": [
+              {
+                "group": "Get Started",
+                "pages": [
+                  "latest/introduction",
+                  "latest/quickstart",
+                  "latest/how-it-works"
+                ]
+              },
+              {
+                "group": "Setup",
+                "pages": [
+                  "latest/setup/prerequisites",
+                  "latest/setup/github-app",
+                  "latest/setup/deploy",
+                  "latest/setup/target-repo"
+                ]
+              },
+              {
+                "group": "Configuration",
+                "pages": [
+                  "latest/configuration/environment-variables",
+                  "latest/configuration/team-repo-mappings",
+                  "latest/configuration/workflow-templates",
+                  "latest/configuration/planning"
+                ]
+              },
+              {
+                "group": "Providers",
+                "pages": [
+                  "latest/providers/anthropic",
+                  "latest/providers/aws-bedrock"
+                ]
+              },
+              {
+                "group": "Customize",
+                "pages": [
+                  "latest/customize/workflow-md",
+                  "latest/customize/planning-md",
+                  "latest/customize/custom-steps",
+                  "latest/customize/runner-image"
+                ]
+              },
+              {
+                "group": "Reference",
+                "pages": [
+                  "latest/reference/admin-ui",
+                  "latest/reference/labels",
+                  "latest/reference/gap-analysis",
+                  "latest/reference/notifications",
+                  "latest/reference/troubleshooting",
+                  "latest/changelog"
+                ]
+              }
             ]
           }
         ]
@@ -85,14 +156,14 @@
   "background": {
     "decoration": "gradient"
   },
-"fonts": {
-  "heading": {
-    "family": "Space Grotesk",
-    "weight": 600
-  },
-  "body": {
-    "family": "Inter Tight",
-    "weight": 400
+  "fonts": {
+    "heading": {
+      "family": "Space Grotesk",
+      "weight": 600
+    },
+    "body": {
+      "family": "Inter Tight",
+      "weight": 400
+    }
   }
-}
 }

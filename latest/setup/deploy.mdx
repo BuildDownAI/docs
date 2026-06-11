@@ -2,6 +2,10 @@
 title: "Deploy the AI-Implement orchestrator"
 description: "How to run the AI-Implement orchestrator locally for development or deploy it as a persistent service on Fly.io for production use."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 The orchestrator is a Node.js service that polls Linear, dispatches GitHub Actions workflows, and serves the admin UI. You can run it locally during setup or deploy it to Fly.io for persistent production use. Both paths are covered below.
 
@@ -128,7 +132,7 @@ Each Fly app uses:
 ## Environment variables
 
 The table below covers all variables the orchestrator reads. Required variables must be set before the service will start successfully.
-See [Environment variables for AI-Implement](/configuration/environment-variables) for more detailed information on each variable.
+See [Environment variables for AI-Implement](/latest/configuration/environment-variables) for more detailed information on each variable.
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -150,10 +154,10 @@ See [Environment variables for AI-Implement](/configuration/environment-variable
 ## What's next
 
 <CardGroup cols={2}>
-  <Card title="Connect a target repo" icon="git-branch" href="/setup/target-repo">
+  <Card title="Connect a target repo" icon="git-branch" href="/latest/setup/target-repo">
     Sync workflow templates into a GitHub repo and map it to a Linear team in the admin UI.
   </Card>
-  <Card title="Environment variables reference" icon="code" href="/configuration/environment-variables">
+  <Card title="Environment variables reference" icon="code" href="/latest/configuration/environment-variables">
     Full reference for every environment variable the orchestrator supports.
   </Card>
 </CardGroup>

@@ -2,6 +2,10 @@
 title: "Environment variables for AI-Implement"
 description: "All environment variables the AI-Implement orchestrator reads at startup, what each one does, and which are required versus optional."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 The AI-Implement orchestrator is configured entirely through environment variables.
 Variables fall into three contexts depending on **where** you configure them:
@@ -168,10 +172,6 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="RUNNER_TOKEN_SECRET" type="string">
           Secret used to mint and validate short-lived runner-callback tokens. Required when `RUNNER_CALLBACK_BASE_URL` is set.
         </ParamField>
-
-        <ParamField body="ORCHESTRATOR_URL" type="string">
-          Public URL of the orchestrator, used in dispatch metadata. Often the same as `RUNNER_CALLBACK_BASE_URL`.
-        </ParamField>
       </Accordion>
 
       <Accordion title="Gap-fill trigger">
@@ -243,6 +243,8 @@ Pick the tab that matches where you're configuring right now.
       Several of these have **identically-named counterparts** in the orchestrator runtime tab — they're the same value, just configured separately here so the workflow files can read them directly. See [Credentials at a glance](#credentials-at-a-glance) for the full map.
     </Tip>
 
+    ## Secrets
+
     ### Required
 
     <ParamField body="AI_IMPLEMENT_APP_ID" type="string" required>
@@ -290,7 +292,7 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="CLAUDE_CODE_OAUTH_TOKEN" type="string">
       Claude Code OAuth token. Preferred over the API key when present.
       
-      See [Anthropic provider](/providers/anthropic#choosing-between-api-key-and-oauth-token) for how to obtain via `claude setup-token`.
+      See [Anthropic provider](/latest/providers/anthropic#choosing-between-api-key-and-oauth-token) for how to obtain via `claude setup-token`.
     </ParamField>
 
     <ParamField body="ANTHROPIC_API_KEY" type="string">
@@ -303,9 +305,13 @@ Pick the tab that matches where you're configuring right now.
       IAM role ARN trusted by GitHub OIDC, with `bedrock:InvokeModel` on your inference profile.
     </ParamField>
 
-    ### Bedrock — repo variables (not secrets)
+    ## Variables
+    
+    These are GitHub Actions **variables**, not secrets — configure under the **Variables** tab of **Settings → Secrets and variables → Actions** on the target repo, or at the organization level so all target repos inherit them.
 
-    These are GitHub Actions **variables**, not secrets — configure under the **Variables** tab of **Settings → Secrets and variables → Actions**. Used so `/ai-implement` comment-triggered gap-fill runs route to the same provider as orchestrator-initiated runs.
+    ### Bedrock
+
+    Used so `/ai-implement` comment-triggered gap-fill runs route to the same provider as orchestrator-initiated runs.
 
     <ParamField body="AI_IMPLEMENT_PROVIDER" type="string">
       Set to `bedrock` for Bedrock-backed target repos. Leave unset for the default Anthropic API path.
@@ -316,6 +322,36 @@ Pick the tab that matches where you're configuring right now.
       
       AWS region for Bedrock (e.g. `us-west-2`).
     </ParamField>
+
+    ### Gap-fill run caps
+
+    Three repository variables cap `/ai-implement` comment-triggered gap-fill runs the same way per-project caps cap orchestrator-initiated runs. All three are optional — unset means "use the default."
+
+    <ParamField body="AI_IMPLEMENT_MAX_TURNS" type="string" default="50">
+      Cap on Claude turns per implement pass. Applies to both Anthropic and Bedrock providers.
+    </ParamField>
+
+    <ParamField body="AI_IMPLEMENT_MAX_ITERATIONS" type="string" default="3 (Anthropic), 2 (Bedrock)">
+      Cap on implement/review cycles in the feedback loop. The Bedrock default is lower for reliability.
+    </ParamField>
+
+    <ParamField body="AI_IMPLEMENT_MAX_JOB_MINUTES" type="string" default="90">
+      Cap on the GitHub Actions job timeout in minutes. GitHub Actions runner mode only.
+    </ParamField>
+
+    <Note>
+      Setting these here only affects `/ai-implement` comment-triggered runs. For orchestrator-initiated runs, set per-project caps in the admin UI under **Configure → Projects**. See [Project mappings](/latest/configuration/team-repo-mappings) for that side.
+    </Note>
+
+    ### Runner image
+
+    <ParamField body="AI_IMPLEMENT_RUNNER_IMAGE" type="string">
+      Container image used by the GitHub Actions workflow job. When set, overrides the workflow's built-in default. Useful when you want an organization-level runner image that applies across all your target repos without committing `.ai-implement/image.yml` to each one.
+    </ParamField>
+
+    <Note>
+      See [Use a custom Fly Machine runner image](/latest/customize/runner-image#alternative-github-actions-variable) for the resolution order between this variable and other override mechanisms.
+    </Note>
   </Tab>
 </Tabs>
 
