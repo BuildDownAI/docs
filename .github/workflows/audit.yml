@@ -1,9 +1,9 @@
 name: Audit AI-Implement docs vs source
 
 on:
-    # schedule:
-    #     # Weekly: Mondays at 14:00 UTC
-    #     - cron: '0 14 * * 1'
+    schedule:
+        # Weekly: Mondays at 14:00 UTC
+        - cron: '0 14 * * 1'
     workflow_dispatch:
         inputs:
             branch:
@@ -13,72 +13,64 @@ on:
                     - main
                     - testing
                 default: main
-            docs_branch:
-                description: 'Docs branch/ref to audit (blank = the dispatch ref, typically main)'
-                type: string
-                required: false
-                default: ''
             max_turns:
                 description: 'Override max-turns (blank = branch default: 75 main / 100 testing)'
                 type: string
                 required: false
                 default: ''
-
-# strip out the default GITHUB_TOKEN scope, our own App token is minted below
+            docs_branch:
+                description: 'Docs branch/ref to audit (blank = the dispatch ref, typically main)'
+                type: string
+                required: false
+                default: ''
+                    
+# strip out the default GITHUB_TOKEN scope, secrets pass through to the reusable workflow
 permissions: {}
 
 jobs:
     audit:
+        uses: ./.github/workflows/_audit-job.yml
+        with:
+            target_branch: ${{ github.event.inputs.branch || 'testing' }}
+            docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
+            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '75' || '100') }}
+            artifact_name: audit-output
+        secrets:
+            app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
+            app_private_key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
+            claude_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    
+    open-pr:
+        needs: audit
+        if: always()
         runs-on: ubuntu-latest
 
         env:
-            # Falls back to 'testing' when triggered without inputs (like scheduled runs)
             TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
 
         steps:
-            - name: Mint GitHub App installation token
+            - name: Mint GitHub App installation token (for PR creation)
               id: app-token
               uses: actions/create-github-app-token@v3
               with:
                 client-id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
                 private-key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
                 owner: BuildDownAI
-                repositories: docs,AI-Implement
+                repositories: docs
 
             - name: Checkout docs repo
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
               with:
                 ref: ${{ github.event.inputs.docs_branch || github.ref_name }}
                 token: ${{ steps.app-token.outputs.token }}
 
-            - name: Checkout target branch of AI-Implement
-              uses: actions/checkout@v5
+            - name: Download audit artifact
+              uses: actions/download-artifact@v8
               with:
-                repository: BuildDownAI/AI-Implement
-                ref: ${{ env.TARGET_BRANCH }}
-                path: ai-implement
-                token: ${{ steps.app-token.outputs.token }}
-            
-            - name: Install Claude Code CLI
-              timeout-minutes: 3
-              run: |
-                npm install -g @anthropic-ai/claude-code
-                claude --version
+                name: audit-output
 
-            - name: Run audit
-              timeout-minutes: 45
-              continue-on-error: true # allows the PR to open with partial output if max-turns are hit
-              env:
-                CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-                # Explicit input > branch-default. Schedule trigger goes straight to branch-default.
-                MAX_TURNS: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '75' || '100') }}
-              run: |
-                claude -p "$(cat .github/audit-prompt.md)" \
-                    --max-turns "$MAX_TURNS" \
-                    --permission-mode acceptEdits
-            
             - name: Open audit PR
-              uses: peter-evans/create-pull-request@v6
+              uses: peter-evans/create-pull-request@v8
               with:
                 token: ${{ steps.app-token.outputs.token }}
                 branch: audit/${{ github.run_id }}
