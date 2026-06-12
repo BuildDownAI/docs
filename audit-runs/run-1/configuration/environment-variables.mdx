@@ -1,0 +1,344 @@
+---
+title: "Environment variables for AI-Implement"
+description: "All environment variables the AI-Implement orchestrator reads at startup, what each one does, and which are required versus optional."
+---
+
+The AI-Implement orchestrator is configured entirely through environment variables.
+Variables fall into three contexts depending on **where** you configure them:
+- On the orchestrator service itself
+- As GitHub Actions secrets on the **orchestrator's own repo** (for CI auto-deploy)
+- As GitHub Actions secrets on each **target repo** (read by the synced workflow files when Claude runs).
+
+The variables are read at startup; restart the app after changing them.
+
+Pick the tab that matches where you're configuring right now.
+
+<Tabs>
+  <Tab title="Orchestrator runtime">
+    Variables the AI-Implement Node service reads at startup.
+    
+    - For local development, set on the orchestrator's `.env` file.
+    - For Fly.io deployment, set on the Fly.io app via `fly secrets set` (for sensitive values) or in `fly.toml`'s `[env]` block (for non-sensitive defaults).
+
+    <Tip>
+      Several variables in this tab also appear as **GitHub Actions secrets** in the other tabs — same value, different name. The [Credentials at a glance](#credentials-at-a-glance) table below maps them.
+    </Tip>
+
+    ### Required
+
+    The orchestrator needs the **GitHub App credentials plus at least one ticketing provider's credentials** to start.
+
+    <ParamField body="GITHUB_APP_ID" type="string" required>
+      Numeric ID of the GitHub App the orchestrator uses to authenticate with GitHub and dispatch workflows. Find this on the app's settings page under **General → App ID**.
+    </ParamField>
+
+    <ParamField body="GITHUB_APP_PRIVATE_KEY" type="string" required>
+      RSA private key (PEM format) for the GitHub App, used to generate installation tokens. When passing this as an environment variable, newlines in the PEM file must be replaced with literal `\n` characters.
+    </ParamField>
+
+    <Note>
+      The private key PEM file contains real newlines. When you set it as an environment variable (e.g. with `fly secrets set`), those newlines must be expressed as the two-character sequence `\n`. Example: `"-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----"`.
+    </Note>
+
+    ### Ticketing
+
+    The orchestrator can use Linear, Jira, or both. Expand the provider(s) you use:
+
+    <AccordionGroup>
+      <Accordion title="Linear">
+        <ParamField body="LINEAR_API_KEY" type="string" required>
+          **Required when any project mapping uses `ticketingProvider: linear`.**
+          
+          Linear personal API key used to poll for issues and update status, labels, and comments. Generate one in Linear under **Settings → API → Personal API keys**.
+        </ParamField>
+
+        <Note>
+          The key must have access to every Linear team you intend to map. Polling filters only by the **AI-Implement** label, not by team, so issues in teams the key cannot see are never picked up.
+        </Note>
+
+        <ParamField body="LINEAR_WORKSPACE_URL" type="string" default="https://linear.app">
+          User-facing Linear workspace URL, used to render issue links in dispatch logs and comments. Optional.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Jira">
+        <ParamField body="JIRA_TOKEN" type="string" required>
+          **Required when any project mapping uses `ticketingProvider: jira`.**
+
+          Atlassian API token (Bearer auth). Create from your Atlassian account under **Security → API tokens**.
+        </ParamField>
+
+        <ParamField body="JIRA_CLOUD_ID" type="string" required>
+          **Required when any mapping uses Jira.**
+
+          Jira Cloud tenant ID. Find at `https://<your-site>.atlassian.net/_edge/tenant_info` (the `cloudId` field).
+        </ParamField>
+
+        <ParamField body="JIRA_SITE_URL" type="string" required>
+          **Required when any mapping uses Jira.**
+
+          User-facing Atlassian site URL, e.g. `https://acme.atlassian.net`. Used to render issue links in dispatch logs and comments.
+        </ParamField>
+      </Accordion>
+    </AccordionGroup>
+
+    <Tip>
+      Variables beyond this section have defaults or are safely omitted. Set them to override the defaults or to enable optional features.
+    </Tip>
+
+    ### Service
+
+    <ParamField body="ADMIN_ACCESS_CODE" type="string">
+      Password for the admin UI at `/admin`. If this variable is not set, the admin UI is disabled entirely and all `/admin` and `/api/` routes return 404.
+    </ParamField>
+
+    <ParamField body="PORT" type="string" default="8080">
+      HTTP port the orchestrator listens on. The Fly.io internal proxy routes traffic to this port automatically, so you typically do not need to change it.
+    </ParamField>
+
+    <ParamField body="POLL_INTERVAL_MS" type="string" default="60000">
+      How often the orchestrator polls for new AI-Implement issues, in milliseconds. Lower values increase ticketing-API usage; values below `10000` are not recommended.
+    </ParamField>
+
+    <ParamField body="DEDUP_DB_PATH" type="string" default="/data/dedup.sqlite">
+      Absolute path to the SQLite file used for deduplication, dispatch logging, and project-mapping storage. Defaults to `/data/dedup.sqlite` in production (the Fly.io volume mount point) and `./dedup.sqlite` when running locally. Change this only if you are mounting the volume at a different path.
+    </ParamField>
+
+    <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
+      HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Configure a webhook in each target repo (or at the org level) pointing to `https://<orchestrator-host>/api/github/webhook` with this secret. If unset, the orchestrator's webhook endpoint rejects all requests.
+    </ParamField>
+
+    ### Notifications
+
+    <ParamField body="NOTIFY_TYPE" type="string" default="slack">
+      Notification provider to use when a dispatch succeeds or fails. Accepted values: `slack` (default) or `teams`. Has no effect if `NOTIFY_WEBHOOK_URL` is not also set.
+    </ParamField>
+
+    <ParamField body="NOTIFY_WEBHOOK_URL" type="string">
+      Incoming webhook URL for the notification provider. Notifications are skipped silently if this variable is unset. For Slack, this is the URL from your **Incoming Webhooks** app configuration. For Teams, use the connector webhook URL.
+    </ParamField>
+
+    ### Runner mode
+
+    <ParamField body="RUNNER_MODE" type="string" default="default">
+      Global override for runner execution mode. Accepted values:
+      - `default` (per-mapping setting wins)
+      - `gha` (force GitHub Actions for all mappings)
+      - `fly` (force Fly Machines)
+      - `local` (force local Docker — for local development)
+      - `shadow` (dispatch via GHA and additionally boot a shadow Fly Machine for testing).
+    </ParamField>
+
+    <ParamField body="FLY_SESSIONS_APP" type="string">
+      **Required when `RUNNER_MODE=fly` or any mapping uses `executionMode: fly-machines`.**
+      
+      Fly.io app name that hosts the session runners.
+    </ParamField>
+
+    <ParamField body="FLY_SESSIONS_REGION" type="string" default="iad">
+      Default Fly.io region for new session machines.
+    </ParamField>
+
+    <ParamField body="FLY_SESSIONS_TOKEN" type="string">
+      **Required when `RUNNER_MODE=fly` or any mapping uses Fly Machines.**
+
+      Fly API token scoped to the sessions app. Used to create and destroy Fly Machines for runs. 
+    </ParamField>
+
+    <ParamField body="SESSION_IMAGE" type="string" default="ghcr.io/builddownai/ai-implement-runner:latest">
+      Default container image for Fly Machine sessions. Per-repo overrides via `.ai-implement/image.yml` take precedence.
+    </ParamField>
+
+    <ParamField body="LOCAL_RUNNER_IMAGE" type="string">
+      Container image to use when `RUNNER_MODE=local`. Built locally via `npm run build:runner:local`.
+    </ParamField>
+
+    <ParamField body="LOCAL_RUNNER_ORCHESTRATOR_URL" type="string">
+      Base URL the local Docker runner uses to call back to the orchestrator. Typically `http://host.docker.internal:8080` on macOS/Windows or the host's IP on Linux.
+    </ParamField>
+
+    <AccordionGroup>
+      <Accordion title="Runner callbacks (advanced)">
+        These configure how Fly Machine and local-Docker runners authenticate their callbacks to the orchestrator. Defaults are correct for most setups.
+
+        <ParamField body="RUNNER_CALLBACK_BASE_URL" type="string">
+          Public base URL the runner uses to call back to the orchestrator (e.g. `https://your-orchestrator.fly.dev`). Required for Fly Machines and local Docker runner modes.
+        </ParamField>
+
+        <ParamField body="RUNNER_TOKEN_SECRET" type="string">
+          Secret used to mint and validate short-lived runner-callback tokens. Required when `RUNNER_CALLBACK_BASE_URL` is set.
+        </ParamField>
+
+        <ParamField body="ORCHESTRATOR_URL" type="string">
+          Public URL of the orchestrator, used in dispatch metadata. Often the same as `RUNNER_CALLBACK_BASE_URL`.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Gap-fill trigger">
+        <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
+          Shared bearer secret for the `/trigger/gap-fill` endpoint that synced `comment-trigger.yml` workflows POST to when a user comments `/ai-implement` on a PR. If unset, the gap-fill trigger endpoint is disabled.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Reaper (operational)">
+        Controls the reconciliation sweep that cleans up stale Fly Machine sessions.
+
+        <ParamField body="REAPER_DRY_RUN" type="string" default="false">
+          When `true`, the reaper logs what it would destroy but takes no action. Useful for verifying rules before enabling live cleanup.
+        </ParamField>
+
+        <ParamField body="REAPER_ALERT_THRESHOLD" type="string">
+          Number of destructions in a 24-hour window above which the reaper emits an alert notification (via the configured `NOTIFY_TYPE`). Helps catch runaway destruction bugs.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Multi-tenant deploys">
+        Identifiers used when deploying multiple AI-Implement instances as separate Fly apps from a single repo. Most single-client deployments leave these unset.
+
+        <ParamField body="CLIENT_SLUG" type="string">
+          The client identifier matching this app's `clients/<slug>.toml` file. Used in logs and notifications to disambiguate multi-tenant deployments.
+        </ParamField>
+
+        <ParamField body="FLY_APP_NAME" type="string">
+          Fly.io app name for this instance. Read for logging only; the actual Fly deployment binds this automatically.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Claude provider forwarding (Fly Machines / local Docker only)">
+        These are read by the orchestrator and forwarded to runner sessions when `RUNNER_MODE` is `fly` or `local`.
+        
+        For GitHub Actions runner mode, the synced workflow uses its own repo secrets directly (see the **Target-repo workflow secrets** tab); these runtime values are unused.
+
+        <ParamField body="ANTHROPIC_API_KEY" type="string">
+          Anthropic API key, forwarded to the runner session as the Claude auth fallback. Required when `RUNNER_MODE=fly` or `local` and no OAuth token is configured.
+        </ParamField>
+
+        <ParamField body="CLAUDE_CODE_OAUTH_TOKEN" type="string">
+          Claude Code OAuth token, forwarded to the runner session. Preferred over `ANTHROPIC_API_KEY` when both are set.
+        </ParamField>
+      </Accordion>
+    </AccordionGroup>    
+  </Tab>
+
+  <Tab title="GitHub Actions CI (orchestrator repo)">
+    GitHub Actions secrets on the **AI-Implement orchestrator's own repo** (not target repos).
+    
+    Used by `.github/workflows/deploy-clients.yml` for auto-deploy on push to `main`. Configure under **Settings → Secrets and variables → Actions** on the orchestrator repo.
+
+    <ParamField body="FLY_API_TOKEN" type="string" required>
+      Fly API token used by `deploy-clients.yml` to run `flyctl deploy` for each client in `clients/*.toml`. 
+    </ParamField>
+
+    <Warning>
+      **Distinct from `FLY_SESSIONS_TOKEN`** (which lives in the orchestrator runtime tab and authorizes session-machine creation, not deploys).
+    </Warning>
+  </Tab>
+
+  <Tab title="Target-repo workflow secrets">
+    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml`, `claude-plan.yml`, and `comment-trigger.yml` when the workflows run.
+    
+    Configure under **Settings → Secrets and variables → Actions** on each target repo (or at the organization level so all target repos inherit them).
+
+    <Tip>
+      Several of these have **identically-named counterparts** in the orchestrator runtime tab — they're the same value, just configured separately here so the workflow files can read them directly. See [Credentials at a glance](#credentials-at-a-glance) for the full map.
+    </Tip>
+
+    ### Required
+
+    <ParamField body="AI_IMPLEMENT_APP_ID" type="string" required>
+      Numeric ID of the GitHub App AI-Implement uses to authenticate. **Same value** as the orchestrator's `GITHUB_APP_ID` — just named differently as a CI secret.
+    </ParamField>
+
+    <ParamField body="AI_IMPLEMENT_PRIVATE_KEY" type="string" required>
+      GitHub App RSA private key (PEM, with newlines escaped as `\n`). Same value as the orchestrator's `GITHUB_APP_PRIVATE_KEY`.
+    </ParamField>
+
+    ### Ticketing (one provider required)
+
+    Target repos can be mapped to Linear, Jira, or both within a project mapping. Expand the provider(s) mapped to your target repo:
+
+    <Warning>
+      For each provider mapped to a target repo, all secrets for that provider must be configured for the target repo's workflows to function.
+      
+      Secrets for a provider not in use can be safely ignored.
+    </Warning>
+
+    <AccordionGroup>
+      <Accordion title="Linear">
+        <ParamField body="LINEAR_API_KEY" type="string" required>    
+          Linear personal API key — used by the planning workflow to post structured planning comments to the Linear issue, and by the implementation workflow to update issue status and labels as the run progresses.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Jira">
+        <ParamField body="JIRA_TOKEN" type="string" required>
+          Atlassian API token (Bearer auth) — used by the planning workflow to post structured planning comments to the Jira issue, and by the implementation workflow to update the `AI-Implement Status` field as the run progresses.
+        </ParamField>
+
+        <ParamField body="JIRA_CLOUD_ID" type="string" required>
+          Jira Cloud tenant ID — required by the Atlassian REST API to route every request to your specific Jira instance (the endpoint pattern is `https://api.atlassian.com/ex/jira/{cloudId}/…`).
+        </ParamField>
+
+        <ParamField body="JIRA_SITE_URL" type="string" required>
+          User-facing Atlassian site URL, e.g. `https://acme.atlassian.net` — used to render Jira issue links in PR titles, PR bodies, and gap-analysis comments so reviewers can click straight back to the originating ticket.
+        </ParamField>
+      </Accordion>
+    </AccordionGroup>
+
+    ### Claude provider (one provider required)
+
+    <ParamField body="CLAUDE_CODE_OAUTH_TOKEN" type="string">
+      Claude Code OAuth token. Preferred over the API key when present.
+      
+      See [Anthropic provider](/providers/anthropic#choosing-between-api-key-and-oauth-token) for how to obtain via `claude setup-token`.
+    </ParamField>
+
+    <ParamField body="ANTHROPIC_API_KEY" type="string">
+      Anthropic API key. Used as a fallback when `CLAUDE_CODE_OAUTH_TOKEN` is not set.
+    </ParamField>
+
+    <ParamField body="AWS_BEDROCK_ROLE_ARN" type="string">
+      **Required only when this mapping's `provider` is `bedrock`.**
+
+      IAM role ARN trusted by GitHub OIDC, with `bedrock:InvokeModel` on your inference profile.
+    </ParamField>
+
+    ### Bedrock — repo variables (not secrets)
+
+    These are GitHub Actions **variables**, not secrets — configure under the **Variables** tab of **Settings → Secrets and variables → Actions**. Used so `/ai-implement` comment-triggered gap-fill runs route to the same provider as orchestrator-initiated runs.
+
+    <ParamField body="AI_IMPLEMENT_PROVIDER" type="string">
+      Set to `bedrock` for Bedrock-backed target repos. Leave unset for the default Anthropic API path.
+    </ParamField>
+
+    <ParamField body="AI_IMPLEMENT_AWS_REGION" type="string">
+      **Required when `AI_IMPLEMENT_PROVIDER=bedrock`.**
+      
+      AWS region for Bedrock (e.g. `us-west-2`).
+    </ParamField>
+  </Tab>
+</Tabs>
+
+## Credentials at a glance
+
+The same credential often has a different name depending on where it's used. The table below maps each logical credential to its name in each environment.
+
+| Credential | Runtime env var (orchestrator) | GitHub Actions secret (CI) | Lives on |
+|---|---|---|---|
+| GitHub App ID | `GITHUB_APP_ID` | `AI_IMPLEMENT_APP_ID` | Orchestrator + each target repo |
+| GitHub App private key | `GITHUB_APP_PRIVATE_KEY` | `AI_IMPLEMENT_PRIVATE_KEY` | Orchestrator + each target repo |
+| Linear API key | `LINEAR_API_KEY` | `LINEAR_API_KEY` | Orchestrator + Linear target repos |
+| Jira API token | `JIRA_TOKEN` | `JIRA_TOKEN` | Orchestrator + Jira target repos |
+| Jira Cloud ID | `JIRA_CLOUD_ID` | `JIRA_CLOUD_ID` | Orchestrator + Jira target repos |
+| Jira site URL | `JIRA_SITE_URL` | `JIRA_SITE_URL` | Orchestrator + Jira target repos |
+| Claude auth — preferred | `CLAUDE_CODE_OAUTH_TOKEN` | `CLAUDE_CODE_OAUTH_TOKEN` | Orchestrator (Fly/local only) + each target repo |
+| Claude auth — fallback | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_KEY` | Orchestrator (Fly/local only) + each target repo |
+| Fly token — spawn session machines | `FLY_SESSIONS_TOKEN` | — | Orchestrator only (Fly Machines runner mode) |
+| Fly token — CI auto-deploy | — | `FLY_API_TOKEN` | Orchestrator repo only |
+
+<Warning>
+  Two pairs are especially easy to confuse:
+
+  - The GitHub App credential is `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` at runtime but `AI_IMPLEMENT_APP_ID` / `AI_IMPLEMENT_PRIVATE_KEY` as CI secrets — both refer to the same app with different variable names.
+  - `FLY_SESSIONS_TOKEN` (orchestrator runtime, authorizes spawning Fly session machines) is **not** the same token as `FLY_API_TOKEN` (orchestrator-repo CI, authorizes `flyctl deploy`).
+</Warning>

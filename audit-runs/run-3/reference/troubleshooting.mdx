@@ -1,0 +1,106 @@
+---
+title: "Troubleshoot common AI-Implement problems"
+description: "Common issues when running AI-Implement — missing PRs, stuck sessions, Bedrock errors, and notification problems — with step-by-step resolution guidance."
+---
+
+This page covers the most common issues you may encounter when running AI-Implement and how to resolve them. If your issue is not listed here, check the dispatch log in the admin UI at `/api/log` and the GitHub Actions run logs in the target repo for additional detail.
+
+<AccordionGroup>
+  <Accordion title="Issue is labeled AI-Implement but no PR appears">
+    The orchestrator polls for eligible issues every 60 seconds (configurable via `POLL_INTERVAL_MS`). If a labeled issue does not produce a PR after a few minutes, check the following in order:
+
+    1. **The issue is blocked.** An issue is skipped if it has any open blocking issues linked in Linear. Resolve the blockers and the orchestrator will pick it up on the next poll.
+    2. **No team/repo mapping exists.** Open the admin UI at `/admin` and confirm that a mapping exists for the team that owns the issue. If not, add one.
+    3. **The concurrency cap is reached.** Each team mapping has a `maxInProgressAiIssues` limit (default `3`). If the team already has that many issues with `AI-Working`, new issues are held until a slot opens. You can raise the cap from the admin UI or via `PATCH /api/mappings/:teamKey`.
+    4. **The orchestrator is not running or not polling.** Health-check the orchestrator with `curl https://your-orchestrator/`. If it does not respond, check the Fly logs with `fly logs --app your-app`.
+    5. **Check the dispatch log.** The log at `/api/log` shows whether the orchestrator attempted to dispatch the issue and what the outcome was.
+  </Accordion>
+
+  <Accordion title="PR opened but gap analysis is missing">
+    The gap analysis step only runs when the implementation step succeeds **and** an open PR is found on the branch after implementation. If the gap analysis is missing:
+
+    - Confirm that the Claude run succeeded and that a PR was actually opened. Check the GitHub Actions run logs for the `claude-implement.yml` workflow.
+    - If Claude ran but did not open a PR (e.g. it pushed commits to an existing branch without creating a new PR), the gap analysis step is skipped by design.
+    - If the workflow run failed before reaching the gap analysis step, fix the underlying failure first.
+  </Accordion>
+
+  <Accordion title="provider=bedrock but workflow hard-fails with a model error">
+    When `provider` is set to `bedrock` in a team mapping, the `WORKFLOW.md` (and `PLANNING.md` if planning is enabled) in the target repo **must** have a `model:` field in the front matter set to a valid Bedrock model ID or inference-profile ARN. There is no safe default for Bedrock.
+
+    Open the target repo's `WORKFLOW.md` and add or update the front matter:
+
+    ```yaml
+    ---
+    model: anthropic.claude-sonnet-4-6-20250805-v1:0
+    ---
+    ```
+
+    Bedrock model IDs are region- and account-specific. Use the exact model ID or inference-profile ARN from your AWS Bedrock console.
+
+    <Warning>
+    Model IDs are passed through verbatim to the Claude CLI. A typo fails fast at invocation time with a clear error from Claude Code.
+    </Warning>
+  </Accordion>
+
+  <Accordion title='"AWS_BEDROCK_ROLE_ARN is not set" error in the workflow'>
+    The `claude-implement.yml` workflow requires `AWS_BEDROCK_ROLE_ARN` to be set as a repository secret when `provider=bedrock`.
+
+    Add the IAM role ARN in the target repo at **Settings → Secrets and variables → Actions → New repository secret**. The secret name must be exactly `AWS_BEDROCK_ROLE_ARN`. The role must trust the GitHub OIDC provider for the target repo and grant `bedrock:InvokeModel` on the inference profiles you need.
+
+    See the [AWS Bedrock setup instructions](/providers/aws-bedrock) for the full IAM trust policy shape.
+  </Accordion>
+
+  <Accordion title="/ai-implement comment does nothing">
+    If a `/ai-implement` comment on a PR has no effect (no reaction, no new run), check the following:
+
+    1. **`comment-trigger.yml` is not installed.** The workflow must exist at `.github/workflows/comment-trigger.yml` in the target repo. Run the sync workflow to install it: `gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo`.
+    2. **The PR was not opened by AI-Implement.** The comment trigger only works on PRs that contain the `ai-implement-meta` metadata block in the PR body. PRs created by hand do not have this block.
+    3. **Bedrock repo variables are not set.** If the repo uses Bedrock, you must set `AI_IMPLEMENT_PROVIDER=bedrock` and `AI_IMPLEMENT_AWS_REGION=<region>` as **repository variables** (not secrets) at **Settings → Secrets and variables → Actions → Variables**. Without these, comment-triggered runs default to the Anthropic provider, which may fail if the repo is configured for Bedrock.
+    4. **The commenter does not have write access.** The comment trigger checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
+    5. **The comment is not exactly `/ai-implement`.** The trigger requires the comment body to be exactly `/ai-implement` with no additional text.
+  </Accordion>
+
+  <Accordion title="Admin UI returns 401">
+    The admin API returns `401 Unauthorized` when the bearer token is missing, invalid, or expired.
+
+    - Confirm that `ADMIN_ACCESS_CODE` is set on the orchestrator. If the variable is unset, the admin UI is disabled entirely.
+    - Session tokens expire after 24 hours. Re-authenticate by `POST`ing to `/api/auth` with your access code to obtain a new token.
+    - If you are accessing the UI through a browser, clearing your browser's local storage for the admin origin and logging in again will resolve a stale token.
+  </Accordion>
+
+  <Accordion title="No notifications are being sent">
+    Notifications are silently skipped when `NOTIFY_WEBHOOK_URL` is not set. Check:
+
+    - `NOTIFY_WEBHOOK_URL` is set as a secret or environment variable on the orchestrator.
+    - `NOTIFY_TYPE` matches your provider (`slack` or `teams`). If unset, `slack` is the default.
+    - The webhook URL is valid and the destination channel or Teams connector is still active.
+
+    You can verify the webhook manually by sending a test POST from your terminal.
+  </Accordion>
+
+  <Accordion title="The same issue is being picked up repeatedly">
+    Issues are deduplicated for 24 hours after dispatch. If the same issue keeps being dispatched, check the dedup window:
+
+    - Open the admin UI and go to the Deduplication panel, or call `GET /api/dedup`.
+    - If the issue is not in the dedup window, it means the dedup entry was cleared (manually or by a session-destroy action) and the orchestrator is treating the issue as new.
+    - If the issue should not be redispatched, either remove the `AI-Implement` label from the issue in Linear or manually add it back to the dedup window (which is not currently supported through the UI — removing the label is the simpler path).
+  </Accordion>
+
+  <Accordion title="Fly Machine session stuck or not terminating">
+    If a Fly Machine session remains in the `started` state long after the implementation should have finished:
+
+    <Steps>
+      <Step title="Open the sessions panel">
+        Go to the admin UI at `/admin` and open the **Active Sessions** panel, or call `GET /api/sessions`.
+      </Step>
+      <Step title="Destroy the stuck session">
+        Click the destroy button next to the session, or call `DELETE /api/sessions/:machineId`.
+
+        Destroying the session also removes the `AI-Working` label from the associated Linear issue and clears the issue from the 24-hour dedup window.
+      </Step>
+      <Step title="Re-label the issue if needed">
+        If you want the orchestrator to retry the issue, re-apply the `AI-Implement` label in Linear. The orchestrator will pick it up on the next poll.
+      </Step>
+    </Steps>
+  </Accordion>
+</AccordionGroup>

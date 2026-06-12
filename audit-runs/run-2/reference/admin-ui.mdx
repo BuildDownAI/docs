@@ -231,28 +231,29 @@ A recent-actions table lists the latest destructions with:
   If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
 </Note>
 
-{/* AUDIT H-1: Secrets panel is a stub; per-team secrets are on Projects page, global secrets on Settings page */}
 ### Secrets
 
-<Note>
-  The standalone Secrets panel is not yet available. Until it ships, secrets are managed from two other panels:
+#### Per-team secrets
 
-  - **Per-team secrets** — open the **Projects** panel, find the project row, and click **Secrets**. This inline panel lets you view, add, and delete secrets scoped to that project.
-  - **Global machine secrets** — open the **Settings** panel and scroll to the **Global Machine Secrets** section.
-</Note>
+Each project mapping has its own per-team secrets at `/api/mappings/:teamKey/secrets`.
 
-Secrets are stored as Fly app secrets on the sessions app. Per-team secrets use the project key as a prefix — for example, a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`. Global machine secrets have no prefix and are injected into every session machine.
+Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`).
 
 <Warning>
-  Secret names must contain only letters, digits, and underscores. Global secret names must not start with any project-key prefix — those names are reserved for per-team secrets.
+  Secret names must contain only letters, digits, and underscores.
 </Warning>
 
-{/* AUDIT H-1: Settings panel also manages global machine secrets — not documented */}
+#### Global secrets
+
+Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from `/api/global-secrets`.
+
+<Warning>
+  Global secret names must not start with any project key prefix (to keep the per-team scoping unambiguous).
+</Warning>
+
 ### Settings
 
-The settings panel manages two areas:
-
-**Fly Sessions App configuration:**
+The settings panel manages orchestrator-level configuration:
 - **`flySessionsApp`** — the Fly.io app name used for Fly Machine sessions.
 - **`flySessionsRegion`** — the default region for new Fly Machine sessions.
 
@@ -261,14 +262,6 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 <Note>
   Changes to settings that differ from the running process take effect after a restart.
 </Note>
-
-**Global Machine Secrets:**
-
-The lower half of the Settings panel is the current home for global machine secrets — Fly app secrets injected into every session machine. Add secrets here instead of using the Fly CLI, and delete them here to revoke them. Values are write-only; they cannot be read back through the UI.
-
-<Warning>
-  Global secret names must not start with any project-key prefix (e.g. `ENG_`). Names matching a team prefix are reserved for per-team secrets, managed from the Projects panel.
-</Warning>
 
 ## Developer
 

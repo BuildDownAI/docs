@@ -2,6 +2,10 @@
 title: "Admin UI reference for AI-Implement"
 description: "What the AI-Implement admin dashboard lets you manage — every panel under Work, Configure, Platform, and Developer, plus the full JSON API reference."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is protected by the `ADMIN_ACCESS_CODE` environment variable — if that variable is not set, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
@@ -93,9 +97,14 @@ Per-issue rows include:
 The Projects panel is where you connect ticketing scopes (Linear teams or Jira JQL clauses) to GitHub repositories and control exactly how AI-Implement dispatches runs for each scope.
 
 <Note>
-  See [Configure project mappings](/configuration/team-repo-mappings) for the full field reference and defaults.
+  See [Configure project mappings](/latest/configuration/team-repo-mappings) for the full field reference and defaults.
 </Note>
 
+<Info>
+  **New in latest:**
+  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
+  - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
+</Info>
 
 #### Create a new project mapping
 
@@ -105,11 +114,25 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   </Step>
 
   <Step title="Fill in Ticketing System and Source">
-    Pick **Linear** or **Jira** as the ticketing system, fill in the provider-specific config (Linear team key, or Jira JQL + repo-field value), then enter **GitHub Owner** and **Repository Name** — these are the **target repository**, not the orchestrator repo.
+    Pick **Linear** or **Jira** as the ticketing system, fill in the provider-specific config (Linear team key, or Jira JQL + repo-field value), then enter the **target repo's** **GitHub Owner**, **Repository Name**, and **Default Branch**.
+    
+    <Note>
+      Default Branch is required and must match the repo's actual primary branch (commonly `main`, `master`, or `development`).
+    </Note>
   </Step>
 
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
+
+    The **Capacity** step exposes three optional run-cap fields:
+
+    | Field | Default if blank | Purpose |
+    |---|---|---|
+    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
+    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
+    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
+
+    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
@@ -137,7 +160,7 @@ A second table lists every step module with:
 - Status (`built-in` / `override` / `additive`)
 
 <Tip>
-  Useful for visualizing the extension hierarchy when you've added custom steps. See [Add custom pipeline steps](/customize/custom-steps) for the override mechanism.
+  Useful for visualizing the extension hierarchy when you've added custom steps. See [Add custom pipeline steps](/latest/customize/custom-steps) for the override mechanism.
 </Tip>
 
 ### Models & providers
@@ -231,28 +254,29 @@ A recent-actions table lists the latest destructions with:
   If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
 </Note>
 
-{/* AUDIT H-1: Secrets panel is a stub; per-team secrets are on Projects page, global secrets on Settings page */}
 ### Secrets
 
-<Note>
-  The standalone Secrets panel is not yet available. Until it ships, secrets are managed from two other panels:
+#### Per-team secrets
 
-  - **Per-team secrets** — open the **Projects** panel, find the project row, and click **Secrets**. This inline panel lets you view, add, and delete secrets scoped to that project.
-  - **Global machine secrets** — open the **Settings** panel and scroll to the **Global Machine Secrets** section.
-</Note>
+Each project mapping has its own per-team secrets at `/api/mappings/:teamKey/secrets`.
 
-Secrets are stored as Fly app secrets on the sessions app. Per-team secrets use the project key as a prefix — for example, a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`. Global machine secrets have no prefix and are injected into every session machine.
+Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`).
 
 <Warning>
-  Secret names must contain only letters, digits, and underscores. Global secret names must not start with any project-key prefix — those names are reserved for per-team secrets.
+  Secret names must contain only letters, digits, and underscores.
 </Warning>
 
-{/* AUDIT H-1: Settings panel also manages global machine secrets — not documented */}
+#### Global secrets
+
+Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from `/api/global-secrets`.
+
+<Warning>
+  Global secret names must not start with any project key prefix (to keep the per-team scoping unambiguous).
+</Warning>
+
 ### Settings
 
-The settings panel manages two areas:
-
-**Fly Sessions App configuration:**
+The settings panel manages orchestrator-level configuration:
 - **`flySessionsApp`** — the Fly.io app name used for Fly Machine sessions.
 - **`flySessionsRegion`** — the default region for new Fly Machine sessions.
 
@@ -261,14 +285,6 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 <Note>
   Changes to settings that differ from the running process take effect after a restart.
 </Note>
-
-**Global Machine Secrets:**
-
-The lower half of the Settings panel is the current home for global machine secrets — Fly app secrets injected into every session machine. Add secrets here instead of using the Fly CLI, and delete them here to revoke them. Values are write-only; they cannot be read back through the UI.
-
-<Warning>
-  Global secret names must not start with any project-key prefix (e.g. `ENG_`). Names matching a team prefix are reserved for per-team secrets, managed from the Projects panel.
-</Warning>
 
 ## Developer
 
@@ -304,7 +320,7 @@ The table shows each file's:
 <Note>
   A CI workflow (`protect-custom.yml`) flags upstream PRs that modify files under `custom/` outside the allowed paths (`custom/README.md` and `.gitkeep` files). The check is currently **advisory** — it won't hard-block a merge but will surface a warning in CI. The team has it tracked to restore as a hard fail.
   
-  See [Add custom pipeline steps](/customize/custom-steps) for the resolution rules.
+  See [Add custom pipeline steps](/latest/customize/custom-steps) for the resolution rules.
 </Note>
 
 ---
@@ -382,3 +398,33 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 <Note>
   `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
 </Note>
+
+### Runner callback endpoints
+
+Two endpoints sit outside the `/api/*` namespace and are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/runner/result` | Reports the final outcome of a dispatch — success or failure, PR URL when one was opened, error context when not. The token is **single-use**: once consumed, the dispatch result is locked in and the endpoint rejects further calls for that dispatch. |
+| `POST` | `/runner/progress` | Streams step-by-step progress updates throughout a run (each pipeline step's status, elapsed time, and any structured output). The token is **multi-use** so the runner can post many updates during a single dispatch; consumed independently of the result token. |
+
+Both endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since neither can validate tokens without it.
+
+<Note>
+  Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.
+</Note>
+
+### Webhook and trigger endpoints
+
+Two endpoints sit outside the operator API but are operator-configurable: you set their URLs and secrets in your target repos (or at the organization level), and the orchestrator validates incoming requests against those secrets. Documented here so monitoring tools, ingress rules, and integration testing can account for the routes.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments, and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
+| `POST` | `/trigger/gap-fill` | Called by `comment-trigger.yml` in your target repo when a user comments `/ai-implement` on a PR. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Dispatches a gap-fill run for the PR. Returns `503` when the secret is unset (trigger disabled). |
+
+<Warning>
+  Both endpoints require their corresponding secret to be configured on the orchestrator.
+  
+  See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) and [`GAP_FILL_TRIGGER_SECRET`](/latest/configuration/environment-variables#gap-fill-trigger)
+</Warning>

@@ -68,27 +68,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
 </Steps>
 
 <Note>
-  The `.ai-implement/image.yml` file only controls the image used for **fly-machines** sessions. For GitHub Actions execution mode, see the section below.
+  This mechanism only applies to the **fly-machines** execution mode. GitHub Actions runs use the `ubuntu-latest` runner provided by GitHub and are not affected by `.ai-implement/image.yml`.
 </Note>
 
 <Tip>
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
 </Tip>
-
-## Custom runner image for GitHub Actions mode
-
-{/* AUDIT H-2: AI_IMPLEMENT_RUNNER_IMAGE and AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES are undocumented */}
-When your target repo uses the **github-actions** execution mode, AI-Implement runs Claude inside the `ai-implement-runner` container image on each workflow run. You can override the default image using two GitHub Actions repository (or organization) variables.
-
-| Variable | Effect |
-|---|---|
-| `AI_IMPLEMENT_RUNNER_IMAGE` | Overrides the default container image for all runs in this repo or org |
-| `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` | Comma-separated registry prefixes allowed in addition to `ghcr.io/builddownai/` |
-
-Set these under **Settings → Secrets and variables → Actions → Variables** on the target repo, or at the organization level so all repos inherit them.
-
-<Warning>
-  By default, only images from `ghcr.io/builddownai/` are allowed. If your custom image is hosted under a different registry or namespace, add its prefix via `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` — for example, `ghcr.io/your-org/`. Runs that request an image from a disallowed prefix fail immediately with an error listing the accepted prefixes.
-</Warning>
-
-Build your custom image the same way as for Fly Machines: start `FROM ghcr.io/builddownai/ai-implement-runner:latest` and layer your tools on top. Push it to a registry the GitHub Actions runner can pull from, then set `AI_IMPLEMENT_RUNNER_IMAGE` to the full image reference (e.g. `ghcr.io/your-org/your-runner:v1`).

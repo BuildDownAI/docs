@@ -1,0 +1,106 @@
+---
+title: "Use a custom runner image"
+description: "How to configure a custom Docker runner image for AI-Implement — via .ai-implement/image.yml for Fly Machines execution, or the AI_IMPLEMENT_RUNNER_IMAGE variable for GitHub Actions execution."
+---
+
+{/* AUDIT H-1: GHA runs use a container image, not ubuntu-latest; add AI_IMPLEMENT_RUNNER_IMAGE docs */}
+
+If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image. The mechanism differs by execution mode — Fly Machines and GitHub Actions each have their own override path, described below.
+
+## Fly Machines execution mode
+
+Create a file at `.ai-implement/image.yml` in the default branch of your target repo:
+
+```yaml
+image: ghcr.io/your-org/your-runner:v1
+```
+
+The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+
+The default base image is:
+
+```
+ghcr.io/builddownai/ai-implement-runner:latest
+```
+
+## Building a custom image
+
+Build your image `FROM` the published base image so you inherit all the tools and configuration the default runner provides. Then add whatever your repo needs on top:
+
+```dockerfile
+FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+# Add your tools
+RUN apt-get update && apt-get install -y --no-install-recommends terraform
+```
+
+## Setup steps
+
+<Steps>
+  <Step title="Create a Dockerfile">
+    Start from the base image and add the tools or runtimes your repo requires.
+
+    ```dockerfile
+    FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+    RUN apt-get update && apt-get install -y --no-install-recommends \
+        terraform \
+        && rm -rf /var/lib/apt/lists/*
+    ```
+  </Step>
+
+  <Step title="Build and push to a public registry">
+    Build the image and push it to a registry where it can be pulled without authentication. GitHub Container Registry (`ghcr.io`) is a common choice.
+
+    ```bash
+    docker build -t ghcr.io/your-org/your-runner:v1 .
+    docker push ghcr.io/your-org/your-runner:v1
+    ```
+  </Step>
+
+  <Step title="Commit .ai-implement/image.yml">
+    Create the file in your target repo pointing at the image you just pushed:
+
+    ```yaml
+    image: ghcr.io/your-org/your-runner:v1
+    ```
+
+    Commit this to your default branch. AI-Implement reads it from there on the next run.
+  </Step>
+</Steps>
+
+<Note>
+  `.ai-implement/image.yml` is read only in **fly-machines** execution mode. GitHub Actions execution also runs Claude in a container — see [GitHub Actions execution mode](#github-actions-execution-mode) below for how to override it there.
+</Note>
+
+<Tip>
+  Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
+</Tip>
+
+## GitHub Actions execution mode
+
+When a repo mapping uses **GitHub Actions** execution, Claude still runs inside a container image — not a bare `ubuntu-latest` job. The default is the same base image as Fly Machines: `ghcr.io/builddownai/ai-implement-runner:latest`.
+
+To override the container image, set the **`AI_IMPLEMENT_RUNNER_IMAGE`** repository variable (or organization variable to apply it across all repos) to the full image reference:
+
+```
+AI_IMPLEMENT_RUNNER_IMAGE=ghcr.io/your-org/your-runner:v1
+```
+
+Build the image `FROM` the base image so you inherit all the tools and configuration Claude needs:
+
+```dockerfile
+FROM ghcr.io/builddownai/ai-implement-runner:latest
+
+RUN apt-get update && apt-get install -y --no-install-recommends terraform
+```
+
+The image must be publicly pullable.
+
+<Tip>
+  By default, only images in the `ghcr.io/builddownai/` namespace are allowed. To permit images from a different registry or namespace, set the **`AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES`** repository variable to a comma-separated list of allowed prefixes:
+
+  ```
+  AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES=ghcr.io/your-org/
+  ```
+</Tip>

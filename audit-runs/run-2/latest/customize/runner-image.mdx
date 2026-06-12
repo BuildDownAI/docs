@@ -2,6 +2,10 @@
 title: "Use a custom Fly Machine runner image"
 description: "How to point AI-Implement at a custom Docker runner image when your repo needs tools or language runtimes not included in the default Fly Machine environment."
 ---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
 
 If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image by committing `.ai-implement/image.yml` to the default branch of your target repo. When AI-Implement starts a session for your repo, it reads this file and boots the Fly Machine using your image instead of the default.
 
@@ -68,27 +72,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
 </Steps>
 
 <Note>
-  The `.ai-implement/image.yml` file only controls the image used for **fly-machines** sessions. For GitHub Actions execution mode, see the section below.
+  `.ai-implement/image.yml` works for **both** execution modes.
+  - In Fly Machines mode, the orchestrator boots the session machine directly on your image.
+  - In GitHub Actions mode, the orchestrator forwards your image to `claude-implement.yml` as the `container.image` for the workflow job.
 </Note>
 
 <Tip>
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
 </Tip>
 
-## Custom runner image for GitHub Actions mode
+## Alternative: GitHub Actions variable
 
-{/* AUDIT H-2: AI_IMPLEMENT_RUNNER_IMAGE and AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES are undocumented */}
-When your target repo uses the **github-actions** execution mode, AI-Implement runs Claude inside the `ai-implement-runner` container image on each workflow run. You can override the default image using two GitHub Actions repository (or organization) variables.
+Repos using GitHub Actions execution mode have a second image-override mechanism: the `AI_IMPLEMENT_RUNNER_IMAGE` repository variable.
 
-| Variable | Effect |
-|---|---|
-| `AI_IMPLEMENT_RUNNER_IMAGE` | Overrides the default container image for all runs in this repo or org |
-| `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` | Comma-separated registry prefixes allowed in addition to `ghcr.io/builddownai/` |
+When set, the synced `claude-implement.yml` workflow uses that image as the container for its job.
 
-Set these under **Settings → Secrets and variables → Actions → Variables** on the target repo, or at the organization level so all repos inherit them.
+```yaml
+# In .github/settings or set via the GitHub UI:
+AI_IMPLEMENT_RUNNER_IMAGE: ghcr.io/your-org/your-runner:v1
+```
 
-<Warning>
-  By default, only images from `ghcr.io/builddownai/` are allowed. If your custom image is hosted under a different registry or namespace, add its prefix via `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` — for example, `ghcr.io/your-org/`. Runs that request an image from a disallowed prefix fail immediately with an error listing the accepted prefixes.
-</Warning>
+**Resolution order** when the orchestrator dispatches a GHA-mode run:
 
-Build your custom image the same way as for Fly Machines: start `FROM ghcr.io/builddownai/ai-implement-runner:latest` and layer your tools on top. Push it to a registry the GitHub Actions runner can pull from, then set `AI_IMPLEMENT_RUNNER_IMAGE` to the full image reference (e.g. `ghcr.io/your-org/your-runner:v1`).
+1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `SESSION_IMAGE`) is forwarded as the workflow's `runner_image` input, if either is set
+2. Otherwise the workflow falls back to `AI_IMPLEMENT_RUNNER_IMAGE` if that variable is set
+3. Otherwise the built-in default (`ghcr.io/builddownai/ai-implement-runner:latest`) is used
+
+<Tip>
+  Most repos use `.ai-implement/image.yml` because it gives you one mechanism for both execution modes. Reach for `AI_IMPLEMENT_RUNNER_IMAGE` when you want an org-level default that applies across all your repos without committing a file to each one.
+</Tip>
+

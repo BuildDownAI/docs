@@ -1,0 +1,161 @@
+---
+title: "Configure project mappings"
+description: "How to configure project mappings in the admin UI, including ticketing provider, concurrency limits, execution mode, session mode, and Claude provider settings."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+A **project mapping** connects a ticketing-system scope (a Linear team or a Jira JQL clause) to a target GitHub repository and controls exactly how AI-Implement dispatches and runs implementations for that scope. Each mapping is stored in the orchestrator's SQLite database and can be created, edited, or deleted through the admin UI at `/admin`. You need at least one mapping for the orchestrator to do any work.
+
+<Tip>
+  - For Linear mappings, set `teamKey` to your Linear team's identifier — go to **Settings → Teams**, select your team, and look for the **Identifier** field (the short code shown in issue numbers, e.g. `ENG` in `ENG-42`).
+  - For Jira mappings, `teamKey` is an arbitrary identifier you choose to label the mapping (Jira has no equivalent team concept).
+</Tip>
+
+## Mapping fields
+
+<ParamField body="teamKey" type="string" required>
+  Your Linear team identifier (e.g. `ENG`). This is the short prefix shown in Linear issue identifiers. The orchestrator uses this key to match issues polled from Linear to the correct GitHub repo.
+</ParamField>
+
+<ParamField body="owner" type="string" required>
+  GitHub organization name or username that owns the target repository (e.g. `my-org`).
+</ParamField>
+
+<ParamField body="repo" type="string" required>
+  Name of the target GitHub repository (e.g. `my-api`). Combined with `owner`, this tells the orchestrator where to dispatch workflow runs.
+</ParamField>
+
+<ParamField body="workflowFile" type="string" default="claude-implement.yml">
+  Name of the GitHub Actions workflow file to dispatch for implementation runs. Change the default only if you've renamed or customized the workflow file in the target repo.
+</ParamField>
+
+<Warning>
+  Sync the workflow files into the target repo (via the **Sync workflows** action on the project's row in the admin UI) before any eligible issue is picked up, otherwise the dispatch will fail upon reaching GitHub with a 404.
+</Warning>
+
+<ParamField body="defaultBranch" type="string">
+  Branch that Claude creates pull requests against. Default: `main`. Set this to `master` or your primary branch name if it differs.
+</ParamField>
+
+<ParamField body="maxInProgressAiIssues" type="number">
+  Maximum number of AI implementation runs that can be in progress simultaneously for this team. If the limit is reached, newly eligible issues are held until a slot opens. Default: `3`.
+</ParamField>
+
+<ParamField body="executionMode" type="string">
+  Where implementation runs execute. Default: `github-actions`.
+
+  - `github-actions` — Claude runs inside a standard GitHub Actions job in the target repo. No additional infrastructure required.
+  - `fly-machines` — Claude runs inside a Fly Machine launched by the orchestrator. Requires the Fly sessions app to be configured.
+</ParamField>
+
+<ParamField body="sessionMode" type="string">
+  How the Claude session behaves during a run. Default: `autonomous`.
+
+  - `autonomous` — Claude works to completion without human interaction.
+  - `interactive` — Claude pauses and waits for feedback at decision points.
+  - `hybrid` — Claude proceeds autonomously but surfaces questions when it is uncertain.
+</ParamField>
+
+<ParamField body="machineCpus" type="number">
+  Number of CPUs allocated to the Fly Machine for each run. Only applies when `executionMode` is `fly-machines`. Default: `2`.
+</ParamField>
+
+<ParamField body="machineMemoryMb" type="number">
+  Memory allocated to the Fly Machine in megabytes. Only applies when `executionMode` is `fly-machines`. Minimum: `256`. Default: `4096`.
+</ParamField>
+
+<ParamField body="planningEnabled" type="boolean">
+  Whether to run a planning phase before implementation. When enabled, the orchestrator dispatches the planning workflow first, Claude posts structured analysis to Linear, and then implementation proceeds. Default: `true`. See [AI planning phase](/latest/configuration/planning) for details.
+</ParamField>
+
+<ParamField body="planningWorkflowFile" type="string">
+  Name of the GitHub Actions workflow file dispatched for the planning phase. Default: `claude-plan.yml`. Only relevant when `planningEnabled` is `true`.
+</ParamField>
+
+<ParamField body="autoApprovePlans" type="boolean">
+  When `true`, the orchestrator automatically triggers implementation after the planning workflow completes without waiting for human review of the plan. When `false`, a team member must manually approve the plan before implementation starts. Default: `true`.
+</ParamField>
+
+<ParamField body="extraEnv" type="object">
+  A flat key-value object of additional environment variables to inject into the Fly Machine environment at dispatch time. Only applies when `executionMode` is `fly-machines`. Example: `{"DATABASE_URL": "postgres://..."}`.
+</ParamField>
+
+<ParamField body="provider" type="string">
+  The Claude provider used by the dispatched workflow. Default: `anthropic`.
+
+  - `anthropic` — Uses the Anthropic API or Claude Code OAuth token, whichever is configured as an org secret in the target repo.
+  - `bedrock` — Uses AWS Bedrock via GitHub OIDC. Requires `awsRegion` to also be set.
+</ParamField>
+
+<ParamField body="awsRegion" type="string">
+  AWS region that hosts your Bedrock inference profile (e.g. `us-west-2`). Required when `provider` is `bedrock`. Ignored for the `anthropic` provider.
+</ParamField>
+
+<Note>
+  `provider=bedrock` is not supported when `executionMode` is `fly-machines`. Use `executionMode=github-actions` for Bedrock runs.
+</Note>
+
+<ParamField body="ticketingProvider" type="string" default="linear">
+  The ticketing system this mapping watches for issues. Accepted values: `linear` or `jira`. The orchestrator can mix Linear and Jira mappings within a single deployment; each mapping picks one provider.
+</ParamField>
+
+<ParamField body="ticketingConfig" type="object">
+  Provider-specific configuration for issue discovery. The shape depends on `ticketingProvider`:
+
+  ```json
+  // For Linear (no extra fields required):
+  { "kind": "linear" }
+
+  // For Jira:
+  {
+    "kind": "jira",
+    "jql": "project = ACME",
+    "repoFieldValue": "your-org/your-repo",
+    "statusFieldOverride": "customfield_10500",
+    "repoFieldOverride": "customfield_10501"
+  }
+  ```
+
+  The extra configuration fields for Jira are used as follows:
+  - `jql` scopes which issues this mapping watches.
+  - `repoFieldValue` is the option value of the `AI-Implement Repo` custom field.
+  - The two `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous.
+  
+  <Info>
+    See [Jira manual custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.
+  </Info>
+</ParamField>
+
+<ParamField body="paused" type="boolean" default="false">
+  When `true`, the orchestrator skips this mapping during polling — no planning runs, no implementation dispatches, no gap-fill triggers. Existing in-flight runs continue, but no new work is picked up until you unpause. 
+  
+  Useful for temporarily disabling a mapping without deleting and recreating it.
+</ParamField>
+
+<ParamField body="maxTurns" type="number" default="50">
+  Cap on Claude conversation turns per implement pass. Applies to both Anthropic and Bedrock providers.
+
+  Lower values surface decisions earlier and cut cost; higher values let Claude work through harder problems without aborting mid-pass.
+</ParamField>
+
+<ParamField body="maxIterations" type="number" default="3 (Anthropic), 2 (Bedrock)">
+  Cap on implement/review cycles in the feedback loop. The Bedrock default is lower for provider reliability.
+
+  Each iteration is one `implement` → `review` pass; the cycle stops early when review approves the diff.
+</ParamField>
+
+<ParamField body="maxJobMinutes" type="number" default="90">
+  Cap on the GitHub Actions job timeout in minutes. GitHub Actions execution mode only — Fly Machines and local Docker have no equivalent timeout.
+</ParamField>
+
+<Tip>
+  These three caps also exist as repo variables for `/ai-implement` comment-triggered gap-fill runs.:
+  - `AI_IMPLEMENT_MAX_TURNS`
+  - `AI_IMPLEMENT_MAX_ITERATIONS`
+  - `AI_IMPLEMENT_MAX_JOB_MINUTES`
+  
+  See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
+</Tip>

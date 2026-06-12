@@ -1,0 +1,199 @@
+---
+title: "Quick start: your first AI-generated PR"
+description: "Set up AI-Implement locally and get your first Claude-generated pull request in about 30 minutes, from cloning the repo to watching the PR appear."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+This guide walks you through running AI-Implement for the first time. By the end, you'll have the orchestrator running locally, a target repo connected, and a Linear issue on its way to becoming a pull request.
+
+<Note>
+  Before you start, make sure you have: a Linear or Jira workspace with API access, a GitHub App you control, a Fly.io account (for the runner), and an Anthropic API key or AWS Bedrock access. See [Prerequisites](/latest/setup/prerequisites) for details on setting each one up.
+</Note>
+
+<Steps>
+
+  <Step title="Clone the repository">
+    Clone AI-Implement and move into the project directory:
+
+    ```bash
+    git clone https://github.com/BuildDownAI/AI-Implement.git
+    cd AI-Implement
+    ```
+  </Step>
+
+  <Step title="Configure your environment">
+    Copy the example environment file and fill in your credentials:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Open `.env` and set at minimum:
+
+    <Tabs>
+      <Tab title="Linear">
+        | Variable | Description |
+        |---|---|
+        | `LINEAR_API_KEY` | Your Linear personal API key (`lin_api_...`) |
+        | `GITHUB_APP_ID` | The numeric ID of your GitHub App |
+        | `GITHUB_APP_PRIVATE_KEY` | Your GitHub App's RSA private key in PEM format, with newlines escaped as `\n` |
+      </Tab>
+
+      <Tab title="Jira">
+        | Variable | Description |
+        |---|---|
+        | `JIRA_TOKEN` | Your Atlassian API token (create from Atlassian → Security → API tokens) |
+        | `JIRA_CLOUD_ID` | Your Jira Cloud ID, from `https://<site>.atlassian.net/_edge/tenant_info` |
+        | `JIRA_SITE_URL` | Your Atlassian site URL, e.g. `https://acme.atlassian.net` |
+        | `GITHUB_APP_ID` | The numeric ID of your GitHub App |
+        | `GITHUB_APP_PRIVATE_KEY` | Your GitHub App's RSA private key in PEM format, with newlines escaped as `\n` |
+      </Tab>
+    </Tabs>
+
+    The other variables in `.env.example` are optional for a first run:
+
+    | Variable | Default | Description |
+    |---|---|---|
+    | `ADMIN_ACCESS_CODE` | _(none)_ | Password for the admin UI — UI is disabled if unset |
+    | `NOTIFY_TYPE` | `slack` | Notification provider: `slack` or `teams` |
+    | `NOTIFY_WEBHOOK_URL` | _(none)_ | Webhook URL — notifications are skipped if unset |
+    | `POLL_INTERVAL_MS` | `60000` | How often the orchestrator polls for new issues, in milliseconds |
+    | `PORT` | `8080` | HTTP port for the orchestrator and admin UI |
+    | `DEDUP_DB_PATH` | `./dedup.sqlite` | Path for the SQLite database |
+
+    <Tip>
+      Set `ADMIN_ACCESS_CODE` to a non-empty value so you can access the admin UI at the project mapping step. Without it, the UI is disabled.
+    </Tip>
+  </Step>
+
+  <Step title="Add required secrets to the target repo">
+    In the target repo's **Settings → Secrets and variables → Actions**, add these org or repo secrets:
+
+    | Secret | Value |
+    |---|---|
+    | `AI_IMPLEMENT_APP_ID` | Your GitHub App's numeric ID |
+    | `AI_IMPLEMENT_PRIVATE_KEY` | Your GitHub App's PEM private key |
+    | `ANTHROPIC_API_KEY` | Your Anthropic API key |
+    | `LINEAR_API_KEY` | Your Linear API key |
+
+    If you prefer Claude Code OAuth authentication over an API key, add `CLAUDE_CODE_OAUTH_TOKEN` instead of (or in addition to) `ANTHROPIC_API_KEY`. OAuth takes precedence.
+
+    See [Environment variables for AI-Implement](/latest/configuration/environment-variables) for more detailed information on each variable.
+  </Step>
+
+  <Step title="Install the GitHub App on the target repo">
+    In your GitHub App settings, install the app on the target repository. This gives the orchestrator permission to dispatch workflows and the workflow permission to push branches and open PRs.
+  </Step>
+
+  <Step title="Sync workflow templates to your target repo">
+    AI-Implement needs its GitHub Actions workflow files inside the target repo. Run the sync workflow to open a PR there with everything it needs:
+
+    ```bash
+    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+    ```
+    
+    <Note>
+      The target repo must have a default branch — `sync-workflow.yml` opens its PR against the existing default. If the repo is empty, push at least an initial commit first.
+    </Note>
+
+    This opens a PR in `your-org/your-repo` containing `claude-implement.yml`, `comment-trigger.yml`, `claude-plan.yml`, and a starter `WORKFLOW.md`. Merge that PR before continuing.
+
+    <Warning>
+      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
+    </Warning>
+  </Step>
+
+  <Step title="Install dependencies and start the orchestrator">
+    Install packages and start the development server:
+
+    ```bash
+    npm install
+    npm run dev
+    ```
+
+    The orchestrator starts polling for new issues and serving HTTP on port 8080. You should see log output confirming both.
+  </Step>
+
+  <Step title="Create a project mapping in the admin UI">
+    Open the admin UI at [http://localhost:8080/admin](http://localhost:8080/admin) and enter your `ADMIN_ACCESS_CODE`.
+
+    Click **Configure → Projects → + New project** to open the stepper. The stepper has 8 steps; for a first run, fill ticketing config and source, then accept defaults for the rest.
+
+    <Tabs>
+      <Tab title="Linear">
+        - **Ticketing System** — `Linear`
+        - **Ticketing Config → Linear Team Key** — your Linear team's identifier (e.g. `ENG`)
+        - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
+        - **Source → Repository Name** — the repository name (e.g. `your-repo`)
+      </Tab>
+
+      <Tab title="Jira">
+        - **Ticketing System** — `Jira`
+        - **Ticketing Config → JQL** — a JQL clause that scopes which Jira issues this project mapping watches (e.g. `project = ACME`)
+        - **Ticketing Config → Repo Field Value** — the value of the `AI-Implement Repo` field for issues belonging to this project mapping (e.g. `your-org/your-repo`)
+        - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
+        - **Source → Repository Name** — the repository name (e.g. `your-repo`)
+      </Tab>
+    </Tabs>
+
+    Click through the remaining steps (Runner, Provider, Capacity, Secrets, Review) accepting defaults, then **Create project**.
+  </Step>
+
+  <Step title="Create the trigger in your ticketing system">
+    <Tabs>
+      <Tab title="Linear">
+        In your Linear workspace, create a label named exactly `AI-Implement`. The orchestrator polls for issues with this label — the name must match.
+
+        You'll also want to create an `AI-Working` label. AI-Implement adds this to an issue while a run is in progress and removes it when the run finishes.
+      </Tab>
+
+      <Tab title="Jira">
+        Create the two required custom select fields in your Jira instance: 
+        - `AI-Implement Status` (with the accompanying status options)
+        - `AI-Implement Repo` (with one option per mapped repo).
+        
+        <Note>
+          See [Jira manual setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for the full step-by-step.
+        </Note>
+      </Tab>
+    </Tabs>
+
+  </Step>
+
+  <Step title="Mark an issue and watch the PR appear">
+    <Tabs>
+      <Tab title="Linear">
+        In your Linear workspace, open any issue in the team you mapped and add the `AI-Implement` label.
+      </Tab>
+
+      <Tab title="Jira">
+        Open any issue matched by your mapping's JQL and set its `AI-Implement Status` to `Ready`.
+        
+        <Warning>
+          Make sure the issue's `AI-Implement Repo` field is set to the same value you entered in the mapping.
+        </Warning>
+      </Tab>
+    </Tabs>
+
+    Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
+
+    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has a gap analysis comment comparing the diff to your original ticket.
+
+    <Tip>
+      If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, an incorrect ticketing API key (`LINEAR_API_KEY` or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.
+    </Tip>
+  </Step>
+
+</Steps>
+
+## Next steps
+
+Now that you have a working end-to-end flow, you can:
+
+- Edit `WORKFLOW.md` in the target repo to give Claude repo-specific instructions and set the model.
+- Enable the planning phase to have Claude post an architecture analysis and test plan to your ticketing system before implementation starts.
+- Add more mappings in the admin UI to connect additional projects to repos.
+- Deploy the orchestrator to Fly.io for a persistent, production setup.

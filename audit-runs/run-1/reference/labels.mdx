@@ -101,15 +101,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
 ## Concurrency
 
-{/* AUDIT H-3: Concurrency counts both planning-phase and implementation-phase issues for both providers */}
-The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues can be actively in progress simultaneously for that mapping. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
-
-**What counts toward the limit:**
-
-- **Linear** — issues carrying either `AI-Planning` (planning phase in progress) or `AI-Working` (implementation phase in progress). Both consume a capacity slot.
-- **Jira** — issues whose `AI-Implement Status` is `Planning` or `Implementing`. Both consume a capacity slot.
-
-If eligible issues are not being dispatched when you expect them to be, check whether planning-phase issues are consuming available capacity slots.
+The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight (`AI-Working` in Linear, or `Implementing` in Jira) simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
 
 You can change the concurrency cap for a team from the admin UI or by sending a `PATCH /api/mappings/:teamKey` request.
 
