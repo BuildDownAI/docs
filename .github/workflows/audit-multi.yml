@@ -1,0 +1,156 @@
+name: Audit AI-Implement docs vs source (multi-run synthesis)
+
+on:
+    schedule:
+        # Monthly: 1st of each month at 15:00 UTC.
+        - cron: '0 15 1 * *'
+    workflow_dispatch:
+        inputs:
+            runs:
+                description: 'Number of parallel audit runs to synthesize (default 3)'
+                type: choice
+                options:
+                    - '1'
+                    - '2'
+                    - '3'
+                    - '4'
+                    - '5'
+                default: '3'
+            branch:
+                description: 'AI-Implement branch to audit against'
+                type: choice
+                options:
+                    - main
+                    - testing
+                default: main
+            max_turns:
+                description: 'Override max-turns (blank = branch default: 75 main / 100 testing)'
+                type: string
+                required: false
+                default: ''
+            docs_branch:
+                description: 'Docs branch/ref to audit (blank = the dispatch ref, typically main)'
+                type: string
+                required: false
+                default: ''
+                  
+# strip out the default GITHUB_TOKEN scope, our own App token is minted in audit-runs
+permissions: {}
+
+jobs:
+    generate-matrix:
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.gen.outputs.matrix }}
+        steps:
+            - id: gen
+              name: Build dynamic matrix from runs input
+              run: |
+                # Default to 3 for scheduled runs (no inputs provided)
+                N="${{ github.event.inputs.runs || '3' }}"
+                IDS=$(seq 1 "$N" | jq -R -s -c 'split("\n") | map(select(length > 0) | tonumber)')
+                MATRIX_JSON="{\"run_id\":$IDS}"
+                echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
+                echo "Generated matrix for N=$N: $MATRIX_JSON"
+    
+    audit-runs:
+        needs: generate-matrix
+        strategy:
+            matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+            fail-fast: false
+        uses: ./.github/workflows/_audit-job.yml
+        with:
+            target_branch: ${{ github.event.inputs.branch || 'testing' }}
+            docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
+            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '75' || '100') }}
+            artifact_name: audit-run-${{ matrix.run_id }}
+        secrets:
+            app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
+            app_private_key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
+            claude_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+    synthesis:
+        needs: audit-runs
+        if: always() # run even if some matrix jobs failed to handle partial inputs
+        runs-on: ubuntu-latest
+
+        env:
+            TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
+            EXPECTED_RUNS: ${{ github.event.inputs.runs || '3' }}
+
+        steps:
+            - name: Mint GitHub App installation token
+              id: app-token
+              uses: actions/create-github-app-token@v3
+              with:
+                client-id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
+                private-key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
+                owner: BuildDownAI
+                repositories: docs,AI-Implement
+
+            - name: Checkout docs repo (fresh working tree — no audit edits applied)
+              uses: actions/checkout@v6
+              with:
+                ref: ${{ github.event.inputs.docs_branch || github.ref_name }}
+                token: ${{ steps.app-token.outputs.token }}
+
+            - name: Checkout target branch of AI-Implement
+              uses: actions/checkout@v6
+              with:
+                repository: BuildDownAI/AI-Implement
+                ref: ${{ env.TARGET_BRANCH }}
+                path: ai-implement
+                token: ${{ steps.app-token.outputs.token }}
+
+            - name: Download all audit-run artifacts
+              uses: actions/download-artifact@v8
+              with:
+                pattern: audit-run-*
+                path: audit-runs/
+                # merge-multiple: false (default) — each artifact in its own subdir
+
+            - name: Rename artifact dirs (audit-run-N → run-N) for cleaner synthesis paths
+              run: |
+                cd audit-runs
+                for d in audit-run-*; do
+                    mv "$d" "run-${d#audit-run-}"
+                done
+                ls -la
+
+            - name: Record expected-runs count for synthesis
+              run: |
+                mkdir -p audit-runs
+                echo "$EXPECTED_RUNS" > audit-runs/.expected-runs
+
+            - name: Install Claude Code CLI
+              timeout-minutes: 3
+              run: |
+                npm install -g @anthropic-ai/claude-code
+                claude --version
+
+            - name: Run synthesis
+              timeout-minutes: 30
+              continue-on-error: true
+              env:
+                CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+              run: |
+                claude -p "$(cat .github/synthesis-prompt.md)" \
+                    --max-turns 50 \
+                    --permission-mode acceptEdits
+
+            - name: Open synthesis PR
+              # open PR even if synthesis partially completed
+              if: always()
+              uses: peter-evans/create-pull-request@v8
+              with:
+                token: ${{ steps.app-token.outputs.token }}
+                branch: audit-multi/${{ github.run_id }}
+                base: ${{ github.event.inputs.docs_branch || github.ref_name }}
+                title: "Docs audit (multi-run synthesis): AI-Implement ${{ env.TARGET_BRANCH }} branch"
+                body-path: audit-report.md
+                draft: true
+                labels: docs-audit,docs-audit-multi
+                delete-branch: true
+                add-paths: |
+                    audit-report.md
+                    **/*.mdx
