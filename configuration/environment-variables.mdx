@@ -253,37 +253,18 @@ Pick the tab that matches where you're configuring right now.
       GitHub App RSA private key (PEM, with newlines escaped as `\n`). Same value as the orchestrator's `GITHUB_APP_PRIVATE_KEY`.
     </ParamField>
 
-    ### Ticketing (one provider required)
+    {/* AUDIT H-4: Jira target-repo ticketing secrets removed — Jira credentials are orchestrator-side only */}
+    ### Ticketing
 
-    Target repos can be mapped to Linear, Jira, or both within a project mapping. Expand the provider(s) mapped to your target repo:
+    <ParamField body="LINEAR_API_KEY" type="string" required>
+      Linear personal API key. Required when your project mapping uses Linear.
 
-    <Warning>
-      For each provider mapped to a target repo, all secrets for that provider must be configured for the target repo's workflows to function.
-      
-      Secrets for a provider not in use can be safely ignored.
-    </Warning>
+      Used by the planning workflow to fetch related issues and post structured planning comments to the Linear issue, and by the implementation workflow to update issue status and labels as the run progresses.
+    </ParamField>
 
-    <AccordionGroup>
-      <Accordion title="Linear">
-        <ParamField body="LINEAR_API_KEY" type="string" required>    
-          Linear personal API key — used by the planning workflow to post structured planning comments to the Linear issue, and by the implementation workflow to update issue status and labels as the run progresses.
-        </ParamField>
-      </Accordion>
-
-      <Accordion title="Jira">
-        <ParamField body="JIRA_TOKEN" type="string" required>
-          Atlassian API token (Bearer auth) — used by the planning workflow to post structured planning comments to the Jira issue, and by the implementation workflow to update the `AI-Implement Status` field as the run progresses.
-        </ParamField>
-
-        <ParamField body="JIRA_CLOUD_ID" type="string" required>
-          Jira Cloud tenant ID — required by the Atlassian REST API to route every request to your specific Jira instance (the endpoint pattern is `https://api.atlassian.com/ex/jira/{cloudId}/…`).
-        </ParamField>
-
-        <ParamField body="JIRA_SITE_URL" type="string" required>
-          User-facing Atlassian site URL, e.g. `https://acme.atlassian.net` — used to render Jira issue links in PR titles, PR bodies, and gap-analysis comments so reviewers can click straight back to the originating ticket.
-        </ParamField>
-      </Accordion>
-    </AccordionGroup>
+    <Note>
+      Only Linear requires a secret on the target repo. Jira status updates are handled entirely by the orchestrator service — no Jira secrets need to be added to target repos. See the **Orchestrator runtime** tab for where `JIRA_TOKEN`, `JIRA_CLOUD_ID`, and `JIRA_SITE_URL` are configured.
+    </Note>
 
     ### Claude provider (one provider required)
 

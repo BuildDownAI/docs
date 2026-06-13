@@ -67,9 +67,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
   </Step>
 </Steps>
 
+{/* AUDIT H-3: GHA runner image customization incorrectly described as impossible */}
 <Note>
-  This mechanism only applies to the **fly-machines** execution mode. GitHub Actions runs use the `ubuntu-latest` runner provided by GitHub and are not affected by `.ai-implement/image.yml`.
+  `.ai-implement/image.yml` is read only in **fly-machines** execution mode. It has no effect on GitHub Actions runs.
 </Note>
+
+<Tip>
+  For GitHub Actions execution mode, you can customize the runner image by setting the `AI_IMPLEMENT_RUNNER_IMAGE` repository or organization variable to any publicly pullable image built `FROM ghcr.io/builddownai/ai-implement-runner:latest`.
+
+  By default, only images under the `ghcr.io/builddownai/` prefix are accepted. To allow images from your own registry, also set `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` to a comma-separated list of extra allowed prefixes (e.g. `ghcr.io/your-org/`). Images from disallowed registries cause the workflow to fail immediately with a clear error message.
+</Tip>
 
 <Tip>
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.

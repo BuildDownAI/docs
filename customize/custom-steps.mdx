@@ -19,7 +19,16 @@ You can either **replace** a built-in step or **introduce an entirely new one** 
 
 ### Built-in step IDs
 
-The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
+{/* AUDIT H-2: Eight steps listed as overridable cannot be overridden via custom/steps/ */}
+The step IDs below appear across the orchestrator's pipelines. Only the **autonomous pipeline** steps support overrides via `custom/steps/`: `clone`, `install`, `feedback-loop`, `preflight`, `push`, and `post-push-review`.
+
+Steps that run in the **planning phase** (`architecture-analysis`, `cross-story-context`, `explore-codebase`, `post-to-ticketing`, `test-plan`, `work-unit-decomposition`) and the two sub-steps inside the implementation loop (`implement`, `review`) are documented here for reference. Placing a file with one of these names in `custom/steps/` has no effect.
+
+<Warning>
+  To customize `implement` or `review` behavior, override `feedback-loop` instead — it runs both as sub-steps internally.
+
+  Planning-phase steps cannot be overridden individually via `custom/steps/`.
+</Warning>
 
 <AccordionGroup>
   <Accordion title="architecture-analysis">
@@ -125,6 +134,7 @@ The `moduleId` field is what connects a pipeline step to your custom step module
 
 Here is an example that adds a custom step to the pipeline:
 
+{/* AUDIT H-1: Custom pipeline YAML example uses invalid type for feedback-loop step */}
 ```yaml
 # custom/pipelines/autonomous.yml
 id: autonomous
@@ -135,7 +145,8 @@ steps:
   - id: install
     type: install
   - id: feedback-loop
-    type: feedback-loop
+    type: custom
+    moduleId: feedback-loop
   - id: preflight
     type: preflight
   - id: push
@@ -143,7 +154,7 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the known built-in step IDs (`install`, `feedback-loop`, `preflight`, `push`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+  Step input wiring and `skip` predicates for the step IDs `install`, `feedback-loop`, `preflight`, and `push` are applied automatically — your YAML only needs to declare `id`, `type`, and optional `moduleId`. Use `type: custom, moduleId: feedback-loop` for the feedback-loop step; `feedback-loop` is not a recognized type value.
 </Tip>
 
 ## custom/providers/ — reserved
