@@ -9,6 +9,15 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 This changelog tracks notable changes between AI-Implement's current stable release and the in-development `latest` version. Each entry has its own anchor link — pages elsewhere in this version may link you directly to a relevant entry below. Use the version dropdown at the top of the page to switch back to the stable docs.
 
+{/* AUDIT H-1: branchPrefix mapping field undocumented — changelog entry */}
+<Update label="Per-project branch prefix" description="Available in latest" tags={["Configuration", "Pipeline"]}>
+  Project mappings now carry an optional **Branch Prefix** field, configurable per project in the admin UI's Projects panel. When set, the prefix is prepended as a path segment to every implementation branch the orchestrator opens for that project — for example, prefix `team-a` turns `ai-implement/PROJ-123-add-login` into `team-a/ai-implement/PROJ-123-add-login`.
+
+  The prefix applies only to orchestrator-initiated runs. Comment-triggered (`/ai-implement`) gap-fill runs commit to the existing PR branch and are unaffected. Re-sync `claude-implement.yml` before setting a prefix; GitHub rejects dispatches with unexpected inputs otherwise.
+
+  See [Project mappings](/latest/configuration/team-repo-mappings#param-branch-prefix) for the field reference and validation rules.
+</Update>
+
 <Update label="Planning workflow is ticketing-agnostic" description="Available in latest" tags={["Pipeline", "Internal"]}>
   `claude-plan.yml` no longer contains Linear-specific code paths. Planning context (parent issue, sibling issues, dependencies) arrives as `workflow_dispatch` inputs, fetched by the orchestrator from whichever ticketing system the project mapping uses.
 

@@ -254,7 +254,17 @@ A recent-actions table lists the latest destructions with:
   If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
 </Note>
 
+{/* AUDIT H-6: Platform → Secrets panel described as full panel but is actually a stub; secrets management is in Settings and Projects */}
 ### Secrets
+
+<Note>
+  A dedicated Secrets panel is on the roadmap but is not yet available. In the meantime, secrets are managed in two places:
+
+  - **Global secrets** (injected into every Fly Machine session) — managed in the **Settings panel** described below.
+  - **Per-team secrets** (scoped to a single project's machines) — accessible from each project row in **Configure → Projects** via the **Secrets** button on that row.
+</Note>
+
+The API endpoints for secrets are available today regardless of the UI state:
 
 #### Per-team secrets
 
@@ -268,23 +278,28 @@ Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secr
 
 #### Global secrets
 
-Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from `/api/global-secrets`.
+Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from `/api/global-secrets`, and are also accessible through the **Settings panel → Global Machine Secrets** card.
 
 <Warning>
   Global secret names must not start with any project key prefix (to keep the per-team scoping unambiguous).
 </Warning>
 
+{/* AUDIT H-5: Settings section missing Global Machine Secrets feature */}
 ### Settings
 
-The settings panel manages orchestrator-level configuration:
-- **`flySessionsApp`** — the Fly.io app name used for Fly Machine sessions.
-- **`flySessionsRegion`** — the default region for new Fly Machine sessions.
+The settings panel manages orchestrator-level configuration in two areas.
 
-Both values can be overridden at the environment level via `FLY_SESSIONS_APP` and `FLY_SESSIONS_REGION`. When an env override is active, the UI shows the runtime value alongside the database value and flags that the env var is winning.
+**Fly Sessions App** — `flySessionsApp` and `flySessionsRegion` control which Fly.io app hosts session machines and which region they default to. Both can be overridden at the environment level via `FLY_SESSIONS_APP` and `FLY_SESSIONS_REGION`. When an env override is active, the UI shows the runtime value alongside the stored value and flags that the env var is winning.
 
 <Note>
-  Changes to settings that differ from the running process take effect after a restart.
+  Changes to `flySessionsApp` or `flySessionsRegion` that differ from the running process take effect after a restart.
 </Note>
+
+**Global Machine Secrets** — the Settings panel also hosts a Global Machine Secrets card where you can list, add, and delete Fly app secrets that are injected into every session machine as environment variables. Values are write-only — they cannot be read back through the UI after being set. Use this for credentials that every session needs regardless of which project dispatched the run (for example, a shared `ANTHROPIC_API_KEY` for all Fly Machines runs).
+
+<Warning>
+  Global secret names must not start with any project team-key prefix — that prefix namespace is reserved for per-team secrets, and mixing them causes scoping ambiguity.
+</Warning>
 
 ## Developer
 

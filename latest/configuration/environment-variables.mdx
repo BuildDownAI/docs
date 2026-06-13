@@ -352,6 +352,38 @@ Pick the tab that matches where you're configuring right now.
     <Note>
       See [Use a custom Fly Machine runner image](/latest/customize/runner-image#alternative-github-actions-variable) for the resolution order between this variable and other override mechanisms.
     </Note>
+
+    {/* AUDIT H-2: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES undocumented */}
+    <ParamField body="AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES" type="string">
+      Comma-separated list of additional image-reference prefixes the GitHub Actions workflow accepts for the runner container. By default only images under `ghcr.io/builddownai/` are allowed.
+
+      Set this when your custom runner image lives outside that namespace (your own GHCR org, another registry, etc.). Example: `ghcr.io/your-org/` permits any image under that namespace.
+
+      Images that do not match any allowed prefix cause the workflow to fail at the image-validation step, listing the accepted prefixes in the error. Fly Machines mode has no equivalent allowlist.
+    </ParamField>
+
+    ### Runner host
+
+    {/* AUDIT H-3: AI_IMPLEMENT_RUNNER_LABEL undocumented */}
+    <ParamField body="AI_IMPLEMENT_RUNNER_LABEL" type="string" default="ubuntu-latest">
+      GitHub Actions runner label for the implementation job. Default GitHub-hosted runners are 2 vCPU; switching to a larger runner (for example `ubuntu-latest-4-cores`) roughly halves wall-clock time for repos whose test suites are CPU-bound.
+
+      Set as a repository or organization variable (Settings → Secrets and variables → Actions → Variables), the same way as `AI_IMPLEMENT_PROVIDER`. Takes effect after the target repo has re-synced `claude-implement.yml`.
+
+      <Warning>
+        Write access to this variable lets the holder redirect the implementation job to an arbitrary runner, including self-hosted runners that can access the job's secrets. Treat it with the same trust model as any org variable that controls the runner host.
+      </Warning>
+    </ParamField>
+
+    {/* AUDIT H-4: AI_IMPLEMENT_LOG_LEVEL undocumented */}
+    <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
+      Controls how much the runner logs during an implement pass.
+
+      - `summary` (default) — logs a single result line per Claude invocation: outcome, turns, duration, cost, and token counts.
+      - `stream` — additionally logs each per-turn tool call (name and truncated input) as it happens.
+
+      Applies to both orchestrator-initiated and `/ai-implement` comment-triggered runs after the target repo has re-synced `claude-implement.yml`. This is a repo or org variable, not a per-project setting in the admin UI.
+    </ParamField>
   </Tab>
 </Tabs>
 

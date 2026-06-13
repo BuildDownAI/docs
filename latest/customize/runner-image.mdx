@@ -81,6 +81,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
 </Tip>
 
+{/* AUDIT H-2: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES undocumented — GHA allowlist blocks non-builddownai images */}
+<Warning>
+  Images from registries other than `ghcr.io/builddownai/` are blocked by default.
+
+  The workflow validates the resolved image against an allowlist before booting the container. The default allowlist contains only `ghcr.io/builddownai/` — images from any other registry, including your own organization's GHCR namespace, fail this check with an "image not allowed" error.
+
+  To allow additional registries, set `AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES` as a repository or organization variable (Settings → Secrets and variables → Actions → Variables). Use a comma-separated list of registry prefixes:
+
+  ```
+  AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES=ghcr.io/your-org/
+  ```
+
+  Multiple prefixes: `ghcr.io/org-a/,ghcr.io/org-b/`. This variable applies to both the `.ai-implement/image.yml` path and the `AI_IMPLEMENT_RUNNER_IMAGE` variable path.
+</Warning>
+
 ## Alternative: GitHub Actions variable
 
 Repos using GitHub Actions execution mode have a second image-override mechanism: the `AI_IMPLEMENT_RUNNER_IMAGE` repository variable.
