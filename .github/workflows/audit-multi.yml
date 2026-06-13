@@ -154,3 +154,5 @@ jobs:
                 add-paths: |
                     audit-report.md
                     **/*.mdx
+                    :!audit-runs/**
+                    :!ai-implement/**
