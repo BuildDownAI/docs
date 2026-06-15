@@ -175,8 +175,13 @@ Pick the tab that matches where you're configuring right now.
       </Accordion>
 
       <Accordion title="Gap-fill trigger">
+        {/* AUDIT H-2: GAP_FILL_TRIGGER_SECRET docs incorrectly state that comment-trigger.yml calls /trigger/gap-fill; the current workflow runs the pipeline directly without calling this endpoint */}
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
-          Shared bearer secret for the `/trigger/gap-fill` endpoint that synced `comment-trigger.yml` workflows POST to when a user comments `/ai-implement` on a PR. If unset, the gap-fill trigger endpoint is disabled.
+          Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint. If unset, this endpoint is disabled and returns `503`.
+
+          <Warning>
+            The current synced `comment-trigger.yml` runs the implementation pipeline directly inside a GitHub Actions job — it does **not** call this endpoint. You do not need this secret for `/ai-implement` comment-triggered gap-fill runs.
+          </Warning>
         </ParamField>
       </Accordion>
 
@@ -352,6 +357,19 @@ Pick the tab that matches where you're configuring right now.
     <Note>
       See [Use a custom Fly Machine runner image](/latest/customize/runner-image#alternative-github-actions-variable) for the resolution order between this variable and other override mechanisms.
     </Note>
+
+    {/* AUDIT H-1: AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES missing — GHA allowlist blocks custom images from non-builddownai registries */}
+    <ParamField body="AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES" type="string">
+      Comma-separated list of image-reference prefixes allowed in addition to the built-in `ghcr.io/builddownai/` prefix.
+
+      Required when using a runner image from a registry outside `ghcr.io/builddownai/`. Without it, both `claude-implement.yml` and `comment-trigger.yml` reject the image at startup and fail with an error that lists the current allowed prefixes.
+
+      Examples:
+      - Single registry namespace: `ghcr.io/your-org/`
+      - Multiple registries: `ghcr.io/your-org/,registry.example.com/`
+
+      This variable only affects GitHub Actions execution mode — Fly Machines mode has no prefix restriction.
+    </ParamField>
   </Tab>
 </Tabs>
 

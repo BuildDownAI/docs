@@ -421,7 +421,7 @@ Two endpoints sit outside the operator API but are operator-configurable: you se
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments, and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
-| `POST` | `/trigger/gap-fill` | Called by `comment-trigger.yml` in your target repo when a user comments `/ai-implement` on a PR. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Dispatches a gap-fill run for the PR. Returns `503` when the secret is unset (trigger disabled). |
+| `POST` | `/trigger/gap-fill` | {/* AUDIT H-2: /trigger/gap-fill description corrected — current comment-trigger.yml does not call this endpoint */} Orchestrator-side gap-fill trigger endpoint, secured by `GAP_FILL_TRIGGER_SECRET`. Returns `503` when the secret is unset. The current synced `comment-trigger.yml` runs gap-fill passes directly via GitHub Actions and does **not** call this endpoint. |
 
 <Warning>
   Both endpoints require their corresponding secret to be configured on the orchestrator.
