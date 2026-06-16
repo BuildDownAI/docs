@@ -107,4 +107,16 @@ This page covers the most common issues you may encounter when running AI-Implem
       </Step>
     </Steps>
   </Accordion>
+
+  <Accordion title="Reached max turns">
+    A run ended with `Reached max turns` before finishing its work.
+
+    - **What a turn is.** Each run gives Claude a fixed number of *turns*, where one turn is a single step in its work loop — it reads or edits something, runs a command, then decides what to do next. The run stops once it uses up the budget, even if the work is not done. The default budget is 50 turns.
+    - **Why it happened.** The task needed more steps than the budget allowed — usually a large issue, or one that touches many files, though a run can also use up turns retrying the same thing.
+    - **How to fix it.** Raise the budget with the **Max Turns** field on the project mapping (Configure → Projects in the admin UI). For `/ai-implement` comment-triggered runs, set `AI_IMPLEMENT_MAX_TURNS` on the target repository instead. A higher budget lets one run do more work before it stops.
+
+    <Tip>
+      If runs keep hitting the cap after you raise it, the issue is likely too big for a single run — split it into smaller issues. A higher budget also means longer, costlier runs, so raise it deliberately rather than setting it very high by default.
+    </Tip>
+  </Accordion>
 </AccordionGroup>
