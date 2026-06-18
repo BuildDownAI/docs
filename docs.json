@@ -80,7 +80,8 @@
                   "reference/labels",
                   "reference/gap-analysis",
                   "reference/notifications",
-                  "reference/troubleshooting"
+                  "reference/troubleshooting",
+                  "reference/error-codes"
                 ]
               }
             ]
@@ -144,6 +145,7 @@
                   "latest/reference/gap-analysis",
                   "latest/reference/notifications",
                   "latest/reference/troubleshooting",
+                  "latest/reference/error-codes",
                   "latest/changelog"
                 ]
               }
