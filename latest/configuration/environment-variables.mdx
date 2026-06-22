@@ -352,6 +352,29 @@ Pick the tab that matches where you're configuring right now.
     <Note>
       See [Use a custom Fly Machine runner image](/latest/customize/runner-image#alternative-github-actions-variable) for the resolution order between this variable and other override mechanisms.
     </Note>
+
+    {/* AUDIT H-2: AI_IMPLEMENT_RUNNER_LABEL and AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES missing from target-repo variables */}
+    <ParamField body="AI_IMPLEMENT_RUNNER_LABEL" type="string" default="ubuntu-latest">
+      Overrides the `runs-on` label for the `implement` job. GitHub-hosted runners default to 2 vCPU. The test suites Claude runs are CPU-bound and scale roughly linearly with core count, so a 4-core label roughly halves the job's wall-clock time.
+
+      Example: set to `ubuntu-latest-4-cores` to use GitHub's 4-core hosted runner.
+
+      <Warning>
+        This variable controls which runner pool the job executes on. An org variable granting broad access could allow the holder to retarget the job to a self-hosted runner that sees the job's secrets — treat it with the same care as any `runs-on` configuration.
+      </Warning>
+
+      GitHub Actions execution mode only. Takes effect after the target repo has re-synced `claude-implement.yml`.
+    </ParamField>
+
+    <ParamField body="AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES" type="string">
+      Comma-separated list of additional container image prefixes allowed for runner image overrides. The workflow automatically allows images under `ghcr.io/builddownai/` and under the repo owner's own `ghcr.io/<owner>/` namespace — you only need this variable when using an image from a third-party registry.
+
+      Example: `ghcr.io/acme/` permits any image published under that organization.
+
+      Multiple prefixes: `ghcr.io/acme/,ghcr.io/vendor/`
+
+      When an image override (from `.ai-implement/image.yml` or `AI_IMPLEMENT_RUNNER_IMAGE`) doesn't match any allowed prefix, the dispatch fails with a clear error listing the allowed prefixes.
+    </ParamField>
   </Tab>
 </Tabs>
 

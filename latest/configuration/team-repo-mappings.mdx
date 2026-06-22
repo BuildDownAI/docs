@@ -159,3 +159,18 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   
   See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
 </Tip>
+
+{/* AUDIT H-1: branchPrefix field missing from project mappings */}
+<ParamField body="branchPrefix" type="string">
+  An optional path segment prepended to every implementation branch name for this mapping.
+
+  When set to `pr`, a branch that would normally be named `ai-implement/ENG-42-add-login` becomes `pr/ai-implement/ENG-42-add-login`. Leave blank (the default) for no prefix.
+
+  Each `/`-separated segment must start with a letter or digit and may contain letters, digits, `.`, `_`, and `-`. Segments containing `..` or `//` are rejected, and the total prefix length must not exceed 64 characters.
+
+  <Warning>
+    The prefix only applies to orchestrator-dispatched runs. `/ai-implement` comment-triggered gap-fill runs always commit to the PR's existing branch, unaffected by this setting.
+
+    The target repo must have re-synced `claude-implement.yml` before you set a prefix — GitHub rejects dispatches that include unrecognized workflow inputs.
+  </Warning>
+</ParamField>
