@@ -176,7 +176,9 @@ Pick the tab that matches where you're configuring right now.
 
       <Accordion title="Gap-fill trigger">
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
-          Shared bearer secret for the `/trigger/gap-fill` endpoint that synced `comment-trigger.yml` workflows POST to when a user comments `/ai-implement` on a PR. If unset, the gap-fill trigger endpoint is disabled.
+          Bearer secret that authenticates calls to the orchestrator's `/trigger/gap-fill` endpoint. When called with an issue key and PR number, the endpoint dispatches an implementation run targeting the existing PR.
+
+          The standard synced `comment-trigger.yml` runs the pipeline directly and does not call this endpoint. Set this only if you have a custom integration that triggers gap-fill runs programmatically rather than through the GitHub comment workflow. If unset, the endpoint returns `501`.
         </ParamField>
       </Accordion>
 
@@ -255,33 +257,23 @@ Pick the tab that matches where you're configuring right now.
 
     ### Ticketing (one provider required)
 
-    Target repos can be mapped to Linear, Jira, or both within a project mapping. Expand the provider(s) mapped to your target repo:
-
-    <Warning>
-      For each provider mapped to a target repo, all secrets for that provider must be configured for the target repo's workflows to function.
-      
-      Secrets for a provider not in use can be safely ignored.
-    </Warning>
+    Target repos can be mapped to Linear, Jira, or both within a project mapping.
 
     <AccordionGroup>
       <Accordion title="Linear">
-        <ParamField body="LINEAR_API_KEY" type="string" required>    
-          Linear personal API key — used by the planning workflow to post structured planning comments to the Linear issue, and by the implementation workflow to update issue status and labels as the run progresses.
+        <ParamField body="LINEAR_API_KEY" type="string" required>
+          **Required for Linear-backed target repos.**
+
+          Linear personal API key — used by the planning workflow to fetch related issues and post structured planning comments, and by the implementation workflow to update issue status and labels as the run progresses.
         </ParamField>
       </Accordion>
 
       <Accordion title="Jira">
-        <ParamField body="JIRA_TOKEN" type="string" required>
-          Atlassian API token (Bearer auth) — used by the planning workflow to post structured planning comments to the Jira issue, and by the implementation workflow to update the `AI-Implement Status` field as the run progresses.
-        </ParamField>
+        <Tip>
+          Jira credentials are **not** configured in target-repo secrets. The implementation and planning workflows send results back to the orchestrator over a callback, and the orchestrator applies Jira status updates using its own credentials.
 
-        <ParamField body="JIRA_CLOUD_ID" type="string" required>
-          Jira Cloud tenant ID — required by the Atlassian REST API to route every request to your specific Jira instance (the endpoint pattern is `https://api.atlassian.com/ex/jira/{cloudId}/…`).
-        </ParamField>
-
-        <ParamField body="JIRA_SITE_URL" type="string" required>
-          User-facing Atlassian site URL, e.g. `https://acme.atlassian.net` — used to render Jira issue links in PR titles, PR bodies, and gap-analysis comments so reviewers can click straight back to the originating ticket.
-        </ParamField>
+          Configure `JIRA_TOKEN`, `JIRA_CLOUD_ID`, and `JIRA_SITE_URL` on the orchestrator service — see **Orchestrator runtime → Ticketing → Jira** in this page.
+        </Tip>
       </Accordion>
     </AccordionGroup>
 
@@ -328,9 +320,9 @@ The same credential often has a different name depending on where it's used. The
 | GitHub App ID | `GITHUB_APP_ID` | `AI_IMPLEMENT_APP_ID` | Orchestrator + each target repo |
 | GitHub App private key | `GITHUB_APP_PRIVATE_KEY` | `AI_IMPLEMENT_PRIVATE_KEY` | Orchestrator + each target repo |
 | Linear API key | `LINEAR_API_KEY` | `LINEAR_API_KEY` | Orchestrator + Linear target repos |
-| Jira API token | `JIRA_TOKEN` | `JIRA_TOKEN` | Orchestrator + Jira target repos |
-| Jira Cloud ID | `JIRA_CLOUD_ID` | `JIRA_CLOUD_ID` | Orchestrator + Jira target repos |
-| Jira site URL | `JIRA_SITE_URL` | `JIRA_SITE_URL` | Orchestrator + Jira target repos |
+| Jira API token | `JIRA_TOKEN` | `JIRA_TOKEN` | Orchestrator only |
+| Jira Cloud ID | `JIRA_CLOUD_ID` | `JIRA_CLOUD_ID` | Orchestrator only |
+| Jira site URL | `JIRA_SITE_URL` | `JIRA_SITE_URL` | Orchestrator only |
 | Claude auth — preferred | `CLAUDE_CODE_OAUTH_TOKEN` | `CLAUDE_CODE_OAUTH_TOKEN` | Orchestrator (Fly/local only) + each target repo |
 | Claude auth — fallback | `ANTHROPIC_API_KEY` | `ANTHROPIC_API_KEY` | Orchestrator (Fly/local only) + each target repo |
 | Fly token — spawn session machines | `FLY_SESSIONS_TOKEN` | — | Orchestrator only (Fly Machines runner mode) |

@@ -19,7 +19,15 @@ You can either **replace** a built-in step or **introduce an entirely new one** 
 
 ### Built-in step IDs
 
-The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
+The orchestrator runs two pipelines — an implementation pipeline and a planning pipeline. Only the **implementation pipeline** checks `custom/steps/` for overrides at runtime. The six overridable IDs are: `clone`, `install`, `feedback-loop`, `preflight`, `push`, `post-push-review`.
+
+<Warning>
+  Placing a file in `custom/steps/` for any other step ID listed below has no effect. The planning pipeline steps (`architecture-analysis`, `explore-codebase`, `test-plan`, `work-unit-decomposition`, `cross-story-context`, `post-to-ticketing`) do not currently check for custom overrides — a matching file in `custom/steps/` is silently ignored for those IDs.
+
+  `implement` and `review` run as inner passes of the `feedback-loop` step and cannot be individually overridden. To change their behavior, override the `feedback-loop` step itself.
+</Warning>
+
+All step IDs are listed below for reference.
 
 <AccordionGroup>
   <Accordion title="architecture-analysis">
