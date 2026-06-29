@@ -1,9 +1,6 @@
 name: Audit AI-Implement docs vs source
 
 on:
-    schedule:
-        # Weekly: Mondays at 14:00 UTC
-        - cron: '0 14 * * 1'
     workflow_dispatch:
         inputs:
             branch:
@@ -81,5 +78,4 @@ jobs:
                 labels: docs-audit
                 delete-branch: true
                 add-paths: |
-                    audit-report.md
                     **/*.mdx

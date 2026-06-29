@@ -2,8 +2,8 @@ name: Audit AI-Implement docs vs source (multi-run synthesis)
 
 on:
     schedule:
-        # Monthly: 1st of each month at 15:00 UTC.
-        - cron: '0 15 1 * *'
+        # Bi-weekly: 1st and 15th of each month at 15:00 UTC.
+        - cron: '0 15 1,15 * *'
     workflow_dispatch:
         inputs:
             runs:
@@ -138,6 +138,19 @@ jobs:
                     --max-turns 50 \
                     --permission-mode acceptEdits
 
+            - name: Archive synthesis report (keep newest 5)
+              if: always()
+              shell: bash
+              run: |
+                mkdir -p .github/audit-archive
+                if [ -f audit-report.md ]; then
+                    cp audit-report.md ".github/audit-archive/synthesis-$(date -u +%F)-${{ github.run_id }}.md"
+                fi
+                # date-prefixed filenames sort chronologically; drop everything past the newest 5
+                ls -1 .github/audit-archive/synthesis-*.md 2>/dev/null | sort | head -n -5 | xargs -r rm --
+                echo "=== Archive contents ==="
+                ls -1 .github/audit-archive/
+
             - name: Open synthesis PR
               # open PR even if synthesis partially completed
               if: always()
@@ -152,7 +165,7 @@ jobs:
                 labels: docs-audit,docs-audit-multi
                 delete-branch: true
                 add-paths: |
-                    audit-report.md
                     **/*.mdx
+                    .github/audit-archive/**
                     :!audit-runs/**
                     :!ai-implement/**

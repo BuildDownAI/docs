@@ -68,7 +68,6 @@ Follow this sequence:
 
 4. **For HIGH findings only**, apply documentation edits to the in-scope files per the File-scope section:
    - Use `Edit` to modify the relevant `.mdx` file. Verify the file path matches the audit target branch's allowed scope (main → root only; testing → `./latest/**` only).
-   - Immediately above each edited block, insert an MDX comment marker: `{/* AUDIT H-<n>: <one-line description> */}` where `<n>` is the finding index in your report.
    - Keep edits surgical. No refactoring or scope expansion beyond what the finding addresses.
    - **Reader-focused** — no source paths, `file:line` citations, internal jargon (TypeScript type-system terms like enum/interface field names, Mintlify component names in prose, meta-mechanic explanations), or any vocabulary that requires a reader to know the implementation tooling. The reader doesn't know the codebase. See `audit-reference.md` Examples D–F.
    - **Component choice by semantic intent** — `<Note>` for neutral important facts, `<Tip>` for operator-benefit/relief callouts, `<Warning>` for blocking issues, `<Info>` for permissions/context, `<Check>` for success states. Don't default to `<Note>`. See `audit-reference.md`.
@@ -102,10 +101,10 @@ Follow this sequence:
 
    ## Edits applied (HIGH findings)
 
-   | Docs file | Findings | Markers |
-   |---|---|---|
-   | <docs path> | H-1, H-3 | `{/* AUDIT H-1: */}`, `{/* AUDIT H-3: */}` |
-   | <docs path> | H-2 | `{/* AUDIT H-2: */}` |
+   | Docs file | Findings |
+   |---|---|
+   | <docs path> | H-1, H-3 |
+   | <docs path> | H-2 |
 
    ## HIGH-priority finding details
 
@@ -136,7 +135,7 @@ Follow this sequence:
    The two top-level tables (Findings at a glance + Edits applied) are the reviewer's primary scan surface. The per-finding sections are deliberately compact (1–2 sentences each) — full detail lives in the source citation, not the report.
 
 6. **Quality checklist** — verify before you finish:
-   - [ ] Every HIGH finding has a corresponding MDX edit with the `{/* AUDIT H-<n>: */}` comment marker above the change
+   - [ ] Every HIGH finding has a corresponding MDX edit
    - [ ] Every finding (HIGH and MEDIUM) cites a real `file:line` from `./ai-implement/`
    - [ ] No edits were made to `./ai-implement/` source files
    - [ ] No new docs files were created
