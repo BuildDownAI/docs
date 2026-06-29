@@ -84,7 +84,6 @@ Number deduped findings from H-1, M-1, L-1 onward in the unioned report. Origina
 
 Apply the selected edit per HIGH finding to the FRESH docs checkout at `./` (NOT the artifact directories under `./audit-runs/`). For each applied edit:
 - Use `Edit` to write the change in-place at the canonical docs file path
-- Rewrite the `{/* AUDIT H-<n>: */}` marker to use the unioned canonical N from Step e (not the original per-run N)
 - Keep the surrounding context unchanged
 
 ### Step g — Write the unioned report
@@ -210,6 +209,19 @@ If incomplete (K < N planned), the title line is:
     finding's edits span multiple separate MDX files, show the most-informative
     single hunk per candidate (not every file).
 
+    **Nested-fence rule:** when an edit candidate itself contains a fenced code
+    block (an MDX example with its own ``` fence), wrap that candidate in a
+    4-backtick outer fence (````) so the inner ``` doesn't close the block early and
+    garble the rendered report. Candidates without an inner fence stay at the normal
+    3 backticks. Example of the 4-backtick case:
+
+    ````mdx
+    Trigger a run by commenting on the PR:
+    ```bash
+    /ai-implement retry the failing check
+    ```
+    ````
+
 The decisions-log section at the bottom is the audit trail. Reviewers can see WHY a finding came out the way it did when synthesis made a judgment call. Without it, a reviewer questioning "should H-1 really have used run-2's edit?" has no way to retrace.
 
 ### Step h — Quality checklist
@@ -217,7 +229,6 @@ The decisions-log section at the bottom is the audit trail. Reviewers can see WH
 Before finishing, verify:
 - [ ] `./audit-report.md` exists at repo root with the structure above
 - [ ] Every HIGH finding has a corresponding MDX edit applied to the fresh docs checkout
-- [ ] Every applied edit's `{/* AUDIT H-<n>: */}` marker uses the canonical unioned N (not the original per-run N)
 - [ ] Every finding has a populated `Runs` column (e.g., `3/3`, `2/3`, `1/3`)
 - [ ] Every finding cites a real source `file:line` from `./ai-implement/`
 - [ ] No new docs files were created (synthesis only consolidates existing audit edits)

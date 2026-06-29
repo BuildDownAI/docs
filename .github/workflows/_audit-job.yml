@@ -83,10 +83,7 @@ jobs:
                     case "$f" in
                         ai-implement/*) continue ;;
                     esac
-                    if [ -f "$f" ]; then
-                        mkdir -p "artifact-staging/$(dirname "$f")"
-                        cp "$f" "artifact-staging/$f"
-                    fi
+                    [ -f "$f" ] && cp --parents "$f" artifact-staging/
                 done
                 echo "=== Staged artifact contents ==="
                 find artifact-staging -type f | sort
