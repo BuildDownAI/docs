@@ -5,3 +5,8 @@
 # Draft content
 drafts/
 *.draft.mdx
+WORKFLOW.md
+PLANNING.md
+custom/
+.github/
+.ai-implement/
