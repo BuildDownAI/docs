@@ -234,7 +234,7 @@ A recent-actions table lists the latest destructions with:
 ### Secrets
 
 <Note>
-  The dedicated Secrets sidebar item is not yet active — it shows a placeholder page. Secret management is split between the [Settings panel](#settings) and the [Projects panel](#projects-team-repo-mappings).
+  The dedicated Secrets sidebar item is not yet active — it shows a placeholder page. Secret management is split between the [Settings panel](#settings) and the [Projects panel](#projects-team%2Frepo-mappings).
 </Note>
 
 - **Per-team secrets** — each project row in the Projects panel has a **Secrets** button that opens an inline form. Secrets are stored as Fly app secrets prefixed by the team key (for example, a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`). Secret names must contain only letters, digits, and underscores.
@@ -258,7 +258,7 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 
 **Global Machine Secrets**
 
-The Settings panel is also where you manage global Fly app secrets — values injected into every session machine as environment variables. Use this for credentials shared across all projects. Per-project secrets are managed from each project row in the [Projects panel](#projects-team-repo-mappings).
+The Settings panel is also where you manage global Fly app secrets — values injected into every session machine as environment variables. Use this for credentials shared across all projects. Per-project secrets are managed from each project row in the [Projects panel](#projects-team%2Frepo-mappings).
 
 Global secret names must contain only letters, digits, and underscores, and must not start with any project key prefix.
 
