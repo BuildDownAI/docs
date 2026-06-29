@@ -1,0 +1,2 @@
+# Documentation site — no package.json, so skip the dependency-install step.
+packageManager: none

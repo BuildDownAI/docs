@@ -2,14 +2,14 @@
 # Claude model used for implementation. Passed through verbatim to
 # `claude-code --model`, so any ID your configured provider accepts is fine.
 # Examples:
-#   Anthropic API / OAuth: claude-sonnet-4-6, claude-opus-4-7, claude-haiku-4-5-20251001
+#   Anthropic API / OAuth: claude-sonnet-4-6, claude-opus-4-8, claude-haiku-4-5-20251001
 #   AWS Bedrock:           anthropic.claude-sonnet-4-6-20250805-v1:0
 #                          or an inference-profile ARN (arn:aws:bedrock:...)
 # The default below works for the Anthropic provider. If this repo's mapping
 # is switched to provider=bedrock in the orchestrator admin UI, replace this
 # with a Bedrock model ID — the workflow will hard-fail otherwise, since
 # Bedrock IDs are account- and region-specific and have no safe default.
-model: claude-sonnet-4-6
+model: claude-opus-4-8  # Opus for documentation writing quality
 
 # Optional: model used for the post-PR gap-analysis step. Pass through as above.
 # Default (if omitted): claude-haiku-4-5-20251001 for anthropic, same as `model`
@@ -174,21 +174,98 @@ ${PLANNING_CONTEXT}
 
 ## Repo context
 
-<!-- Customise this section for your repo -->
+This is the **AI-Implement documentation site** — Mintlify MDX, not application code. There is no
+build, no `package.json`, and no test suite; "implementing" an issue means editing `.mdx` docs pages.
 
-- **Stack:** _e.g. Node.js 20, TypeScript, PostgreSQL, Vitest_
-- **Run tests:** _e.g. `npm test`_
-- **Run linting / formatting:** _e.g. `npm run lint`_
-- **Key conventions:** _e.g. follow patterns in existing files; no new dependencies without good reason_
+- **Site:** Mintlify. Config and navigation live in `docs.json`. Pages are `.mdx` (a few `.md`).
+- **Versioning (site-wide):** two versions share the repo —
+  - **stable** (the default): root-level pages — `introduction` / `quickstart` / `how-it-works` plus
+    the `setup/`, `configuration/`, `providers/`, `customize/`, `reference/` directories.
+  - **latest** (in-development): the same tree mirrored under `latest/`, plus `latest/changelog.mdx`.
+- **Choosing which version to edit** (in priority order):
+  1. **Explicit in the issue** — the issue names a version ("latest" / "stable"), links or names a
+     page path (a `latest/…` path → latest; a root path like `reference/…` → stable), or cites an
+     AI-Implement branch: **`testing` → latest**, **`main` / "released" → stable**.
+  2. **Otherwise, let the content decide** — find the affected page/section in the repo:
+     - only under `latest/` → edit latest; only at root → edit stable;
+     - present in **both** trees and the change is true in both (a correction / clarification) →
+       edit **both**, so the versions don't drift.
+  3. **Last resort** — if still ambiguous, edit **stable** (what most readers see) AND state the
+     assumption in `ai-output/comments/01-summary.md` so the reviewer can redirect.
+- **Out of bounds:** do not touch `.github/` (the docs-audit workflows are a separate system),
+  `WORKFLOW.md` / `PLANNING.md` / `custom/` / `.mintignore` (AI-Implement plumbing), or `docs.json`
+  unless the issue is explicitly about navigation.
+- **No build/test, and no Mintlify CLI.** `mint` is **not** installed in this environment and you
+  don't need it — verify links and anchors by reading the target page (does the heading / anchor
+  exist?), not by running a command. Don't install it; `mint broken-links` / `mint validate` are for
+  a human to run locally.
+
+---
+
+## Documentation standards
+
+Write the docs the way a reader uses them, not the way the code is built.
+
+**Reader-focused.** Describe user-relevant behavior in user-relevant language. Do NOT put into the
+published `.mdx`: source file paths or `file:line` references, internal/code identifiers (type,
+interface, function, or variable names), internal state names, or Mintlify component names spelled
+out in prose ("uses the Note component"). The reader doesn't have the codebase open.
+
+**Pick the component by intent** (don't default to `<Note>`):
+- `<Note>` — a neutral but important fact
+- `<Tip>` — an operator benefit, or a "you can skip the hard way" relief
+- `<Warning>` — a blocking issue; something breaks if ignored
+- `<Info>` — permissions or context-setting
+- `<Check>` — a success state / confirmation
+
+**Keep it scannable.** A `<ParamField>` (or any component body) covering what-it-does +
+accepted-values + default + when-to-use should be 2–4 short paragraphs with blank lines between them,
+not one dense block. Use bullet lists for parallel items (accepted values, file lists).
+
+**Cross-links and anchors.** Verify the destination anchor exists before linking. Slug rules:
+- `##`/`###`/`####` headings, `<Accordion title="…">`, `<Update label="…">` → `#<slugified-text>`
+- `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix)
+- `<Step title="…">` and `<Tab title="…">` generate **no anchor** — link to the page instead
+- A `/` inside a heading stays in the slug and must be URL-encoded as `%2F` in the link
+  (e.g. a "Projects (team/repo mappings)" heading → `#projects-team%2Frepo-mappings`)
+- On a `latest/…` page, every cross-link to another docs page must include the `/latest/` prefix —
+  in **both** `](/path)` Markdown links **and** `href="/path"` component props (Cards, Buttons). An
+  unprefixed link on a `latest/` page silently sends the reader to the stable copy instead.
+
+**Internal-only changes.** If a change has no reader-visible effect (e.g. an internal refactor that
+doesn't alter what an operator does), it belongs in `latest/changelog.mdx` as an `<Update>` entry —
+not scattered across pages; on stable it's usually nothing at all.
+
+**Avoid:**
+- Source paths or `file:line` in the published docs.
+- Internal jargon (code/type/state names; component names in prose).
+- An unprefixed cross-link on a `latest/` page.
+- Linking to a `<Step>` / `<Tab>` title (no anchor exists).
+- Inventing pages or documenting features that don't exist — every claim must be true of the product.
+- Cosmetic rewrites of text that's already correct, or changes to pages the issue didn't ask about (see the Scope section).
+
+---
+
+## Scope
+
+Create or update **only** the documentation this issue describes. This is a targeted edit, **not a
+broad audit** — do not reword text that already reads correctly, reformat or reorganize sections, or
+"fix drift" in pages the issue doesn't mention, and don't expand beyond what's asked.
+
+If you notice an unrelated problem while working, **don't fix it** — add a short "Noticed (out of
+scope)" note to your `ai-output/comments/01-summary.md` summary so a human can triage it.
 
 ---
 
 ## Quality checklist
 
-Before opening or updating the PR, verify:
+Before finishing, verify:
 
-- [ ] Tests pass
-- [ ] No lint errors. Build completes successfully
-- [ ] No debug output, `console.log`, or commented-out code left in
-- [ ] PR description explains the approach, not just the what
-- [ ] No unrelated files changed
+- [ ] Edits limited to what the issue asked — no unrelated pages, no rewording of text that's already correct
+- [ ] Correct version target (stable root vs `latest/**`), per the version rule above
+- [ ] Reader-focused: no source paths / `file:line` / internal or code names / component names in prose
+- [ ] Components chosen by intent (not defaulting to `<Note>`)
+- [ ] Cross-links resolve: anchor exists; `#param-` prefix where needed; `/latest/` prefix on any
+      `latest/` page (both `](…)` links and `href=` props); no links to `<Step>` / `<Tab>` titles
+- [ ] New or edited pages have `title` (and ideally `description`) frontmatter
+- [ ] Summary written to `ai-output/comments/01-summary.md`

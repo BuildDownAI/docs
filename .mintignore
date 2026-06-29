@@ -5,6 +5,8 @@
 # Draft content
 drafts/
 *.draft.mdx
+
+# AI-Implement files
 WORKFLOW.md
 PLANNING.md
 custom/
