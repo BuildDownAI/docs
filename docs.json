@@ -40,6 +40,12 @@
                 ]
               },
               {
+                "group": "Skills",
+                "pages": [
+                  "skills/installation"
+                ]
+              },
+              {
                 "group": "Setup",
                 "pages": [
                   "setup/prerequisites",
@@ -101,6 +107,12 @@
                   "latest/introduction",
                   "latest/quickstart",
                   "latest/how-it-works"
+                ]
+              },
+              {
+                "group": "Skills",
+                "pages": [
+                  "latest/skills/installation"
                 ]
               },
               {

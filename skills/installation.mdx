@@ -1,0 +1,60 @@
+---
+title: "Install the BuildDown skills"
+description: "Install the BuildDown plugin for Claude Code — a suite of planning-time skills that help you shape issues before AI-Implement turns them into pull requests."
+---
+
+The **BuildDown skills** are a [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin that runs alongside you while you plan work. Both the marketplace and the plugin are named `builddown`, and the suite bundles the planning-time `bd-` skills:
+
+- `bd-build-down` — break a goal down into well-scoped, implementable issues.
+- `bd-smoke-jumper` — investigate and triage problems before they become tickets.
+
+These skills run inside your own Claude Code session at planning time. They're separate from the AI-Implement orchestrator, which is what later picks up a marked issue and opens the pull request.
+
+## Prerequisites
+
+You need [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Everything below runs through its plugin manager.
+
+## Install
+
+The plugin manager accepts two command forms:
+
+- `claude plugin …` — works in the Claude Code app **or** a terminal.
+- `/plugin …` — the slash form, available only in the Claude Code CLI.
+
+The steps below use the `claude plugin …` form. Add the marketplace, then install the plugin from it:
+
+```bash
+claude plugin marketplace add BuildDownAI/skills
+claude plugin install builddown@builddown
+```
+
+This tracks the default branch of the marketplace.
+
+<Warning>
+  If the install reports "no plugin found", the default branch hasn't been promoted yet. Use the pre-release install pinned to the in-development branch instead — see the [latest version of this page](/latest/skills/installation).
+</Warning>
+
+## Restart Claude Code
+
+Restart Claude Code so it loads the newly installed plugin. The `bd-` skills aren't available until you do.
+
+## Verify
+
+Confirm the plugin is registered:
+
+```bash
+claude plugin list
+```
+
+<Check>
+  `builddown` appears in the list, and the `bd-` skills are available in your session.
+</Check>
+
+## Updating
+
+To pick up new versions, refresh the marketplace and update the plugin, then restart Claude Code:
+
+```bash
+claude plugin marketplace update builddown
+claude plugin update builddown
+```
