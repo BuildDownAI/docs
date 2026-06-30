@@ -12,3 +12,9 @@ PLANNING.md
 custom/
 .github/
 .ai-implement/
+
+# Agent steering files (read by Claude Code / the AI-Implement runner / BuildDown skills).
+# Mintlify currently 404s these as routes, but that handling is undocumented — pin them
+# explicitly so a future Mintlify change can't silently publish them.
+AGENTS.md
+CLAUDE.md
