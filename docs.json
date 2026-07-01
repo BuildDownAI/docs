@@ -40,12 +40,6 @@
                 ]
               },
               {
-                "group": "Skills",
-                "pages": [
-                  "skills/installation"
-                ]
-              },
-              {
                 "group": "Setup",
                 "pages": [
                   "setup/prerequisites",
@@ -110,12 +104,6 @@
                 ]
               },
               {
-                "group": "Skills",
-                "pages": [
-                  "latest/skills/installation"
-                ]
-              },
-              {
                 "group": "Setup",
                 "pages": [
                   "latest/setup/prerequisites",
@@ -159,6 +147,12 @@
                   "latest/reference/troubleshooting",
                   "latest/reference/error-codes",
                   "latest/changelog"
+                ]
+              },
+              {
+                "group": "Skills",
+                "pages": [
+                  "latest/skills/installation"
                 ]
               }
             ]
