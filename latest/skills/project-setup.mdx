@@ -16,11 +16,7 @@ You run it yourself, inside your Claude Code session, as a one-time step per pro
 Run `bd-project-setup` **once per project**, right after you've installed the skills and restarted Claude Code. Until it's done, the other `bd-` skills have nothing pointing them at your tracker.
 
 <Info>
-  This assumes the skills are already installed and your session has been reloaded. If you haven't done that yet, start with installation.
-
-  <Card title="Install BuildDown skills" icon="download" href="/latest/skills/installation">
-    Add the plugin and reload your session first.
-  </Card>
+  This assumes the skills are already installed and your session reloaded. If not, [start with installation](/latest/skills/installation) first.
 </Info>
 
 ## Running it
@@ -73,7 +69,12 @@ Running the skill leaves your project with three things in place:
 
 - **One tracker per project.** A project is bound to Linear **or** Jira, never both at once. Choose the tracker that owns this project's issues.
 
-- **Name the connection per workspace when you run more than one.** If you set up several projects against different workspaces, give each connection a distinct, workspace-specific name so they don't collide.
+- **Give each connection a distinct name.** Claude Code stores one login per connection name,
+  and a login points at a single workspace. The name is only a label: a connection can reach the whole workspace you authorize it against, and the team it files into is a separate binding within `CLAUDE.md`.
+
+  <Warning>
+    If two projects share a name, they share a login under that name — so authorizing the connection for one project's workspace silently switches the other project onto it too.
+  </Warning>
 
 - **Run it once per project.** Setup is a one-time step. You don't repeat it for everyday work — only when you're onboarding a new project.
 
