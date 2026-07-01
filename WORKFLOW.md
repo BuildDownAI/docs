@@ -219,6 +219,17 @@ out in prose ("uses the Note component"). The reader doesn't have the codebase o
 - `<Info>` — permissions or context-setting
 - `<Check>` — a success state / confirmation
 
+**Use `<Steps>` for ordered procedures.** Any sequence where each action depends on the previous one
+completing — install → restart → verify, a setup walkthrough — goes in a `<Steps>` block, not a bare
+numbered list or a run of separate paragraphs. The reader is following along as they go; the
+do-this-then-that structure is the point.
+
+**Enumerate completely.** When the issue asks you to list a set — every command, every item in a
+suite — list the **whole** set, not a representative two or three. If the set differs by version (more
+items in the in-development version than the released one), list each version's actual set on its own
+page. If you can't determine the full set from the issue or the repo, list what you can and flag the
+gap in your summary — don't silently truncate.
+
 **Keep it scannable.** A `<ParamField>` (or any component body) covering what-it-does +
 accepted-values + default + when-to-use should be 2–4 short paragraphs with blank lines between them,
 not one dense block. Use bullet lists for parallel items (accepted values, file lists).
@@ -244,6 +255,8 @@ not scattered across pages; on stable it's usually nothing at all.
 - Linking to a `<Step>` / `<Tab>` title (no anchor exists).
 - Inventing pages or documenting features that don't exist — every claim must be true of the product.
 - Cosmetic rewrites of text that's already correct, or changes to pages the issue didn't ask about (see the Scope section).
+- Rendering a dependent, ordered procedure as a bare numbered list instead of `<Steps>`.
+- Listing a partial or "representative" subset when the issue asks to enumerate a full set.
 
 ---
 
@@ -270,3 +283,4 @@ Before finishing, verify:
       `latest/` page (both `](…)` links and `href=` props); no links to `<Step>` / `<Tab>` titles
 - [ ] New or edited pages have `title` (and ideally `description`) frontmatter
 - [ ] Summary written to `ai-output/comments/01-summary.md`
+- [ ] Ordered/dependent procedures use `<Steps>`; any "list the set" is complete (or flags the gap), correct per version

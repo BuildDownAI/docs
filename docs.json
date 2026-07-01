@@ -148,6 +148,12 @@
                   "latest/reference/error-codes",
                   "latest/changelog"
                 ]
+              },
+              {
+                "group": "Skills",
+                "pages": [
+                  "latest/skills/installation"
+                ]
               }
             ]
           }

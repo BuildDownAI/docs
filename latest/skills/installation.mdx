@@ -1,0 +1,85 @@
+---
+title: "Install BuildDown skills"
+description: "Install the BuildDown plugin for Claude Code — a suite of planning-time skills that help you shape issues before AI-Implement turns them into pull requests."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+**BuildDown skills** are a [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin that runs alongside you while you plan work. Both the marketplace and the plugin are named `builddown`, and the suite bundles the planning-time `bd-` skills.
+
+These skills run inside your own Claude Code session at planning time. They're separate from the AI-Implement orchestrator, which is what later picks up a marked issue and opens the pull request.
+
+<Note>
+  You need [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Everything below runs through its plugin manager.
+</Note>
+
+## Installation
+
+<Steps>
+  <Step title="Add and install the plugin">
+    The plugin manager accepts two command forms:
+
+    - `claude plugin …` — works in the Claude Code app **or** a terminal.
+    - `/plugin …` — the slash form, available only in the Claude Code CLI.
+
+    The steps below use the `claude plugin …` form. Add the marketplace pinned to the in-development `testing` branch, then install the plugin from it:
+
+    ```bash
+    claude plugin marketplace add BuildDownAI/skills@testing
+    claude plugin install builddown@builddown
+    ```
+
+    <Info>
+      The `@testing` suffix pins the marketplace to the pre-release branch, so you get the in-development skills.
+      
+      This is the only branch that currently supports plugin installation.
+    </Info>
+  </Step>
+
+  <Step title="Reload the session">
+    Restart Claude Code so it loads the newly installed plugin. The `bd-` skills aren't available until you do.
+  </Step>
+
+  <Step title="Verify plugin registration">
+    Confirm the plugin is registered:
+
+    ```bash
+    claude plugin list
+    ```
+
+    <Check>
+      `builddown` appears in the list, and the `bd-` skills are available in your session.
+    </Check>
+  </Step>
+</Steps>
+
+## Updating
+
+To pick up new versions, refresh the marketplace and update the plugin, then restart Claude Code:
+
+```bash
+claude plugin marketplace update builddown
+claude plugin update builddown
+```
+
+## Available skills
+| Skill | What it does |
+| --- | --- |
+| `bd-project-setup` | Wires a project to its tools once — creates the tracker connection, authorizes it, and **records the settings every other skill reads**. |
+| `bd-build-up` | Turns an objective or design into a **sequenced, dependency-aware set of tracker issues**, shown for your review before anything is filed. |
+| `bd-mega-build-up` | A deeper `bd-build-up` for larger work — pressure-tests the design first, then files issues alongside attached design and plan documents. |
+| `bd-summit-push` | Optimizes a set of planned issues — their order, dependencies, and wording — for the best chance of one-shot success through the pipeline. |
+| `bd-build-down` | Drives open pull requests to merge: reviews each against its gap analysis, resolves what's missing, and lands the ones that are ready. |
+| `bd-super-build-down` | A faster, hands-off `bd-build-down` for many pull requests at once or unattended runs. |
+| `bd-smoke-jumper` | Smoke-tests a pull request's preview deploy, posts a verdict, and files issues for anything that fails. |
+| `bd-belay-on` | Coordinates handing a task off to another tool and folding the results back in cleanly. |
+
+## Next step
+
+With the skills installed, set up your project so the `bd-` skills know where your issues and repo live.
+
+<Card title="Project setup" icon="folder-gear" href="/latest/skills/project-setup">
+  Point the BuildDown skills at your tracker and repository.
+</Card>
