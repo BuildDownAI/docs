@@ -343,6 +343,16 @@ Pick the tab that matches where you're configuring right now.
       Setting these here only affects `/ai-implement` comment-triggered runs. For orchestrator-initiated runs, set per-project caps in the admin UI under **Configure → Projects**. See [Project mappings](/latest/configuration/team-repo-mappings) for that side.
     </Note>
 
+    ### Skills repo
+
+    <ParamField body="AI_IMPLEMENT_SKILLS_REPO" type="string">
+      Mirrors the project mapping's **Skills Repo** field for `/ai-implement` comment-triggered gap-fill runs. Accepts `owner/repo` shorthand or a full `https://` git URL; SSH URLs are not supported.
+    </ParamField>
+
+    <Note>
+      Setting this here only affects `/ai-implement` comment-triggered runs. For orchestrator-initiated runs, set the skills repo per project in the admin UI under **Configure → Projects**. See [Project mappings](/latest/configuration/team-repo-mappings) for that side.
+    </Note>
+
     ### Runner image
 
     <ParamField body="AI_IMPLEMENT_RUNNER_IMAGE" type="string">

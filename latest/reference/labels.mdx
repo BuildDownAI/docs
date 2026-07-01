@@ -20,6 +20,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `AI-Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes |
     | `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
     | `Ready for Review` | Orchestrator (auto) | When a PR is opened after implementation | Not removed automatically |
+    | *(Done state)* | Orchestrator (auto) | When the PR merges | — (terminal) |
 
     ## Label details
 
@@ -48,6 +49,10 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     ### Ready for Review
 
     `Ready for Review` is applied after the implementation workflow opens a PR. The orchestrator also posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
+
+    ### Done (on PR merge)
+
+    When the PR merges, the orchestrator moves the issue to your team's Done state and removes the `Ready for Review` label — no action needed from you. This is detected on the next poll cycle at the latest; a configured GitHub webhook makes it near-instant. It runs even for paused project mappings.
   </Tab>
 
   <Tab title="Jira">
@@ -62,6 +67,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `Plan Approved` | Orchestrator (auto) | When planning succeeds | When implementation is dispatched |
     | `Implementing` | Orchestrator (auto) | When the implementation run is dispatched | When the run completes or fails |
     | `PR Ready` | Orchestrator (auto) | When a PR is opened after implementation | Not changed automatically |
+    | `Merged` | Orchestrator (auto) | When the PR merges | Not changed automatically |
     | `Planning Failed` | Orchestrator (auto) | When the planning run errors | Not changed automatically |
     | `Implementation Failed` | Orchestrator (auto) | When the implementation run errors | Not changed automatically |
 
@@ -100,6 +106,10 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     ### Planning Failed / Implementation Failed
 
     Set when the corresponding run errors out. The orchestrator posts a comment on the issue describing the failure. Neither status is cleared automatically — review the failure and either re-run by moving the status back to `Ready` (for planning) or `Plan Approved` (for implementation), or close out the issue.
+
+    ### Merged
+
+    When the PR merges, the orchestrator sets `AI-Implement Status` to `Merged` — no action needed from you, beyond adding `Merged` as an option on the field during setup (see [Jira: manual custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup)). This is detected on the next poll cycle at the latest; a configured GitHub webhook makes it near-instant. It runs even for paused project mappings.
   </Tab>
 </Tabs>
 
@@ -111,9 +121,13 @@ You can change the concurrency cap for a team from the admin UI or by sending a 
 
 ## /ai-implement comment trigger
 
-Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must be exactly `/ai-implement` (no extra text) and must be posted by a collaborator with write access to the repo.
+Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must start with `/ai-implement` and must be posted by a collaborator with write access to the repo.
 
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
+
+<Tip>
+  Add text after `/ai-implement` to give Claude a specific instruction for that pass — for example, `/ai-implement focus only on the validation logic, skip the tests`. The instruction takes precedence over the default gap-fill behavior wherever the two conflict. A bare `/ai-implement` with nothing after it runs the standard gap-fill pass.
+</Tip>
 
 <Tip>
 The `/ai-implement` trigger requires `comment-trigger.yml` to be installed in the target repo. This file is synced automatically when you run the sync workflow.

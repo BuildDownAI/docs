@@ -43,6 +43,12 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     Override if you need custom checkout logic (e.g. shallow clones, submodule init).
   </Accordion>
 
+  <Accordion title="install-skills">
+    Clones the project's configured skills repo into the workspace and makes its skills available to Claude for the run. Automatically skipped when the project mapping has no skills repo configured.
+
+    Override to change how skills are fetched or installed — for example, to pull from a private mirror or apply additional filtering before Claude sees them.
+  </Accordion>
+
   <Accordion title="install">
     Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
     
@@ -165,7 +171,7 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
 </Tip>
 
 ## Repo-level configuration file

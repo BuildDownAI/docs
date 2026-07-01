@@ -75,8 +75,12 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   Name of the GitHub Actions workflow file dispatched for the planning phase. Default: `claude-plan.yml`. Only relevant when `planningEnabled` is `true`.
 </ParamField>
 
-<ParamField body="autoApprovePlans" type="boolean">
-  When `true`, the orchestrator automatically triggers implementation after the planning workflow completes without waiting for human review of the plan. When `false`, a team member must manually approve the plan before implementation starts. Default: `true`.
+<ParamField body="autoApprovePlans" type="boolean" default="true">
+  Reserved for a future manual-approval gate between planning and implementation.
+
+  <Warning>
+    This field is not yet wired up — implementation currently starts automatically after planning completes regardless of this setting. See [AI planning phase](/latest/configuration/planning#how-the-planning-phase-works) for the current behavior.
+  </Warning>
 </ParamField>
 
 <ParamField body="extraEnv" type="object">
@@ -159,3 +163,25 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   
   See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
 </Tip>
+
+<ParamField body="branchPrefix" type="string">
+  A path segment prepended to the branch name AI-Implement creates for a run — for example, a prefix of `pr` turns `ai-implement/PROJ-123-add-login` into `pr/ai-implement/PROJ-123-add-login`.
+
+  Leave blank for no prefix (the default).
+
+  Each `/`-separated segment must start with a letter or digit, and may otherwise contain only letters, digits, `.`, `_`, and `-` (no `..` or `//`), up to 64 characters. Invalid values are rejected when you save the mapping.
+
+  <Note>
+    Only the initial implementation run picks up the prefix. A gap-fill run triggered by commenting `/ai-implement` on an existing PR commits to that PR's branch as-is and is unaffected.
+  </Note>
+</ParamField>
+
+<ParamField body="skillsRepo" type="string">
+  A Git repository to clone at the start of each run and install as Claude Code skills, given as `owner/repo` shorthand or a full Git URL.
+
+  Leave blank to skip this step (the default). Skills are copied from any of these locations in the cloned repo, one level deep, and made available to Claude for the run: `<name>/SKILL.md`, `skills/<name>/SKILL.md`, or `.claude/skills/<name>/SKILL.md`.
+
+  <Note>
+    `/ai-implement` comment-triggered gap-fill runs don't read this field — set the `AI_IMPLEMENT_SKILLS_REPO` repo variable on the target repo to mirror it for those runs. See [environment variables](/latest/configuration/environment-variables).
+  </Note>
+</ParamField>

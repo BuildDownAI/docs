@@ -145,6 +145,7 @@ AI-Implement requires two custom select fields in your Jira instance: one for th
     - `PR Ready`
     - `Planning Failed`
     - `Implementation Failed`
+    - `Merged`
 
     {/* <Info>
       The field also supports an optional eighth option, `Awaiting Approval`, as a manual park-state. The orchestrator never sets it itself, but you can move issues into it yourself to pause auto-dispatch (the orchestrator's poll filter accepts only `Ready` and `Plan Approved`). Add it now if you want that option available; skip it for a first run.
@@ -180,12 +181,16 @@ Once the PR appears, you can:
 
 - Review the gap analysis comment that Claude posts automatically, showing what was implemented and what (if anything) still needs attention
 - Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch
-- Merge the PR to close the issue.
+- Merge the PR.
 
 <Tip>
-  **Linear** closes issues automatically since the PR body includes a `Fixes` reference to the issue identifier.
+  AI-Implement marks the originating issue complete for you once the PR merges — no automation to set up on your end.
 
-  **Jira** users can create the same effect via Jira automation if desired.
+  **Linear**: the issue moves to the team's Done state and the `Ready for Review` label is removed.
+
+  **Jira**: `AI-Implement Status` is set to `Merged` — add that as an option on the field if you haven't already (see [Jira: manual custom-field setup](#jira-manual-custom-field-setup) above).
+
+  Detection runs on the next poll cycle at the latest; a configured GitHub webhook makes it near-instant. Either way, no action is required from you.
 </Tip>
 
 <Columns cols={2}>

@@ -90,7 +90,11 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
     
-    If `autoApprovePlans` is enabled (the default), implementation starts automatically after planning. If disabled, a human must approve before implementation proceeds.
+    Implementation starts automatically as soon as planning succeeds.
+
+    <Note>
+      A manual-approval gate before implementation is planned but not yet built — the `autoApprovePlans` mapping field is reserved for it and currently has no effect.
+    </Note>
 
     <Info>
       Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so Claude has full context when it starts writing code.
@@ -188,7 +192,29 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       See [Repo-level configuration file](/latest/customize/custom-steps#repo-level-configuration-file).
     </Tip>
   </Step>
+
+  <Step title="Issue closes out automatically when the PR merges">
+    Once your team merges the PR, AI-Implement marks the originating issue complete on its own — nothing to configure.
+
+    <Tabs>
+      <Tab title="Linear">
+        The issue moves to your team's Done state and the `Ready for Review` label is removed.
+      </Tab>
+
+      <Tab title="Jira">
+        `AI-Implement Status` is set to `Merged`.
+      </Tab>
+    </Tabs>
+
+    This is checked on every poll cycle, so it lands within 60 seconds even without a webhook; a configured GitHub webhook makes it near-instant. It also runs for paused project mappings, so pausing new work never leaves already-merged issues stuck open.
+  </Step>
 </Steps>
+
+## Parent and child issues
+
+<Note>
+  If you label a parent issue with `AI-Implement` and it has children also labeled `AI-Implement` (Linear only), AI-Implement changes how it dispatches that tree: each child's PR merges into a shared long-running branch for the parent instead of your base branch, and the parent's own work waits until all of its children finish. When the whole tree completes, that shared branch is merged up automatically (or opened as a PR against your base branch for you to review, at the top level). Everyday single-issue runs are unaffected.
+</Note>
 
 ## Status markers
 
@@ -198,6 +224,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 | `AI-Working` | `Implementing` |  Run is active |
 | `Plan-Complete` | `Plan Approved` | Planning succeeded |
 | `Ready for Review` | `PR Ready` | PR is ready for review |
+| *(Done state)* | `Merged` | PR has merged; issue is complete |
 
 <Info>
   See [Triggers and status indicators](/latest/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.

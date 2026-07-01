@@ -104,6 +104,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   **New in latest:**
   - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
   - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
+  - Two more optional fields are available on the mapping: **Branch Prefix** (a path segment prepended to generated branch names) and **Skills Repo** (a repo to clone for Claude skills at the start of each run). See [Project mappings](/latest/configuration/team-repo-mappings#param-branch-prefix) for both.
 </Info>
 
 #### Create a new project mapping
@@ -256,9 +257,13 @@ A recent-actions table lists the latest destructions with:
 
 ### Secrets
 
+<Note>
+  The sidebar's **Secrets** entry itself is a placeholder — it points you to the two panels below rather than hosting its own browsing UI. Manage secrets from **Projects** (per-team) and **Settings** (global).
+</Note>
+
 #### Per-team secrets
 
-Each project mapping has its own per-team secrets at `/api/mappings/:teamKey/secrets`.
+Each project mapping has its own per-team secrets, managed from a **Secrets** action on that project's row in the **Projects** panel.
 
 Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secret named `MY_TOKEN` for project `ENG` is stored as `ENG_MY_TOKEN`).
 
@@ -268,7 +273,7 @@ Secrets are stored as Fly app secrets with the team key as a prefix (e.g. a secr
 
 #### Global secrets
 
-Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from `/api/global-secrets`.
+Global secrets are Fly app secrets that do not belong to any specific project mapping. They are listed, created, and deleted from the **Settings** panel, alongside the Fly sessions app configuration.
 
 <Warning>
   Global secret names must not start with any project key prefix (to keep the per-team scoping unambiguous).
