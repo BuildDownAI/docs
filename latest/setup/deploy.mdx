@@ -11,7 +11,13 @@ The orchestrator is a Node.js service that polls Linear, dispatches GitHub Actio
 
 ## Local development
 
-Running locally is the fastest way to test a configuration before committing to a cloud deployment. If this is your first time through, start with the [quickstart](/latest/quickstart); for the full list of settings the orchestrator reads, see [Environment variables](/latest/configuration/environment-variables).
+Running locally is the fastest way to test a configuration before committing to a cloud deployment.
+
+<Tip>
+  If this is your first time through, start with the [quickstart](/latest/quickstart).
+  
+  For the full list of settings the orchestrator reads, see [Environment variables](/latest/configuration/environment-variables).
+</Tip>
 
 <Steps>
   <Step title="Clone the repository">
@@ -44,26 +50,44 @@ Running locally is the fastest way to test a configuration before committing to 
   </Step>
 
   <Step title="Choose how to run the loop">
-    There are two local run modes. Pick the one that matches what you want to exercise:
+    Both modes run the orchestrator on your machine; they differ in **where the implementation jobs
+    run**. Pick the one that matches what you want to exercise:
 
-    1. **`npm run dev` — orchestrator local, jobs on GitHub Actions.** The orchestrator runs on your machine and polls Linear, but each implementation job is dispatched to run in GitHub Actions. Use this for normal local work, when you're iterating on the orchestrator itself and are happy to let jobs execute in the cloud.
+    <Tabs>
+      <Tab title="GitHub Actions">
+        **`npm run dev`** — implementation jobs are dispatched to run in **GitHub Actions**. Use this
+        for normal local work on the orchestrator when you're happy to let jobs run in the cloud.
 
-       ```bash
-       npm run dev
-       ```
+        ```bash
+        npm run dev
+        ```
+      </Tab>
 
-    2. **`npm run dev:local` — orchestrator local, jobs in local Docker.** The orchestrator runs on your machine *and* each implementation job runs on your machine as a Docker container. This rebuilds the local runner image before starting, then runs in local-runner mode, so the first launch takes a little longer. Use this when you want the entire loop on your machine with no dependency on GitHub Actions.
+      <Tab title="Local Docker">
+        **`npm run dev:local`** — each job runs on your machine as a **Docker container**, so the
+        whole loop stays local with no dependency on GitHub Actions. The first launch rebuilds the
+        local runner image, so it takes a little longer.
 
-       ```bash
-       npm run dev:local
-       ```
+        ```bash
+        npm run dev:local
+        ```
 
-    <Warning>
-      `dev:local` executes implementation jobs as Linux Docker containers, so it needs a running Docker daemon. Start Docker before you launch it, or the jobs will fail to start.
-    </Warning>
+        <Warning>
+          `dev:local` runs jobs as Linux Docker containers, so it needs a running **Docker daemon** —
+          start Docker before you launch it, or the jobs will fail to start.
+        </Warning>
+
+        Because each job is a local container, you can watch one with `docker ps` and `docker logs`. Run progress 
+        and any failure details still surface in the admin UI (`localhost:8080/admin`)and on the Linear issue, the same as the other modes.
+      </Tab>
+    </Tabs>
 
     <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration, so variables in `.env` are ignored unless you load them yourself. Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell first with `set -a; source .env; set +a` before running `npm run dev`.
+      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
+      so variables in `.env` are ignored unless you load them yourself.
+
+      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
+      first with `set -a; source .env; set +a` before starting the orchestrator.
     </Note>
 
     Either mode starts the polling loop and HTTP server on port 8080.
