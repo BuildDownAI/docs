@@ -7,7 +7,7 @@ The orchestrator is a Node.js service that polls Linear, dispatches GitHub Actio
 
 ## Local development
 
-Running locally is the fastest way to test a configuration before committing to a cloud deployment.
+Running locally is the fastest way to test a configuration before committing to a cloud deployment. If this is your first time through, start with the [quickstart](/quickstart); for the full list of settings the orchestrator reads, see [Environment variables](/configuration/environment-variables).
 
 <Steps>
   <Step title="Clone the repository">
@@ -33,17 +33,36 @@ Running locally is the fastest way to test a configuration before committing to 
     See [Environment variables](#environment-variables) below for the full list.
   </Step>
 
-  <Step title="Install dependencies and start the server">
+  <Step title="Install dependencies">
     ```bash
     npm install
-    npm run dev
     ```
+  </Step>
+
+  <Step title="Choose how to run the loop">
+    There are two local run modes. Pick the one that matches what you want to exercise:
+
+    1. **`npm run dev` — orchestrator local, jobs on GitHub Actions.** The orchestrator runs on your machine and polls Linear, but each implementation job is dispatched to run in GitHub Actions. Use this for normal local work, when you're iterating on the orchestrator itself and are happy to let jobs execute in the cloud.
+
+       ```bash
+       npm run dev
+       ```
+
+    2. **`npm run dev:local` — orchestrator local, jobs in local Docker.** The orchestrator runs on your machine *and* each implementation job runs on your machine as a Docker container. This rebuilds the local runner image before starting, then runs in local-runner mode, so the first launch takes a little longer. Use this when you want the entire loop on your machine with no dependency on GitHub Actions.
+
+       ```bash
+       npm run dev:local
+       ```
+
+    <Warning>
+      `dev:local` executes implementation jobs as Linux Docker containers, so it needs a running Docker daemon. Start Docker before you launch it, or the jobs will fail to start.
+    </Warning>
 
     <Note>
       `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration, so variables in `.env` are ignored unless you load them yourself. Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell first with `set -a; source .env; set +a` before running `npm run dev`.
     </Note>
 
-    This starts the polling loop and HTTP server on port 8080.
+    Either mode starts the polling loop and HTTP server on port 8080.
   </Step>
 
   <Step title="Verify it is running">
