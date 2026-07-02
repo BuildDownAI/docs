@@ -152,7 +152,8 @@
               {
                 "group": "Skills",
                 "pages": [
-                  "latest/skills/installation"
+                  "latest/skills/installation",
+                  "latest/skills/project-setup"
                 ]
               }
             ]

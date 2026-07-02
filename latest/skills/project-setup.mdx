@@ -1,0 +1,81 @@
+---
+title: "Set up your project"
+description: "Run bd-project-setup once to point the BuildDown skills at your tracker and repository — it connects the tracker, authorizes it, and records the bindings every other skill reads."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+`bd-project-setup` wires one project to its tools. It creates the connection to your issue tracker, authorizes it against your workspace, and writes down the bindings that every other `bd-` skill relies on to know where your issues and repository live.
+
+You run it yourself, inside your Claude Code session, as a one-time step per project.
+
+## When to run it
+
+Run `bd-project-setup` **once per project**, right after you've installed the skills and restarted Claude Code. Until it's done, the other `bd-` skills have nothing pointing them at your tracker.
+
+<Info>
+  This assumes the skills are already installed and your session reloaded. If not, [start with installation](/latest/skills/installation) first.
+</Info>
+
+## Running it
+
+<Steps>
+  <Step title="Invoke the skill">
+    From your project's Claude Code session, run:
+
+    ```bash
+    /builddown:bd-project-setup
+    ```
+
+    Answer its prompts about which tracker you use and which workspace to bind. The skill handles the rest.
+  </Step>
+
+  <Step title="Let it detect what's already there">
+    Before writing anything, the skill checks whether the project is already wired up. If a connection, pre-approval, or bindings already exist, it works around them rather than duplicating or clobbering your setup.
+
+    <Tip>
+      This makes the skill safe to re-run. If you're unsure whether setup finished, just invoke it again.
+    </Tip>
+  </Step>
+
+  <Step title="Authorize your workspace">
+    The skill starts the sign-in for your tracker from within the session. When the grant screen appears, **you pick the workspace** you want this project bound to.
+
+    <Warning>
+      The workspace you choose in the grant is the one this project will file and read issues in. Pick deliberately — if you have more than one, make sure it's the right one.
+    </Warning>
+  </Step>
+
+  <Step title="Confirm it finished">
+    When the skill is done, your project has a tracker connection, it's pre-approved so the other skills can use it without prompting each time, and the bindings are recorded for the rest of the suite to read.
+
+    <Check>
+      Setup is complete. The other `bd-` skills can now find your tracker and repository.
+    </Check>
+  </Step>
+</Steps>
+
+## What it changes
+
+Running the skill leaves your project with three things in place:
+
+- **A tracker connection** — the link between this project and your issue tracker.
+- **A standing pre-approval** — so the other skills can reach the tracker without asking for permission on every run.
+- **Recorded bindings** — a small record of your tracker, workspace, and repository that every `bd-` skill reads to orient itself.
+
+## Key rules
+
+- **One tracker per project.** A project is bound to Linear **or** Jira, never both at once. Choose the tracker that owns this project's issues.
+
+- **Give each connection a distinct name.** Claude Code stores one login per connection name,
+  and a login points at a single workspace. The name is only a label: a connection can reach the whole workspace you authorize it against, and the team it files into is a separate binding within `CLAUDE.md`.
+
+  <Warning>
+    If two projects share a name, they share a login under that name — so authorizing the connection for one project's workspace silently switches the other project onto it too.
+  </Warning>
+
+- **Run it once per project.** Setup is a one-time step. You don't repeat it for everyday work — only when you're onboarding a new project.
+
+- **Re-invoke after a mid-run reload.** If your session reloads partway through setup, run `bd-project-setup` again. It picks up from where it left off and finishes the parts that didn't complete.
