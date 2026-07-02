@@ -13,6 +13,12 @@ The orchestrator is a Node.js service that polls Linear, dispatches GitHub Actio
 
 Running locally is the fastest way to test a configuration before committing to a cloud deployment.
 
+<Tip>
+  If this is your first time through, start with the [quickstart](/latest/quickstart).
+  
+  For the full list of settings the orchestrator reads, see [Environment variables](/latest/configuration/environment-variables).
+</Tip>
+
 <Steps>
   <Step title="Clone the repository">
     ```bash
@@ -37,17 +43,54 @@ Running locally is the fastest way to test a configuration before committing to 
     See [Environment variables](#environment-variables) below for the full list.
   </Step>
 
-  <Step title="Install dependencies and start the server">
+  <Step title="Install dependencies">
     ```bash
     npm install
-    npm run dev
     ```
+  </Step>
+
+  <Step title="Choose how to run the loop">
+    Both modes run the orchestrator on your machine; they differ in **where the implementation jobs
+    run**. Pick the one that matches what you want to exercise:
+
+    <Tabs>
+      <Tab title="GitHub Actions">
+        **`npm run dev`** — implementation jobs are dispatched to run in **GitHub Actions**. Use this
+        for normal local work on the orchestrator when you're happy to let jobs run in the cloud.
+
+        ```bash
+        npm run dev
+        ```
+      </Tab>
+
+      <Tab title="Local Docker">
+        **`npm run dev:local`** — each job runs on your machine as a **Docker container**, so the
+        whole loop stays local with no dependency on GitHub Actions. The first launch rebuilds the
+        local runner image, so it takes a little longer.
+
+        ```bash
+        npm run dev:local
+        ```
+
+        <Warning>
+          `dev:local` runs jobs as Linux Docker containers, so it needs a running **Docker daemon** —
+          start Docker before you launch it, or the jobs will fail to start.
+        </Warning>
+
+        Because each job is a local container, you can watch one with `docker ps` and `docker logs`. Run progress 
+        and any failure details still surface in the admin UI (`localhost:8080/admin`)and on the Linear issue, the same as the other modes.
+      </Tab>
+    </Tabs>
 
     <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration, so variables in `.env` are ignored unless you load them yourself. Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell first with `set -a; source .env; set +a` before running `npm run dev`.
+      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
+      so variables in `.env` are ignored unless you load them yourself.
+
+      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
+      first with `set -a; source .env; set +a` before starting the orchestrator.
     </Note>
 
-    This starts the polling loop and HTTP server on port 8080.
+    Either mode starts the polling loop and HTTP server on port 8080.
   </Step>
 
   <Step title="Verify it is running">
