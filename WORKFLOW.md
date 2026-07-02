@@ -234,6 +234,11 @@ gap in your summary — don't silently truncate.
 accepted-values + default + when-to-use should be 2–4 short paragraphs with blank lines between them,
 not one dense block. Use bullet lists for parallel items (accepted values, file lists).
 
+**Don't scaffold examples.** In a `**term** — examples` list, the dash already signals that what
+follows are examples — list them directly rather than prefixing each item with "for example" or
+"e.g." (`**Cloud credentials** — an AWS credentials file, a GCP service-account JSON`, not
+`— for example an AWS credentials file …`).
+
 **Cross-links and anchors.** Verify the destination anchor exists before linking. Slug rules:
 - `##`/`###`/`####` headings, `<Accordion title="…">`, `<Update label="…">` → `#<slugified-text>`
 - `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix)
@@ -257,6 +262,7 @@ not scattered across pages; on stable it's usually nothing at all.
 - Cosmetic rewrites of text that's already correct, or changes to pages the issue didn't ask about (see the Scope section).
 - Rendering a dependent, ordered procedure as a bare numbered list instead of `<Steps>`.
 - Listing a partial or "representative" subset when the issue asks to enumerate a full set.
+- Prefixing each item in a `term — examples` list with "for example" / "e.g." — the dash already implies it.
 
 ---
 
@@ -284,3 +290,4 @@ Before finishing, verify:
 - [ ] New or edited pages have `title` (and ideally `description`) frontmatter
 - [ ] Summary written to `ai-output/comments/01-summary.md`
 - [ ] Ordered/dependent procedures use `<Steps>`; any "list the set" is complete (or flags the gap), correct per version
+- [ ] No repeated "for example"/"e.g." scaffolding in `term — examples` lists

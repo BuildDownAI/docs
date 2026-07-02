@@ -462,6 +462,22 @@ The most common failures are listed below.
 
         The runner could not clone or check out the target repository — commonly repository access or permissions, or a missing branch.
     </Accordion>
+
+    <Accordion title="Blocked by a security guardrail" description="A staged change looked like a secret, so the push was blocked">
+        Before pushing, AI-Implement scans the staged files for anything that looks like a secret. If a staged file matches a sensitive pattern, it blocks the push and marks the implementation failed rather than risk committing a credential.
+
+        On the issue you'll see a comment that starts with `🔒 Blocked by security guardrail`, followed by `Push blocked: N sensitive file(s) would be committed:` and then each offending file with the reason it was flagged.
+
+        A file is flagged when it falls into one of these categories, with a few examples of each:
+
+        - **Environment and config files** — `.env`, `secrets.yml`, or a `credentials.yml.enc`.
+        - **Private keys and certificates** — `.pem` and `.key` files, or an SSH key like `id_rsa`.
+        - **Cloud credentials** — an AWS `credentials` file, a GCP service-account JSON, or a `.tfstate`.
+        - **Database credentials** — a `.pgpass` file or a `database.yml`.
+        - **Tokens and auth files** — `.npmrc`, `.netrc`, or a `kubeconfig`.
+
+        To resolve it, remove the file from the change, or add it to `.gitignore` so it's never staged, then re-run the issue.
+    </Accordion>
 </AccordionGroup>
 
 ## Issue lifecycle
