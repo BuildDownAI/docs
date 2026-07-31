@@ -1,0 +1,47 @@
+---
+title: "Releases"
+description: "Release history for AI-Implement — what shipped in each version."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+<Update label="v1.0.0" description="Released 27 July 2026" tags={["Release"]}>
+  The first stable release. It consolidates roughly a hundred changes that had been accumulating on the development line, so an operator moving from a pre-release deployment gets all of the following at once.
+
+  **Ticketing**
+
+  - The orchestrator now authenticates to Linear as an **application** rather than with a personal API key. `LINEAR_API_KEY` is retired in favour of `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, and Linear activity is attributed to the app rather than to a person. See [Create a Linear app](/latest/setup/linear-app).
+  - **Jira supports Basic authentication** with a long-lived API token, which needs no refresh. The OAuth path remains available. See [Environment variables](/latest/configuration/environment-variables).
+  - **Issues are marked done when their pull request merges**, driven by a poll that runs regardless of webhook configuration.
+  - Runners no longer hold ticketing credentials at all — the orchestrator applies every tracker update itself.
+
+  **Feature-branch grouping**
+
+  - A parent issue and its children can now be worked as **one unit**: children open pull requests into a shared grouping branch, and the tree arrives as a single reviewable pull request rather than several unrelated ones. See [Feature-branch grouping](/latest/reference/feature-branch-grouping).
+  - An optional per-project setting merges child pull requests into their grouping branch once checks pass. It never merges into your default branch — that final pull request always waits for a human.
+
+  **Runners**
+
+  - Runner image resolution is **unified across execution modes**, so the same `.ai-implement/image.yml` applies whether a run executes on GitHub Actions or a Fly Machine.
+  - The implementation job's runner is configurable, so CPU-bound test suites can be pointed at a larger machine.
+  - Session runners receive a GitHub token minted by the orchestrator rather than carrying their own credentials.
+  - Runs emit structured telemetry and per-step timings, with verbosity controlled per repository.
+
+  **Notifications and failure reporting**
+
+  - Notifications distinguish **planning** from **implementation**, so the two phases of one issue are no longer indistinguishable.
+  - A failed run now reports *why* in actionable terms — timed out, review flagged the pull request, or failed outright — posted to the issue whether or not a webhook is configured. See [Troubleshooting](/latest/reference/troubleshooting).
+
+  **Per-project configuration**
+
+  Project mappings gained a branch prefix, a skills repository, per-project sensitive-file patterns, and per-project run caps. See [Project mappings](/latest/configuration/team-repo-mappings).
+
+  **Reliability**
+
+  - Widened clock-skew tolerance when minting GitHub App tokens, which was rejecting valid requests on hosts whose clocks ran ahead.
+  - Newly created files are included in the review diff rather than being reviewed as if absent.
+  - An oversized review diff no longer discards otherwise working implementation output.
+  - Planning runs are tracked against the correct workflow instead of being stranded in an unknown state.
+</Update>

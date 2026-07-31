@@ -90,7 +90,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
     
-    If `autoApprovePlans` is enabled (the default), implementation starts automatically after planning. If disabled, a human must approve before implementation proceeds.
+    Implementation starts automatically once planning succeeds. The project mapping's `autoApprovePlans` field is reserved for a future manual-approval gate and does not currently change this.
 
     <Info>
       Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so Claude has full context when it starts writing code.
@@ -172,6 +172,12 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Late review feedback handling">
+    <Warning>
+      This requires a GitHub webhook pointed at your orchestrator. Unlike the rest of the lifecycle, there's no polling fallback here — without a webhook configured, blocking review feedback is never picked up and no follow-up run happens.
+
+      See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) for the setup.
+    </Warning>
+    
     After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave blocking feedback that needs another pass from Claude. AI-Implement watches for this and re-runs Claude automatically; no manual `/ai-implement` comment needed.
 
     The orchestrator listens to three kinds of GitHub events on the PR:
@@ -188,7 +194,31 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       See [Repo-level configuration file](/latest/customize/custom-steps#repo-level-configuration-file).
     </Tip>
   </Step>
+
+  <Step title="PR merges and the issue is marked done">
+    When someone merges the pull request, the orchestrator closes the loop itself — no ticketing-system automation needed on your side.
+
+    <Tabs>
+      <Tab title="Linear">
+        The issue moves to your team's **Done** state and the `Ready for Review` label is removed.
+      </Tab>
+
+      <Tab title="Jira">
+        The `AI-Implement Status` field is set to `Merged`.
+
+        <Warning>
+          `Merged` must exist as an option on that field before your first run — see [Jira custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup).
+        </Warning>
+      </Tab>
+    </Tabs>
+
+    A merge is picked up on the next poll. This bookkeeping runs even for a paused project, so pausing stops new work without stranding issues whose pull requests you merge afterwards.
+  </Step>
 </Steps>
+
+<Note>
+  This is the lifecycle for a single issue. When a parent issue and its children are marked together, the children's pull requests target a shared branch instead of your default branch, and the whole tree lands as one pull request at the end — see [Feature-branch grouping](/latest/reference/feature-branch-grouping).
+</Note>
 
 ## Status markers
 
@@ -198,6 +228,8 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 | `AI-Working` | `Implementing` |  Run is active |
 | `Plan-Complete` | `Plan Approved` | Planning succeeded |
 | `Ready for Review` | `PR Ready` | PR is ready for review |
+| _(label removed - status moves to `Done`)_ | `Merged` | PR merged and the run is complete |
+
 
 <Info>
   See [Triggers and status indicators](/latest/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.

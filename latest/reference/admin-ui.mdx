@@ -9,16 +9,24 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is protected by the `ADMIN_ACCESS_CODE` environment variable — if that variable is not set, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
+The sidebar organizes panels into four groups:
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
+- **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
+- **Platform** — Runners, Sessions, Reaper, Secrets, Settings
+- **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
+
 <Note>
-  The sidebar organizes panels into four groups:
-
-  - **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
-  - **Configure** — Projects, Pipelines & steps, Models & providers
-  - **Platform** — Runners, Sessions, Reaper, Secrets, Settings
-  - **Developer** — Audit log, Customizations
-
-  The headings below follow the same order.
+  Five of these are placeholders for planned functionality and have no section below:
+  - **Triggers & channels**
+  - **Policies & risk**
+  - **MCP server**
+  - **Webhooks**
+  - **Updates**.
+  
+  Opening one tells you which panel does that job today.
 </Note>
+
+The headings below follow the sidebar order, skipping those five.
 
 ## Work
 
@@ -148,6 +156,8 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Tip>
   Each row in the Projects table also exposes a **Sync workflows** action, which opens or updates a pull request in the target repo containing the workflow files and starter prompts. This is the normal way to push workflow updates from the orchestrator into target repos.
+
+  Saving a project also syncs its workflows, so a newly created mapping gets its pull request without any extra step. Reach for the row action when a sync is all you need — saving runs a full mapping update alongside it.
 </Tip>
 
 ### Pipelines & steps
@@ -192,7 +202,7 @@ The table lists each project's:
 High-level runner-infrastructure dashboard.
 
 KPI cards show:
-- Current runner-mode override (`default` / `gha` / `fly` / `shadow`)
+- Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
 - Live Fly session count
 - Capacity utilization (in-progress runs vs. total cap across mappings)
 - 24-hour reaper destructions
@@ -227,7 +237,7 @@ You can destroy a stuck session directly from this panel. Destroying a session a
 
 The reconciliation-sweep dashboard.
 
-The top of the page hosts the **runner mode toggle** (`default` / `gha` / `fly` / `shadow`).
+The top of the page hosts the **runner mode toggle** (`default` / `gha` / `fly` / `local` / `shadow`).
 
 <Note>
   If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
@@ -255,6 +265,12 @@ A recent-actions table lists the latest destructions with:
 </Note>
 
 ### Secrets
+
+The **Secrets** panel itself is a placeholder — a consolidated browse-and-rotate view is not built yet. Secrets are managed in two places today:
+- Global secrets on the **Settings** panel
+- Per-project secrets from each project's row on the **Projects** panel.
+
+Both are backed by the endpoints below.
 
 #### Per-team secrets
 
@@ -358,57 +374,97 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 
 ### Endpoint reference
 
+#### Authentication
+
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
+
+<Note>
+  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+</Note>
+
+#### Project mappings
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/mappings` | List all project mappings |
 | `POST` | `/api/mappings` | Create or update a project mapping |
 | `PATCH` | `/api/mappings/:teamKey` | Update a mapping's concurrency cap (`maxInProgressAiIssues`) or paused state (`paused`) |
 | `DELETE` | `/api/mappings/:teamKey` | Delete a mapping |
-| `POST` | `/api/mappings/:teamKey/sync-workflows` | Re-sync workflow templates from the orchestrator into the target repo. |
+| `POST` | `/api/mappings/:teamKey/sync-workflows` | Re-sync workflow templates from the orchestrator into the target repo |
+| `GET` | `/api/mappings/:teamKey/sync-status/:jobId` | Poll the status of a workflow-sync job started by a save or the row action |
+
+#### Jira field helpers
+
+| Method | Path | Description |
+|---|---|---|
 | `POST` | `/api/jira/validate-jql` | Validate a JQL clause against a Jira instance before saving |
 | `GET` | `/api/jira/fields` | List available Jira custom fields |
 | `GET` | `/api/jira/field-options` | List options for a Jira select field |
-| `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
-| `GET` | `/api/jobs/:jobId/steps` | Get step-by-step execution status for a specific job |
+
+#### Issues, jobs, and pull requests
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/issues` | List AI-Implement issues across all configured project mappings |
 | `GET` | `/api/pulls` | List bot-opened pull requests tracked by the orchestrator |
 | `GET` | `/api/blockers` | List issues currently blocked from dispatch, with reason |
+| `GET` | `/api/jobs/:jobId/steps` | Get step-by-step execution status for a specific job |
+| `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
+
+#### Sessions, reaper, and deduplication
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/sessions` | List active Fly Machine sessions |
 | `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the associated issue |
 | `GET` | `/api/reaper/summary` | 24-hour reaper destruction summary, broken down by rule |
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues in the 24-hour dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+
+#### Runner mode and settings
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/runner-mode` | Get current runner mode |
 | `POST` | `/api/runner-mode` | Set runner mode |
 | `GET` | `/api/settings` | Get orchestrator settings |
 | `POST` | `/api/settings` | Update orchestrator settings |
+
+#### Secrets
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/global-secrets` | List global Fly secrets |
 | `POST` | `/api/global-secrets` | Set a global Fly secret |
 | `DELETE` | `/api/global-secrets/:name` | Delete a global Fly secret |
 | `GET` | `/api/mappings/:teamKey/secrets` | List per-team Fly secrets |
 | `POST` | `/api/mappings/:teamKey/secrets` | Set a per-team Fly secret |
 | `DELETE` | `/api/mappings/:teamKey/secrets/:name` | Delete a per-team Fly secret |
-| `GET` | `/api/customizations` | List files under `custom/` that override built-ins |
-| `GET` | `/api/pipelines-steps` | List pipeline definitions and step modules with override status |
+
+#### Orchestrator status
+
+| Method | Path | Description |
+|---|---|---|
 | `GET` | `/api/admin/config-status` | Get environment-status checks (ticketing connection, runner callback, gap-fill trigger) |
 | `GET` | `/api/admin/template-status` | Get workflow-template staleness status per target repo |
-
-<Note>
-  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
-</Note>
+| `GET` | `/api/admin/github-install-state` | Check whether the GitHub App is installed on the configured target repo |
+| `GET` | `/api/customizations` | List files under `custom/` that override built-ins |
+| `GET` | `/api/pipelines-steps` | List pipeline definitions and step modules with override status |
 
 ### Runner callback endpoints
 
-Two endpoints sit outside the `/api/*` namespace and are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
+Three endpoints sit outside the `/api/*` namespace and are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/runner/result` | Reports the final outcome of a dispatch — success or failure, PR URL when one was opened, error context when not. The token is **single-use**: once consumed, the dispatch result is locked in and the endpoint rejects further calls for that dispatch. |
 | `POST` | `/runner/progress` | Streams step-by-step progress updates throughout a run (each pipeline step's status, elapsed time, and any structured output). The token is **multi-use** so the runner can post many updates during a single dispatch; consumed independently of the result token. |
+| `GET` | `/runner/planning-context` | Fetches the planning comments recorded on the originating issue, so an implementation run can include the approved plan in its prompt without the runner needing ticketing credentials. |
 
-Both endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since neither can validate tokens without it.
+The two `POST` endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since neither can validate tokens without it.
 
 <Note>
   Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.
@@ -421,7 +477,7 @@ Two endpoints sit outside the operator API but are operator-configurable: you se
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments, and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
-| `POST` | `/trigger/gap-fill` | Called by `comment-trigger.yml` in your target repo when a user comments `/ai-implement` on a PR. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Dispatches a gap-fill run for the PR. Returns `503` when the secret is unset (trigger disabled). |
+| `POST` | `/trigger/gap-fill` | Starts a gap-fill run against an existing pull request. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Returns `503` when the secret is unset (trigger disabled).
 
 <Warning>
   Both endpoints require their corresponding secret to be configured on the orchestrator.

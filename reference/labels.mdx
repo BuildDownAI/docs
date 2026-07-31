@@ -14,8 +14,8 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `AI-Implement` | You | When you want a run to start | Not removed automatically |
     | `AI-Working` | Orchestrator (auto) | When a run is dispatched and in progress | When the run completes (success or failure) |
     | `AI-Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes |
-    | `Plan-Complete` | Workflow (auto) | When planning succeeds | Not removed automatically |
-    | `Ready for Review` | Workflow (auto) | When a PR is opened after implementation | Not removed automatically |
+    | `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
+    | `Ready for Review` | Orchestrator (auto) | When a PR is opened after implementation | When the PR merges, unless the issue was already closed |
 
     ## Label details
 
@@ -43,7 +43,17 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### Ready for Review
 
-    `Ready for Review` is applied by the implementation workflow after it opens a PR. At the same time, the workflow posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
+    `Ready for Review` is applied after the implementation workflow opens a PR. The orchestrator also posts a comment on the Linear issue with a link to the PR. The label signals that the AI's work is ready for a human reviewer.
+    
+    ### Done (on PR merge)
+
+    When the pull request merges, the orchestrator moves the issue to your team's **Done** state and removes `Ready for Review`. Nothing is needed from you, and no Linear automation is involved.
+
+    <Note>
+      If something else closed the issue first — Linear's own GitHub integration, or someone moving it to Done by hand — the orchestrator leaves it untouched, so `Ready for Review` can remain on a completed issue. It's cosmetic: the run is finished either way, and the issue won't be picked up again.
+    </Note>
+
+    The `AI-Implement` label is never removed automatically. Leave it in place as a record of which issues were AI-implemented, or clear it yourself.
   </Tab>
 
   <Tab title="Jira">
@@ -55,19 +65,16 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     |---|---|---|---|
     | `Ready` | You | When you want a run to start | When the orchestrator dispatches the issue |
     | `Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes or fails |
-    | `Plan Approved` | Workflow (auto) | When planning succeeds | When implementation is dispatched |
+    | `Plan Approved` | Orchestrator (auto) | When planning succeeds | When implementation is dispatched |
     | `Implementing` | Orchestrator (auto) | When the implementation run is dispatched | When the run completes or fails |
-    | `PR Ready` | Workflow (auto) | When a PR is opened after implementation | Not changed automatically |
-    | `Planning Failed` | Workflow (auto) | When the planning run errors | Not changed automatically |
-    | `Implementation Failed` | Workflow (auto) | When the implementation run errors | Not changed automatically |
+    | `PR Ready` | Orchestrator (auto) | When a PR is opened after implementation | Not changed automatically |
+    | `Planning Failed` | Orchestrator (auto) | When the planning run errors | Not changed automatically |
+    | `Implementation Failed` | Orchestrator (auto) | When the implementation run errors | Not changed automatically |
+    | `Merged` | Orchestrator (auto) | When the PR merges | Not changed automatically |
 
     <Warning>
       A second custom field `AI-Implement Repo` is also required — its value scopes each issue to a target repo in the team mapping. Both fields must exist before the orchestrator can pick up issues; see [Jira manual setup](/setup/target-repo#jira-manual-custom-field-setup).
     </Warning>
-
-    {/* <Info>
-      The `AI-Implement Status` custom field also includes an **`Awaiting Approval`** option that you create alongside the others, but the orchestrator does not transition issues into it automatically — it's a manual park-state. Set it on an issue yourself to pause auto-dispatch (the orchestrator's JQL only picks up `Ready` and `Plan Approved` issues), then move to `Plan Approved` when you're ready for implementation to proceed.
-    </Info> */}
 
     ## Status details
 
@@ -75,7 +82,9 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
-    Unlike Linear, Jira has no built-in blocking semantics here — if you need to prevent a run from starting, gate it through your JQL or move the issue out of `Ready` manually.
+    <Warning>
+      Unlike Linear, Jira has no built-in blocking semantics here. To stop an issue from being picked up, either gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+    </Warning>
 
     ### Planning / Plan Approved
 
@@ -91,7 +100,15 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### PR Ready
 
-    Set by the implementation workflow after it opens a PR. At the same time, the workflow posts a comment on the Jira issue with a link to the PR. The status signals that the AI's work is ready for a human reviewer.
+    Set after the implementation workflow opens a PR. The orchestrator also posts a comment on the Jira issue with a link to the PR. The status signals that the AI's work is ready for a human reviewer.
+
+    ### Merged
+
+    Set when the pull request merges. This is the terminal value for a completed run — no Jira automation is needed on your side.
+
+    <Warning>
+      `Merged` must exist as an option on the `AI-Implement Status` field before your first run, or setting it will fail — see [Jira: manual custom-field setup](#jira-manual-custom-field-setup).
+    </Warning>
 
     ### Planning Failed / Implementation Failed
 
@@ -107,10 +124,12 @@ You can change the concurrency cap for a team from the admin UI or by sending a 
 
 ## /ai-implement comment trigger
 
-Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must be exactly `/ai-implement` (no extra text) and must be posted by a collaborator with write access to the repo.
+Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must **start with** `/ai-implement` and must be posted by a collaborator with write access to the repo.
+
+Anything you write after the trigger is passed to Claude as an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to let Claude work from the gap analysis alone.
 
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-The `/ai-implement` trigger requires `comment-trigger.yml` to be installed in the target repo. This file is synced automatically when you run the sync workflow.
+  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
 </Tip>

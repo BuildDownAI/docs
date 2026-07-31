@@ -37,21 +37,27 @@ This guide walks you through running AI-Implement for the first time. By the end
       <Tab title="Linear">
         | Variable | Description |
         |---|---|
-        | `LINEAR_API_KEY` | Your Linear personal API key (`lin_api_...`) |
+        | `LINEAR_CLIENT_ID` | Client ID of your Linear application |
+        | `LINEAR_CLIENT_SECRET` | Client secret for the same application |
         | `GITHUB_APP_ID` | The numeric ID of your GitHub App |
         | `GITHUB_APP_PRIVATE_KEY` | Your GitHub App's RSA private key in PEM format, with newlines escaped as `\n` |
+
+        See [Create a Linear app](/latest/setup/linear-app) if you haven't created one yet.
       </Tab>
 
       <Tab title="Jira">
         | Variable | Description |
         |---|---|
+        | `JIRA_EMAIL` | Your Atlassian account email — selects Basic auth, the recommended mode |
         | `JIRA_TOKEN` | Your Atlassian API token (create from Atlassian → Security → API tokens) |
-        | `JIRA_CLOUD_ID` | Your Jira Cloud ID, from `https://<site>.atlassian.net/_edge/tenant_info` |
         | `JIRA_SITE_URL` | Your Atlassian site URL, e.g. `https://acme.atlassian.net` |
         | `GITHUB_APP_ID` | The numeric ID of your GitHub App |
         | `GITHUB_APP_PRIVATE_KEY` | Your GitHub App's RSA private key in PEM format, with newlines escaped as `\n` |
+
+        To use OAuth instead, leave `JIRA_EMAIL` blank and set `JIRA_CLOUD_ID`.
       </Tab>
     </Tabs>
+
 
     The other variables in `.env.example` are optional for a first run:
 
@@ -77,7 +83,6 @@ This guide walks you through running AI-Implement for the first time. By the end
     | `AI_IMPLEMENT_APP_ID` | Your GitHub App's numeric ID |
     | `AI_IMPLEMENT_PRIVATE_KEY` | Your GitHub App's PEM private key |
     | `ANTHROPIC_API_KEY` | Your Anthropic API key |
-    | `LINEAR_API_KEY` | Your Linear API key |
 
     If you prefer Claude Code OAuth authentication over an API key, add `CLAUDE_CODE_OAUTH_TOKEN` instead of (or in addition to) `ANTHROPIC_API_KEY`. OAuth takes precedence.
 
@@ -86,24 +91,6 @@ This guide walks you through running AI-Implement for the first time. By the end
 
   <Step title="Install the GitHub App on the target repo">
     In your GitHub App settings, install the app on the target repository. This gives the orchestrator permission to dispatch workflows and the workflow permission to push branches and open PRs.
-  </Step>
-
-  <Step title="Sync workflow templates to your target repo">
-    AI-Implement needs its GitHub Actions workflow files inside the target repo. Run the sync workflow to open a PR there with everything it needs:
-
-    ```bash
-    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
-    ```
-    
-    <Note>
-      The target repo must have a default branch — `sync-workflow.yml` opens its PR against the existing default. If the repo is empty, push at least an initial commit first.
-    </Note>
-
-    This opens a PR in `your-org/your-repo` containing `claude-implement.yml`, `comment-trigger.yml`, `claude-plan.yml`, and a starter `WORKFLOW.md`. Merge that PR before continuing.
-
-    <Warning>
-      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
-    </Warning>
   </Step>
 
   <Step title="Install dependencies and start the orchestrator">
@@ -132,6 +119,7 @@ This guide walks you through running AI-Implement for the first time. By the end
         - **Ticketing Config → Linear Team Key** — your Linear team's identifier (e.g. `ENG`)
         - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
         - **Source → Repository Name** — the repository name (e.g. `your-repo`)
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
       </Tab>
 
       <Tab title="Jira">
@@ -140,10 +128,21 @@ This guide walks you through running AI-Implement for the first time. By the end
         - **Ticketing Config → Repo Field Value** — the value of the `AI-Implement Repo` field for issues belonging to this project mapping (e.g. `your-org/your-repo`)
         - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
         - **Source → Repository Name** — the repository name (e.g. `your-repo`)
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
       </Tab>
     </Tabs>
 
     Click through the remaining steps (Runner, Provider, Capacity, Secrets, Review) accepting defaults, then **Create project**.
+  </Step>
+
+  <Step title="Review and merge the workflow pull request">
+    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, `comment-trigger.yml`, and a starter `WORKFLOW.md`.
+
+    Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
+
+    <Warning>
+      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
+    </Warning>
   </Step>
 
   <Step title="Create the trigger in your ticketing system">
@@ -187,7 +186,7 @@ This guide walks you through running AI-Implement for the first time. By the end
     When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has a gap analysis comment comparing the diff to your original ticket.
 
     <Tip>
-      If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, an incorrect ticketing API key (`LINEAR_API_KEY` or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.
+      If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, incorrect ticketing credentials (`LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.
     </Tip>
   </Step>
 

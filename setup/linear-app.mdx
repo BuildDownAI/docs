@@ -1,0 +1,92 @@
+---
+title: "Create a Linear app for AI-Implement"
+description: "How to create the Linear app that AI-Implement uses to poll issues, update status, and post comments under the app's own identity."
+---
+
+AI-Implement authenticates to Linear as an **app**, not as a person. You create an app in your Linear workspace, enable client-credentials tokens on it, and give the orchestrator its **client ID and secret**.
+
+Because the orchestrator acts as the app, every status change, label, and comment it makes is attributed to the app rather than to whoever set up the credentials. Automated activity stays clearly distinguishable from your team's, and the name you give the app is what appears on that activity.
+
+<Note>
+  This page applies to Linear. If your project mappings use Jira, configure the Jira credentials on the orchestrator instead — see [Environment variables](/configuration/environment-variables).
+</Note>
+
+## Before you start
+
+<Warning>
+  You need the **Admin** role on the Linear workspace to create an application. **Team Owner is not sufficient** — that role is scoped to a team and cannot create workspace applications.
+
+  If you don't have Admin, ask someone who does to create the app and pass you the client ID and secret. Nothing else in this guide needs elevated access.
+</Warning>
+
+An app's credentials work only on the workspace it was created in, so one orchestrator instance serves one Linear workspace. To connect a second workspace, create a second app there and run a second orchestrator instance against it.
+
+## Create the Linear app
+
+<Steps>
+  <Step title="Open the application settings">
+    In Linear, go to **Settings → API → Applications**, then choose **New application**.
+  </Step>
+
+  <Step title="Fill in the application details">
+    | Field | What to enter |
+    |---|---|
+    | Application name | A name your team will recognize, such as `AI-Implement`. This appears on everything the app does in Linear. |
+    | Developer name | Your team or company name. |
+    | Developer URL | Only required if you turn **Public** on. Leave blank otherwise. |
+    | Description | Optional. |
+    | Redirect URIs | Required — but unused. See the note below. |
+    | GitHub username | Optional. |
+
+    <Note>
+      Linear requires at least one redirect URI on every application, even though the client-credentials flow never redirects a browser anywhere. A placeholder such as `https://localhost` satisfies the form and is never called.
+    </Note>
+
+    <Tip>
+      The **GitHub username** field only affects how Linear's own GitHub integration attributes commits and pull-request comments. AI-Implement links pull requests to issues itself, so you can leave it blank.
+    </Tip>
+  </Step>
+
+  <Step title="Enable client credentials">
+    Turn on **Client credentials**. Leave **Public** and **Webhooks** off — all three are off by default.
+
+    <Warning>
+      This toggle is what lets the orchestrator mint a token. If you miss it, the app is created successfully but the orchestrator fails to authenticate at startup, which makes the cause easy to overlook.
+    </Warning>
+  </Step>
+
+  <Step title="Copy the client ID and secret">
+    Both values stay available on the application's settings page, so you can come back for them whenever you need to configure another environment.
+  </Step>
+</Steps>
+
+## Add the credentials to your orchestrator
+
+Set these three variables on the orchestrator. For a Fly.io deployment use `fly secrets set` for the first two; for local development put all three in your `.env` file.
+
+| Variable | Value |
+|---|---|
+| `LINEAR_CLIENT_ID` | Client ID from the application page |
+| `LINEAR_CLIENT_SECRET` | Client secret from the application page |
+| `LINEAR_WORKSPACE_URL` | Your workspace URL, e.g. `https://linear.app/your-workspace` |
+
+<Warning>
+  Set `LINEAR_WORKSPACE_URL` even though the orchestrator starts without it. It's the base for every issue link in notifications and the admin UI, and it falls back to `https://linear.app` — so leaving it unset produces links that look valid but don't resolve to your workspace.
+</Warning>
+
+## Prepare the Ready for Review label
+
+AI-Implement creates the per-team labels it needs automatically. One label is different: **Ready for Review** is workspace-level, and creating a workspace-level label requires admin permission that an application identity cannot hold.
+
+If your workspace already has a label with that name, AI-Implement reuses it and there's nothing to do. If it doesn't, create it by hand once before your first run.
+
+## What's next
+
+<Columns cols={2}>
+  <Card title="Deploy the orchestrator" icon="rocket" href="/setup/deploy">
+    Run the orchestrator on Fly.io or locally with the credentials you just created.
+  </Card>
+  <Card title="Connect a target repo" icon="code-branch" href="/setup/target-repo">
+    Sync workflow templates into a repo and map it to a Linear team.
+  </Card>
+</Columns>

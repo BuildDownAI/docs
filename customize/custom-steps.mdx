@@ -1,11 +1,18 @@
 ---
-title: "Add custom pipeline steps to AI-Implement"
-description: "How to override built-in pipeline steps or add entirely new ones by placing TypeScript modules in the custom/steps/ directory of your AI-Implement installation."
+title: "Customize pipeline behavior"
+description: "Two ways to customize how AI-Implement runs your pipeline: code-level overrides in the `custom/` directory of your installation, and a YAML config file at `.ai-implement/config.yml` in your target repo for parameter tuning without code."
 ---
 
-AI-Implement's pipeline is extensible — you can override any built-in step or add new ones by placing TypeScript files in the `custom/` directory. Files in `custom/` take precedence over the corresponding built-ins, and upstream updates never overwrite them (the only exception is `custom/README.md`, which may be updated with documentation changes). Your customizations are safe across upgrades.
+AI-Implement's pipeline is configurable in two complementary ways:
 
-There are two extension points: `custom/steps/` for step modules and `custom/pipelines/` for pipeline definitions.
+- **Code-level overrides** — drop TypeScript files in the `custom/` directory of your AI-Implement installation to replace a built-in step's behavior or define your own pipeline. Files in `custom/` take precedence over the corresponding built-ins, and upstream updates never overwrite them (the only exception is `custom/README.md`, which may be updated with documentation changes). Your customizations are safe across upgrades.
+- **Repo-level configuration** — drop a YAML file at `.ai-implement/config.yml` in your target repo to tune step parameters (package manager, model IDs, external reviewer integration) without writing any code.
+
+The `custom/` mechanism has two extension points:
+- `custom/steps/` for step modules
+- `custom/pipelines/` for pipeline definitions.
+
+Both are covered below, followed by the repo-level config file.
 
 ## custom/steps/ — override or add a step
 
@@ -19,71 +26,64 @@ You can either **replace** a built-in step or **introduce an entirely new one** 
 
 ### Built-in step IDs
 
-The orchestrator runs two pipelines — an implementation pipeline and a planning pipeline. Only the **implementation pipeline** checks `custom/steps/` for overrides at runtime. The six overridable IDs are: `clone`, `install`, `feedback-loop`, `preflight`, `push`, `post-push-review`.
+The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
 
-<Warning>
-  Placing a file in `custom/steps/` for any other step ID listed below has no effect. The planning pipeline steps (`architecture-analysis`, `explore-codebase`, `test-plan`, `work-unit-decomposition`, `cross-story-context`, `post-to-ticketing`) do not currently check for custom overrides — a matching file in `custom/steps/` is silently ignored for those IDs.
-
-  `implement` and `review` run as inner passes of the `feedback-loop` step and cannot be individually overridden. To change their behavior, override the `feedback-loop` step itself.
-</Warning>
-
-All step IDs are listed below for reference.
 
 <AccordionGroup>
-  <Accordion title="architecture-analysis">
-    Runs Claude during the planning phase to produce the **Architecture Analysis** comment posted to the issue. Override to change the prompt, model, or how the analysis is shaped.
-  </Accordion>
-
   <Accordion title="clone">
-    Clones the target repo into the workspace at the start of an implementation run. Override if you need custom checkout logic (e.g. shallow clones, submodule init).
+    Clones the target repo into the workspace at the start of an implementation run.
+    
+    Override if you need custom checkout logic (e.g. shallow clones, submodule init).
   </Accordion>
 
-  <Accordion title="cross-story-context">
-    Planning step that produces the **Cross-Story Context** comment when the issue has dependencies or sibling stories with meaningful coordination needs. Skipped automatically when no related issues exist.
+  <Accordion title="install-skills">
+    Clones the project's configured skills repository into the workspace so Claude can use its skills during the run. Skipped automatically when the project has no skills repository set.
+
+    Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
-  <Accordion title="explore-codebase">
-    Read-only codebase exploration during the planning phase. Builds the context that feeds into the architecture analysis and test plan.
+  <Accordion title="install">
+    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
+    
+    Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
+  </Accordion>
+
+  <Accordion title="setup">
+    Runs the `setup:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. The script runs **before** the implement loop with `set -euo pipefail`; a non-zero exit aborts the run early. Automatically skipped when `setup:` is not declared.
+    
+    Override to do pre-flight work in TypeScript instead of shell.
   </Accordion>
 
   <Accordion title="feedback-loop">
     Wraps the implementation loop — runs `implement` → `review` and iterates until the review approves the diff or the iteration cap is hit. Common override target for adjusting iteration limits, custom acceptance criteria, or swapping the review model.
+
+    The `implement` and `review` sub-steps run **inside** this loop and are not separately overridable as top-level pipeline steps; overriding `feedback-loop` is the way to change either of them.
   </Accordion>
 
-  <Accordion title="implement">
-    The main implementation Claude session. Reads the planning context and, when **Work Units** are present, appends instructions for Claude to use parallel subagents. The subagents run *inside* the single Claude session via the Task tool — not as separate processes — so AI-Implement can't observe their individual progress.
+  <Accordion title="preflight">
+    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run. Automatically skipped when the `feedback-loop` did not approve the diff.
   </Accordion>
 
-  <Accordion title="install">
-    Runs your repo-specific install/setup script(s) before Claude starts. Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
+  <Accordion title="push">
+    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Automatically skipped when the `feedback-loop` did not approve the diff.
+    
+    Override to customize commit message format, branch naming, or PR body construction.
+  </Accordion>
+
+  <Accordion title="verify">
+    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared or when the push was skipped.
+
+    <Warning>
+      The matching `teardown:` script (also declared in `WORKFLOW.md`) is handled by the runner inside a `finally` block — it always executes, even on failure, and is **not** a pipeline step you can override here.
+    </Warning>
   </Accordion>
 
   <Accordion title="post-push-review">
     Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
-  </Accordion>
 
-  <Accordion title="post-to-ticketing">
-    Posts the four structured planning comments (Architecture Analysis, Test Plan, Work Units, Cross-Story Context) back to the ticketing system. Used by the planning workflow.
-  </Accordion>
+    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to three times by default — before reporting whatever the final state is.
 
-  <Accordion title="preflight">
-    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run.
-  </Accordion>
-
-  <Accordion title="push">
-    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Override to customize commit message format, branch naming, or PR body construction.
-  </Accordion>
-
-  <Accordion title="review">
-    A code-review sub-step executed inside `feedback-loop`. Evaluates Claude's diff against the issue requirements and returns an approval verdict plus an issues list that drives the loop's next iteration. **Distinct from the post-PR gap analysis** (which is the `post-push-review` step) — `review` runs *during* the implementation loop to drive iteration; `post-push-review` runs *after* the PR is opened to report on completeness.
-  </Accordion>
-
-  <Accordion title="test-plan">
-    Runs Claude during the planning phase to produce the **Test Plan** comment posted to the issue.
-  </Accordion>
-
-  <Accordion title="work-unit-decomposition">
-    Runs Claude during the planning phase to produce the **Work Units** comment, splitting the issue into parallelizable subagent tasks. See [AI planning phase](/configuration/planning) for the downstream parallel-implementation behavior.
+    The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
 </AccordionGroup>
 
@@ -135,23 +135,83 @@ Here is an example that adds a custom step to the pipeline:
 
 ```yaml
 # custom/pipelines/autonomous.yml
-id: autonomous
+id: autonomous-loop
 steps:
   - id: my-step
     type: custom
     moduleId: hello        # loads custom/steps/hello.js (or .ts in dev)
+  - id: clone
+    type: clone
   - id: install
     type: install
   - id: feedback-loop
-    type: feedback-loop
+    type: custom
+    moduleId: feedback-loop
   - id: preflight
     type: preflight
   - id: push
     type: push
+  - id: post-push-review
+    type: custom
+    moduleId: post-push-review
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the known built-in step IDs (`install`, `feedback-loop`, `preflight`, `push`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
+  
+  Your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+</Tip>
+
+## Repo-level configuration file
+
+Drop a YAML file at `.ai-implement/config.yml` in your target repo's root to override certain runtime behaviors without modifying `WORKFLOW.md` or any synced workflow files. The orchestrator's install step reads this file at the start of every run.
+
+```yaml
+packageManager: pnpm
+models:
+  implement: claude-opus-4-8
+  review: claude-sonnet-4-6
+reviewProviders:
+  - github-claude-code-review
+```
+
+<Note>
+  All fields are optional. The file may also be absent entirely — when it is, the install step falls back to its built-in defaults.
+</Note>
+
+<ParamField body="packageManager" type="string" default="auto-detected">
+  Forces a specific package manager for the install step.
+  
+  Accepted values:
+  - `npm`
+  - `yarn`
+  - `pnpm`
+  
+  When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
+
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. Any value outside the three above fails the run.
+</ParamField>
+
+<ParamField body="models.implement" type="string">
+  Model ID used for the implementation step. Overrides the `model:` value from `WORKFLOW.md` front matter for the implement step only.
+  
+  Useful when you want a heavier model for implementation and a lighter one for review.
+</ParamField>
+
+<ParamField body="models.review" type="string">
+  Model ID used for the `review` step wrapped by `feedback-loop`. Same override semantics as `models.implement`.
+</ParamField>
+
+<ParamField body="reviewProviders" type="string[]">
+  Opts the `post-push-review` step into waiting for and integrating findings from external GitHub Actions review checks on the same PR.
+  
+  Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action). Unknown values are silently filtered out.
+  
+  When omitted or empty, `post-push-review` runs its own analysis without coordinating with external reviewers.
+</ParamField>
+
+<Tip>
+  The file is read fresh at the start of every run, so changes take effect on the next dispatch without needing to restart the orchestrator.
 </Tip>
 
 ## custom/providers/ — reserved

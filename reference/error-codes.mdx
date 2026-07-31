@@ -67,9 +67,34 @@ A runner reports the final outcome of a dispatch: success with a PR, or failure 
 | 400 | `invalid_phase` | `phase` is not `planning`, `implementation`, or `gap-analysis` |
 | 400 | `missing_prUrl` | A successful implementation result did not include a PR URL |
 | 400 | `phase_mismatch` | The token's phase does not match the body |
-| 401 | `bad_signature`, `expired`, `malformed` | The run token has a bad signature, is expired, or is malformed |
+| 401 | `bad_signature`, `expired`, `malformed`, `wrong_audience` | The run token has a bad signature, is expired, is malformed, or is for the wrong endpoint |
 | 401 | `missing_bearer` | Missing or malformed `Authorization: Bearer` header |
 | 409 | `already_consumed` | The single-use token was already consumed |
+
+#### `POST /runner/progress`
+
+A runner streams step-by-step progress during a run.
+
+| HTTP | `error` | Condition |
+|---|---|---|
+| 400 | `invalid_body` | Body is missing or not a JSON object |
+| 400 | `invalid_step_id` | `step.id` is missing or not a string |
+| 400 | `invalid_step_started_at` | `step.started_at` is missing or not a string |
+| 400 | `invalid_step_status` | `step.status` is missing or not a string |
+| 400 | `invalid_step_type` | `step.type` is missing or not a string |
+| 400 | `step_required` | `step` is missing or not an object |
+| 401 | `bad_signature`, `expired`, `malformed`, `wrong_audience` | The progress token has a bad signature, is expired, is malformed, or is for the wrong endpoint |
+| 401 | `missing_bearer` | Missing or malformed `Authorization: Bearer` header |
+| 404 | `job_not_found` | No run matches the token |
+
+#### `GET /runner/planning-context`
+
+A runner fetches the planning context for its run.
+
+| HTTP | `error` | Condition |
+|---|---|---|
+| 401 | `bad_signature`, `expired`, `malformed`, `wrong_audience` | The progress token has a bad signature, is expired, is malformed, or is for the wrong endpoint |
+| 401 | `missing_bearer` | Missing or malformed `Authorization: Bearer` header |
 
 #### `POST /trigger/gap-fill`
 
@@ -175,7 +200,7 @@ Exchange the admin access code for a session token.
 
 #### `POST /api/mappings`
 
-Create or update a project mapping. 
+Create or update a project mapping.
 
 <Note>
     Every field validation returns `400` with a message naming the problem.
@@ -185,6 +210,7 @@ Create or update a project mapping.
 
 | HTTP | `error` | Condition |
 |---|---|---|
+| 400 | `defaultBranch is required` | No default branch was given, and the mapping has none set |
 | 400 | `Invalid request body` | Body could not be parsed as JSON |
 | 400 | `teamKey, owner, and repo are required` | One of these required fields is missing |
 
@@ -209,6 +235,7 @@ Create or update a project mapping.
 
 | HTTP | `error` | Condition |
 |---|---|---|
+| 400 | `branchPrefix invalid: {detail}` | The branch prefix is invalid |
 | 400 | `extraEnv must be a plain object` | `extraEnv` is set but is not an object |
 | 400 | `extraEnv values must all be strings` | An `extraEnv` value is not a string |
 | 400 | `maxInProgressAiIssues must be a positive integer` | `maxInProgressAiIssues` is below 1 or not an integer |
@@ -344,7 +371,7 @@ These report how a run finished:
 | container_failed | The local Docker container exited with an error |
 | container_timeout | The local Docker session exceeded its lifetime |
 | machine_timeout | The session machine exceeded its lifetime |
-| post_push_review_not_approved | A PR was opened, but the post-push review flagged blockers |
+| post_push_review_not_approved | A PR was opened as a draft because the post-push review flagged blockers |
 | pr_not_found | The run finished but did not open a PR |
 | session_failed | The session run failed |
 
@@ -430,6 +457,22 @@ The most common failures are listed below.
         Example: `Implementation failed: git clone failed (exit 128): …`
 
         The runner could not clone or check out the target repository — commonly repository access or permissions, or a missing branch.
+    </Accordion>
+
+    <Accordion title="Blocked by a security guardrail" description="A staged change looked like a secret, so the push was blocked">
+        Before pushing, AI-Implement scans the staged files for anything that looks like a secret. If a staged file matches a sensitive pattern, it blocks the push and marks the implementation failed rather than risk committing a credential.
+
+        On the issue you'll see a comment that starts with `🔒 Blocked by security guardrail`, followed by `Push blocked: N sensitive file(s) would be committed:` and then each offending file with the reason it was flagged.
+
+        A file is flagged when it falls into one of these categories, with a few examples of each:
+
+        - **Environment and config files** — `.env`, `secrets.yml`, or a `credentials.yml.enc`.
+        - **Private keys and certificates** — `.pem` and `.key` files, or an SSH key like `id_rsa`.
+        - **Cloud credentials** — an AWS `credentials` file, a GCP service-account JSON, or a `.tfstate`.
+        - **Database credentials** — a `.pgpass` file or a `database.yml`.
+        - **Tokens and auth files** — `.npmrc`, `.netrc`, or a `kubeconfig`.
+
+        To resolve it, remove the file from the change, or add it to `.gitignore` so it's never staged, then re-run the issue.
     </Accordion>
 </AccordionGroup>
 

@@ -3,39 +3,11 @@ title: "Connect a GitHub repo to AI-Implement"
 description: "How to sync workflow templates into a target GitHub repo, map it to a Linear team in the admin UI, and label your first issue to trigger an AI-generated PR."
 ---
 
-Connecting a GitHub repository to AI-Implement involves two things: syncing the workflow templates into the repo so GitHub Actions knows how to run Claude, and adding a project mapping in the orchestrator's admin UI so the polling loop knows where to dispatch issues. Follow the steps below in order.
+Connecting a GitHub repository to AI-Implement comes down to adding a project mapping in the orchestrator's admin UI. Saving that mapping syncs the workflow templates into the repo so GitHub Actions knows how to run Claude, and starts the polling loop watching for issues. Follow the steps below in order.
 
 <Steps>
   <Step title="Install the GitHub App on the target repo">
     If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
-  </Step>
-
-  <Step title="Sync workflow templates into the target repo">
-    From the AI-Implement repository, run the `sync-workflow.yml` workflow against your target repo:
-
-    ```bash
-    gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
-    ```
-
-    <Note>
-      The target repo must have a default branch — `sync-workflow.yml` opens its PR against the existing default. If the repo is empty, push at least an initial commit first.
-    </Note>
-
-    This opens a pull request in the target repo that adds the following files to `.github/workflows/` and the repo root:
-
-    - `claude-implement.yml` — the main implementation workflow
-    - `claude-plan.yml` — the planning workflow
-    - `comment-trigger.yml` — the `/ai-implement` comment trigger
-    - `WORKFLOW.md` — the Claude implementation prompt template
-    - `PLANNING.md` — the Claude planning prompt template
-
-    <Note>
-      `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
-    </Note>
-  </Step>
-
-  <Step title="Review and merge the PR in the target repo">
-    Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.
   </Step>
 
   <Step title="Enable pull request creation in the target repo">
@@ -81,6 +53,7 @@ Connecting a GitHub repository to AI-Implement involves two things: syncing the 
         - **Ticketing Config → Linear Team Key** — your Linear team key (e.g. `ENG`)
         - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
         - **Source → Repository Name** — the target repository's name without the owner prefix
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
       </Tab>
 
       <Tab title="Jira">
@@ -89,16 +62,29 @@ Connecting a GitHub repository to AI-Implement involves two things: syncing the 
         - **Ticketing Config → Repo Field Value** — the option value of the `AI-Implement Repo` field for issues belonging to this project mapping
         - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
         - **Source → Repository Name** — the target repository's name without the owner prefix
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
       </Tab>
     </Tabs>
 
-    Step through the remaining steps accepting defaults for a first run, then **Create project**.
+    Step through the remaining steps accepting defaults for a first run, then **Create project**. The orchestrator begins watching the configured scope on its next poll cycle.
 
-    The orchestrator will begin watching the configured scope on its next poll cycle.
-    
+    See the [Admin UI reference](/reference/admin-ui) for the full field list and defaults.
+  </Step>
+
+  <Step title="Review and merge the workflow pull request">
+    Saving the project opens a pull request in the target repo that adds the following files to `.github/workflows/` and the repo root:
+
+    - `claude-implement.yml` — the main implementation workflow
+    - `claude-plan.yml` — the planning workflow
+    - `comment-trigger.yml` — the `/ai-implement` comment trigger
+    - `WORKFLOW.md` — the Claude implementation prompt template
+    - `PLANNING.md` — the Claude planning prompt template
+
     <Note>
-      See [Admin UI reference](/reference/admin-ui) for the full field list and defaults.
+      `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
     </Note>
+
+    Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.
   </Step>
 
   <Step title="Trigger a run and watch it">
@@ -141,10 +127,7 @@ AI-Implement requires two custom select fields in your Jira instance: one for th
     - `PR Ready`
     - `Planning Failed`
     - `Implementation Failed`
-
-    {/* <Info>
-      The field also supports an optional eighth option, `Awaiting Approval`, as a manual park-state. The orchestrator never sets it itself, but you can move issues into it yourself to pause auto-dispatch (the orchestrator's poll filter accepts only `Ready` and `Plan Approved`). Add it now if you want that option available; skip it for a first run.
-    </Info> */}
+    - `Merged`
 
     <Warning>
       Field name and option spellings must be exact — the orchestrator matches them literally. A typo will surface as either a missing-field error at startup or as issues silently not getting picked up.
@@ -179,10 +162,11 @@ Once the PR appears, you can:
 - Merge the PR to close the issue.
 
 <Tip>
-  **Linear** closes issues automatically since the PR body includes a `Fixes` reference to the issue identifier.
-
-  **Jira** users can create the same effect via Jira automation if desired.
+  Merging the PR closes the issue for you — the orchestrator moves Linear issues to **Done** and sets Jira's `AI-Implement Status` to `Merged`.
+  
+  No `Fixes` reference or Jira automation is needed.
 </Tip>
+
 
 <Columns cols={2}>
   <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
