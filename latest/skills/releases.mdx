@@ -1,0 +1,21 @@
+---
+title: "Skills releases"
+description: "Release history for the BuildDown skills plugin — what shipped in each version and what it means for your installation."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+<Update label="v1.0.0" description="Released 29 July 2026" tags={["Release"]}>
+  The first stable release. The suite reached a versioned, installable state — see [BuildDown skills](/latest/skills/introduction) for what it does.
+
+  - **Versioned installation.** A stable channel and a development channel now exist, so you can choose between released versions and ongoing work. [Versions and channels](/latest/skills/installation#versions-and-channels) covers both.
+  - **The default branch is installable for the first time.** Before this release the plugin catalog existed only on the development branch, so an install without a branch specified never resolved. That is why earlier instructions told you to specify one.
+  - **`bd-build-down` no longer hardcodes one tracker.** Tracker-specific behavior moved into per-tracker adapters, so the skill delegates rather than assuming Linear's state names.
+  - **Client-specific references removed** throughout the skills and their documentation.
+
+  <Note>
+    If you installed before this release, your channel was recorded on your machine at install time and a new release cannot move you. [Move between channels](/latest/skills/installation#move-between-channels) covers switching, including the caveat that removing a marketplace uninstalls the plugins installed from it.
+  </Note>
+</Update>

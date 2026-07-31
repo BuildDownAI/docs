@@ -1,0 +1,83 @@
+---
+title: "BuildDown skills"
+description: "A suite of Claude Code skills for planning, sequencing, landing, and verifying work driven through an AI coding agent."
+---
+
+Running a ticket-to-pull-request pipeline surfaces four recurring questions. Each has a skill that answers it:
+
+- I have a design or an objective — how do I turn it into well-scoped tickets the agent can finish in one pass? **→** **`bd-build-up`** or **`bd-mega-build-up`** when the design should be pressure-tested first
+- I have a stack of planned tickets — what order should they go out in, and which will fail without more context? **→** **`bd-summit-push`**
+- I have a pile of open pull requests from the agent — which merge, which need another pass, and which are blocked? **→** **`bd-build-down`** or **`bd-super-build-down`** for many at once
+- Did the preview actually work, or did the agent just make the diff look right? **→** **`bd-smoke-jumper`**
+
+These skills run inside your own Claude Code session while you plan and review. They're separate from the AI-Implement orchestrator, which is what later picks up a marked issue and opens the pull request.
+
+<Note>
+    The remaining two skills sit outside that sequence:
+    - `bd-project-setup` runs once to wire a project to its tools
+    - `bd-belay-on` formalizes handing a question to a different tool at any point along the way
+</Note>
+
+## How the skills fit together
+
+```mermaid
+graph TD
+    setup(["bd-project-setup<br/>run once per project"])
+    up["bd-build-up<br/>plan the work"]
+    mega["bd-mega-build-up<br/>plan, grilled harder"]
+    push["bd-summit-push<br/>sequence and harden"]
+    agent(["your coding agent<br/>opens pull requests"])
+    down["bd-build-down<br/>drive to merge"]
+    sdown["bd-super-build-down<br/>drive to merge, at volume"]
+    smoke["bd-smoke-jumper<br/>verify the preview"]
+
+    setup --> up
+    setup --> mega
+    up --> push
+    mega --> push
+    push ==> agent
+    agent ==> down
+    agent ==> sdown
+    down --> smoke
+    sdown --> smoke
+
+    classDef external stroke-width:3px
+    class agent,setup external
+```
+
+## What ties them together
+
+The skills share one autonomy model, so a skill either acts or asks for the same reasons throughout.
+
+They also read the same recorded project bindings rather than each asking you where your issues live — which is what `bd-project-setup` exists to write.
+
+They assume a common setup: a connected issue tracker, a connected GitHub account, browser automation for preview testing, and a coding agent that responds to pull request comments.
+
+Six of the eight understand feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
+
+## Available skills
+
+| Skill | What it does |
+| --- | --- |
+| `bd-project-setup` | Wires a project to its tools once — creates the tracker connection, authorizes it, and **records the settings every other skill reads**. |
+| `bd-build-up` | Turns an objective or design into a **sequenced, dependency-aware set of tracker issues**, shown for your review before anything is filed. |
+| `bd-mega-build-up` | A deeper `bd-build-up` for larger work — pressure-tests the design first, then files issues alongside attached design and plan documents. |
+| `bd-summit-push` | Optimizes a set of planned issues — their order, dependencies, and wording — for the best chance of one-shot success through the pipeline. |
+| `bd-build-down` | Drives open pull requests to merge: reviews each against its gap analysis, resolves what's missing, and lands the ones that are ready. |
+| `bd-super-build-down` | A faster, hands-off `bd-build-down` for many pull requests at once or unattended runs. |
+| `bd-smoke-jumper` | Smoke-tests a pull request's preview deploy, posts a verdict, and files issues for anything that fails. |
+| `bd-belay-on` | Coordinates handing a task off to another tool and folding the results back in cleanly. |
+
+**Tracker support varies by skill.** `bd-build-down` and `bd-mega-build-up` carry dedicated Jira handling alongside Linear.
+
+`bd-build-up`, `bd-summit-push`, and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
+
+<Note>
+  `bd-project-setup` binds either tracker, and the remaining skills don't depend on one.
+</Note>
+
+## Next step
+
+<Card title="Install the skills" icon="download" href="/skills/installation">
+  Add the plugin to Claude Code and choose a release channel.
+</Card>

@@ -52,7 +52,12 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
 
-    A deduplication check prevents the same issue from being dispatched more than once in a 24-hour window, even if the label is re-applied.
+    Two deduplication checks prevent duplicate dispatches:
+
+    - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
+    - **Recent** — even after a job finishes, the same issue won't be re-dispatched within a 24-hour window of its previous dispatch.
+
+    Either condition is enough to skip dispatch.
   </Step>
 
   <Step title="Planning phase (if enabled)">
@@ -81,7 +86,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
     
-    If `autoApprovePlans` is enabled (the default), implementation starts automatically after planning. If disabled, a human must approve before implementation proceeds.
+    Implementation starts automatically once planning succeeds. The project mapping's `autoApprovePlans` field is reserved for a future manual-approval gate and does not currently change this.
 
     <Info>
       Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so Claude has full context when it starts writing code.
@@ -89,7 +94,20 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Implementation workflow is dispatched">
-    The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event. The workflow receives the issue ID, identifier (e.g. `ENG-123` for Linear or `PROJ-456` for Jira), title, and description as inputs.
+    The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event.
+
+    The workflow receives a payload with everything Claude needs to start:
+
+    - **Issue context** — issue ID, identifier (e.g. `ENG-123` for Linear, `PROJ-456` for Jira), title, and description
+    - **Related-issue context** — parent issue, sibling issues, and dependencies detected from ticketing-system relationships, when present
+    - **Run caps** — Claude turn cap, implement/review iteration cap, GitHub Actions job timeout — each forwarded only when set on the project mapping
+    - **Provider routing** — Claude provider (`anthropic` or `bedrock`) and AWS region (Bedrock only)
+    - **Runner image override** — a custom container image when the project has one configured
+    - **Callback credentials** — a signed token the runner uses to report final results, plus a separate signed token for streaming step-progress updates back to the admin UI
+
+    <Note>
+      Each field is included only when relevant — the AWS region is omitted on Anthropic mappings, run caps are omitted when not set on the mapping, and so on.
+    </Note>
 
     Two execution modes are supported, configured per project mapping in the admin UI:
 
@@ -149,7 +167,54 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     </Info>
   </Step>
 
+  <Step title="Late review feedback handling">
+    <Warning>
+      This requires a GitHub webhook pointed at your orchestrator. Unlike the rest of the lifecycle, there's no polling fallback here — without a webhook configured, blocking review feedback is never picked up and no follow-up run happens.
+
+      See [`GITHUB_WEBHOOK_SECRET`](/configuration/environment-variables#param-github-webhook-secret) for the setup.
+    </Warning>
+    
+    After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave blocking feedback that needs another pass from Claude. AI-Implement watches for this and re-runs Claude automatically; no manual `/ai-implement` comment needed.
+
+    The orchestrator listens to three kinds of GitHub events on the PR:
+
+    - **Pull request reviews** with a *Request changes* verdict or blocking feedback in the body
+    - **Inline review comments** on specific lines of the diff
+    - **Issue comments** on the PR containing actionable feedback
+
+    Each new piece of feedback is deduplicated against what Claude already addressed in earlier passes, then queued for the next follow-up run. The run pushes to the same PR branch — no new PRs or branches — and updates the gap analysis with what was newly addressed.
+
+    <Tip>
+      To make AI-Implement wait for an external review bot's findings before running its own gap analysis (so both reviewers' feedback get folded into one pass), configure the `reviewProviders` field in `.ai-implement/config.yml`.
+      
+      See [Repo-level configuration file](/customize/custom-steps#repo-level-configuration-file).
+    </Tip>
+  </Step>
+
+  <Step title="PR merges and the issue is marked done">
+    When someone merges the pull request, the orchestrator closes the loop itself — no ticketing-system automation needed on your side.
+
+    <Tabs>
+      <Tab title="Linear">
+        The issue moves to your team's **Done** state and the `Ready for Review` label is removed.
+      </Tab>
+
+      <Tab title="Jira">
+        The `AI-Implement Status` field is set to `Merged`.
+
+        <Warning>
+          `Merged` must exist as an option on that field before your first run — see [Jira custom-field setup](/setup/target-repo#jira-manual-custom-field-setup).
+        </Warning>
+      </Tab>
+    </Tabs>
+
+    A merge is picked up on the next poll. This bookkeeping runs even for a paused project, so pausing stops new work without stranding issues whose pull requests you merge afterwards.
+  </Step>
 </Steps>
+
+<Note>
+  This is the lifecycle for a single issue. When a parent issue and its children are marked together, the children's pull requests target a shared branch instead of your default branch, and the whole tree lands as one pull request at the end — see [Feature-branch grouping](/reference/feature-branch-grouping).
+</Note>
 
 ## Status markers
 
@@ -159,6 +224,8 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 | `AI-Working` | `Implementing` |  Run is active |
 | `Plan-Complete` | `Plan Approved` | Planning succeeded |
 | `Ready for Review` | `PR Ready` | PR is ready for review |
+| _(label removed - status moves to `Done`)_ | `Merged` | PR merged and the run is complete |
+
 
 <Info>
   See [Triggers and status indicators](/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.

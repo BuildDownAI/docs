@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "AI-Implement",
+  "name": "BuildDown",
   "theme": "luma",
   "favicon": "/logo/favicon.svg",
   "colors": {
@@ -16,8 +16,14 @@
     },
     "links": [
       {
-        "label": "GitHub",
+        "label": "AI-Implement Source",
+        "icon": "github",
         "href": "https://github.com/BuildDownAI/AI-Implement"
+      },
+      {
+        "label": "Skills Source",
+        "icon": "github",
+        "href": "https://github.com/BuildDownAI/skills"
       }
     ]
   },
@@ -26,10 +32,10 @@
       {
         "version": "stable",
         "default": true,
-        "tag": "Stable",
+        "tag": "v1.0.0",
         "tabs": [
           {
-            "tab": "Docs",
+            "tab": "AI-Implement",
             "groups": [
               {
                 "group": "Get Started",
@@ -44,6 +50,7 @@
                 "pages": [
                   "setup/prerequisites",
                   "setup/github-app",
+                  "setup/linear-app",
                   "setup/deploy",
                   "setup/target-repo"
                 ]
@@ -79,21 +86,32 @@
                   "reference/admin-ui",
                   "reference/labels",
                   "reference/gap-analysis",
+                  "reference/feature-branch-grouping",
                   "reference/notifications",
                   "reference/troubleshooting",
-                  "reference/error-codes"
+                  "reference/error-codes",
+                  "releases"
                 ]
               }
+            ]
+          },
+          {
+            "tab": "Skills",
+            "pages": [
+              "skills/introduction",
+              "skills/installation",
+              "skills/project-setup",
+              "skills/releases"
             ]
           }
         ]
       },
       {
         "version": "latest",
-        "tag": "Latest",
+        "tag": "v1.x",
         "tabs": [
           {
-            "tab": "Docs",
+            "tab": "AI-Implement",
             "groups": [
               {
                 "group": "Get Started",
@@ -108,6 +126,7 @@
                 "pages": [
                   "latest/setup/prerequisites",
                   "latest/setup/github-app",
+                  "latest/setup/linear-app",
                   "latest/setup/deploy",
                   "latest/setup/target-repo"
                 ]
@@ -143,19 +162,22 @@
                   "latest/reference/admin-ui",
                   "latest/reference/labels",
                   "latest/reference/gap-analysis",
+                  "latest/reference/feature-branch-grouping",
                   "latest/reference/notifications",
                   "latest/reference/troubleshooting",
                   "latest/reference/error-codes",
-                  "latest/changelog"
-                ]
-              },
-              {
-                "group": "Skills",
-                "pages": [
-                  "latest/skills/installation",
-                  "latest/skills/project-setup"
+                  "latest/releases"
                 ]
               }
+            ]
+          },
+          {
+            "tab": "Skills",
+            "pages": [
+              "latest/skills/introduction",
+              "latest/skills/installation",
+              "latest/skills/project-setup",
+              "latest/skills/releases"
             ]
           }
         ]
@@ -174,5 +196,11 @@
       "family": "Inter Tight",
       "weight": 400
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/latest/changelog",
+      "destination": "/latest/releases"
+    }
+  ]
 }

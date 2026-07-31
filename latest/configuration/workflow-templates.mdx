@@ -49,13 +49,15 @@ The synced workflow files use two defensive practices worth knowing about:
 
 ## Syncing templates to a repo
 
-Run the sync workflow manually to push the latest templates to a target repo:
+Within the admin UI, each project row has a **Sync workflows** action. This is the usual way workflows are synced on demand. Editing and saving a project also syncs its workflow templates if other changes need to be made.
+
+Either route opens a pull request in the target repo with the updated workflow files. It seeds `WORKFLOW.md` and `PLANNING.md` only if those files don't already exist.
+
+A command-line equivalent is available if you're scripting against a self-hosted orchestrator:
 
 ```bash
 gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
 ```
-
-This opens a pull request in the target repo with the updated workflow files. It will seed `WORKFLOW.md` and `PLANNING.md` only if those files do not already exist.
 
 ## `WORKFLOW.md` front matter
 
@@ -66,7 +68,11 @@ The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delim
 </ParamField>
 
 <ParamField body="gap_analysis_model" type="string">
-  Model ID used for the post-PR gap analysis step. For `anthropic`, defaults to `claude-haiku-4-5-20251001` when omitted. For `bedrock`, defaults to the same value as `model`. Override this to use a faster or cheaper model for gap analysis.
+  **Reserved — not currently read.** The seeded `WORKFLOW.md` ships this key commented out, and the front matter parser accepts it, but no step consumes it.
+
+  Gap analysis runs on the same model as the rest of the run — the `model` value above, or `claude-sonnet-4-6` when that is unset.
+
+  Setting it has no effect, so it cannot be used to shift gap analysis onto a cheaper model.
 </ParamField>
 
 <ParamField body="setup" type="string">
@@ -86,7 +92,6 @@ The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delim
 ```yaml
 ---
 model: claude-sonnet-4-6
-gap_analysis_model: claude-haiku-4-5-20251001
 setup: scripts/ci-setup.sh
 verify: scripts/ci-verify.sh
 teardown: scripts/ci-teardown.sh

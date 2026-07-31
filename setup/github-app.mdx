@@ -21,15 +21,7 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
   <Step title="Name the App and set the homepage URL">
     Give the App a name such as `ai-implement-bot`. The name appears in PR authorship and comment attribution, so choose something your team will recognize.
 
-    Set the homepage URL to any valid URL — for example, the AI-Implement GitHub repository.
-
-    Uncheck **Webhook active** unless you intend to configure webhook delivery separately. AI-Implement polls your ticketing provider directly and does not require incoming webhooks from GitHub to function.
-
-    <Tip>
-      If `GITHUB_WEBHOOK_SECRET` is set on the orchestrator, AI-Implement *does* process incoming webhooks (e.g. to react to PR merges in real time without waiting for the next poll).
-      
-      To enable that path, leave **Webhook active** checked and point the webhook URL at `https://<your-orchestrator>/api/github/webhook` with the matching secret.
-    </Tip>
+    Set the homepage URL to any valid URL — for example, the AI-Implement GitHub repository `https://github.com/BuildDownAI/AI-Implement`.
   </Step>
 
   <Step title="Set repository permissions">
@@ -48,6 +40,37 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
     <Warning>
       Both **Actions** and **Workflows** permissions are needed for GitHub Actions to function. **Workflows** allows `sync-workflow.yml` to write workflows to target repos, and **Actions** allows the orchestrator to run those workflows.
     </Warning>
+  </Step>
+
+  <Step title="Configure webhook delivery">
+    Webhook delivery is **optional**. AI-Implement's run loop is poll-driven and works without it.
+
+    It adds **automatic follow-up runs on review feedback** — when a reviewer leaves blocking comments on a pull request, AI-Implement picks them up and sends Claude back in **without** anyone commenting `/ai-implement`. An active webhook is the only automated route to it; there's no polling fallback.
+
+    Everything else works either way. Issues get picked up, runs dispatch, pull requests open, and merging one marks the issue done. `/ai-implement` gap-fill runs are handled by the `comment-trigger.yml` workflow in your target repo and never involve the orchestrator.
+
+    <Tabs>
+      <Tab title="Without webhooks">
+        Uncheck **Webhook active**. The event list disappears and there's nothing else to set here.
+
+        Comment `/ai-implement` when you want another pass over a pull request.
+      </Tab>
+
+      <Tab title="With webhooks">
+        Leave **Webhook active** checked:
+        - Set the webhook URL to `https://<your-orchestrator>/api/github/webhook`
+        - Create a secret you also set as `GITHUB_WEBHOOK_SECRET` on the orchestrator
+
+        Under **Subscribe to events**, tick:
+
+        - Issue comment
+        - Pull request
+        - Pull request review
+        - Pull request review comment
+
+        The event list only offers what your repository permissions allow, so all four appear because **Issues** and **Pull requests** are already set. If you're revisiting an existing App and an event is missing, check its permissions first.
+      </Tab>
+    </Tabs>
   </Step>
 
   <Step title="Choose where the App can be installed">
@@ -81,7 +104,7 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
 
 The workflow templates that AI-Implement syncs into target repos read the following secrets. Add them at the organization level (recommended) so all target repos inherit them, or add them individually per repo under **Settings → Secrets and variables → Actions**.
 
-See [Credentials at a glance](/configuration/environment-variables#credentials-at-a-glance) for an overview on how these secrets map to the orchestrator's runtime environment variables.
+Each secret below notes its counterpart on the orchestrator where the names differ. See [Environment variables](/configuration/environment-variables) for the full set, including the ones that live only on the orchestrator.
 
 | Secret | Description |
 |---|---|
@@ -89,7 +112,6 @@ See [Credentials at a glance](/configuration/environment-variables#credentials-a
 | `AI_IMPLEMENT_PRIVATE_KEY` | The full PEM private key content, including the `-----BEGIN RSA PRIVATE KEY-----` header and footer |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token — used in preference to the API key when both are set |
 | `ANTHROPIC_API_KEY` | Anthropic API key — used as a fallback when no OAuth token is present |
-| `LINEAR_API_KEY` | Linear personal API key — used by the workflow to update issue status and post comments |
 
 <Note>
   `CLAUDE_CODE_OAUTH_TOKEN` takes precedence over `ANTHROPIC_API_KEY` when both secrets are set. You only need one Claude authentication method, but having both configured gives you a fallback.

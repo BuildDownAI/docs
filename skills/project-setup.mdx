@@ -2,10 +2,6 @@
 title: "Set up your project"
 description: "Run bd-project-setup once to point the BuildDown skills at your tracker and repository — it connects the tracker, authorizes it, and records the bindings every other skill reads."
 ---
-import ExperimentalBanner from "/snippets/experimental-banner.mdx";
-
-<ExperimentalBanner />
-
 
 `bd-project-setup` wires one project to its tools. It creates the connection to your issue tracker, authorizes it against your workspace, and writes down the bindings that every other `bd-` skill relies on to know where your issues and repository live.
 
@@ -16,7 +12,7 @@ You run it yourself, inside your Claude Code session, as a one-time step per pro
 Run `bd-project-setup` **once per project**, right after you've installed the skills and restarted Claude Code. Until it's done, the other `bd-` skills have nothing pointing them at your tracker.
 
 <Info>
-  This assumes the skills are already installed and your session reloaded. If not, [start with installation](/latest/skills/installation) first.
+  This assumes the skills are already installed and your session reloaded. If not, [start with installation](/skills/installation) first.
 </Info>
 
 ## Running it
@@ -70,7 +66,7 @@ Running the skill leaves your project with three things in place:
 - **One tracker per project.** A project is bound to Linear **or** Jira, never both at once. Choose the tracker that owns this project's issues.
 
   <Note>
-    Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [tracker support](/latest/skills/introduction#available-skills) for which.
+    Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [tracker support](/skills/introduction#available-skills) for which.
   </Note>
 
 - **Give each connection a distinct name.** Claude Code stores one login per connection name,

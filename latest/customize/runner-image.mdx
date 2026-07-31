@@ -19,9 +19,13 @@ image: ghcr.io/your-org/your-runner:v1
 
 The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
 
+<Warning>
+  The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
+</Warning>
+
 The default base image is:
 
-```
+```text
 ghcr.io/builddownai/ai-implement-runner:latest
 ```
 

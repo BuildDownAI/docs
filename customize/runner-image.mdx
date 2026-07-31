@@ -15,9 +15,13 @@ image: ghcr.io/your-org/your-runner:v1
 
 The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
 
+<Warning>
+  The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
+</Warning>
+
 The default base image is:
 
-```
+```text
 ghcr.io/builddownai/ai-implement-runner:latest
 ```
 
@@ -68,9 +72,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
 </Steps>
 
 <Note>
-  This mechanism only applies to the **fly-machines** execution mode. GitHub Actions runs use the `ubuntu-latest` runner provided by GitHub and are not affected by `.ai-implement/image.yml`.
+  `.ai-implement/image.yml` works for **both** execution modes.
+  - In Fly Machines mode, the orchestrator boots the session machine directly on your image.
+  - In GitHub Actions mode, the orchestrator forwards your image to `claude-implement.yml` as the `container.image` for the workflow job.
 </Note>
 
 <Tip>
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
 </Tip>
+
+## Alternative: GitHub Actions variable
+
+Repos using GitHub Actions execution mode have a second image-override mechanism: the `AI_IMPLEMENT_RUNNER_IMAGE` repository variable.
+
+When set, the synced `claude-implement.yml` workflow uses that image as the container for its job.
+
+```yaml
+# In .github/settings or set via the GitHub UI:
+AI_IMPLEMENT_RUNNER_IMAGE: ghcr.io/your-org/your-runner:v1
+```
+
+**Resolution order** when the orchestrator dispatches a GHA-mode run:
+
+1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `SESSION_IMAGE`) is forwarded as the workflow's `runner_image` input, if either is set
+2. Otherwise the workflow falls back to `AI_IMPLEMENT_RUNNER_IMAGE` if that variable is set
+3. Otherwise the built-in default (`ghcr.io/builddownai/ai-implement-runner:latest`) is used
+
+<Tip>
+  Most repos use `.ai-implement/image.yml` because it gives you one mechanism for both execution modes. Reach for `AI_IMPLEMENT_RUNNER_IMAGE` when you want an org-level default that applies across all your repos without committing a file to each one.
+</Tip>
+

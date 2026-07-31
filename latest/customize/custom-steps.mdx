@@ -32,15 +32,17 @@ You can either **replace** a built-in step or **introduce an entirely new one** 
 
 The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
 
-<Note>
-  **Planning steps moved out of the custom-step pipeline.** See the [changelog](/latest/changelog#planning-relocated) for what changed and why.
-</Note>
-
 <AccordionGroup>
   <Accordion title="clone">
     Clones the target repo into the workspace at the start of an implementation run.
     
     Override if you need custom checkout logic (e.g. shallow clones, submodule init).
+  </Accordion>
+
+  <Accordion title="install-skills">
+    Clones the project's configured skills repository into the workspace so Claude can use its skills during the run. Skipped automatically when the project has no skills repository set.
+
+    Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
   <Accordion title="install">
@@ -82,16 +84,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   <Accordion title="post-push-review">
     Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
 
-    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to `maxIterations` times (default `3`) before reporting whatever the final state is.
+    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to three times by default — before reporting whatever the final state is.
 
-    Inputs you can tune via your custom pipeline YAML:
-    - `reviewProviders?: string[]` — review-provider IDs to consult (also settable per-repo via `.ai-implement/config.yml`)
-    - `reviewCheckNames?: string[]` — GitHub Actions check-run names that identify external review (defaults to the Claude Code Review check)
-    - `reviewWaitPollMs?: number` — poll interval while waiting for the external check (default `5000`)
-    - `reviewWaitTimeoutMs?: number` — total wait before failing closed (default `300000`, i.e. 5 minutes)
-    - `maxIterations?: number` — fix-and-push iteration cap (default `3`)
-
-    Outputs: `approved`, `iterations`, `finalFeedback`, and `forcePushedRevisions` (count of revision pushes).
+    The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
 </AccordionGroup>
 
@@ -165,7 +160,9 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader — your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
+  
+  Your YAML only needs to declare `id`, `type`, and optional `moduleId`.
 </Tip>
 
 ## Repo-level configuration file
@@ -194,6 +191,8 @@ reviewProviders:
   - `pnpm`
   
   When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
+
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. Any value outside the three above fails the run.
 </ParamField>
 
 <ParamField body="models.implement" type="string">
