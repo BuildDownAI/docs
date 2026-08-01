@@ -112,11 +112,51 @@ Pick the tab that matches where you're configuring right now.
       Variables beyond this section have defaults or are safely omitted. Set them to override the defaults or to enable optional features.
     </Tip>
 
-    ### Service
+    ### Admin UI authentication
 
-    <ParamField body="ADMIN_ACCESS_CODE" type="string">
-      Password for the admin UI at `/admin`. If this variable is not set, the admin UI is disabled entirely and all `/admin` and `/api/` routes return 404.
+    The admin UI supports sign-in via SSO (Google and/or Microsoft) as well as a shared access code. The UI is enabled when **either** at least one SSO provider **or** `ADMIN_ACCESS_CODE` is configured, and returns `404` on all `/admin` and `/api/*` routes when neither is set.
+
+    <ParamField body="ADMIN_ACCESS_CODE" type="string" deprecated>
+      Shared password for the admin UI at `/admin`. Prefer SSO below for anything beyond local development — this fallback still works (with a timing-safe comparison) but logs a deprecation warning on every use.
     </ParamField>
+
+    <ParamField body="OAUTH_REDIRECT_BASE_URL" type="string">
+      Base URL that SSO providers redirect back to after sign-in (e.g. `https://your-orchestrator.fly.dev`; `http://localhost:8080` locally). Required for either SSO provider to work — without it, sign-in fails with "OAuth is not configured."
+    </ParamField>
+
+    <ParamField body="GOOGLE_OAUTH_CLIENT_ID" type="string">
+      Google OAuth client ID. Set together with `GOOGLE_OAUTH_CLIENT_SECRET` to show the Google sign-in button on the admin login screen.
+    </ParamField>
+
+    <ParamField body="GOOGLE_OAUTH_CLIENT_SECRET" type="string">
+      Google OAuth client secret, paired with `GOOGLE_OAUTH_CLIENT_ID`.
+    </ParamField>
+
+    <ParamField body="MICROSOFT_OAUTH_CLIENT_ID" type="string">
+      Microsoft (Entra) OAuth client ID. Set together with `MICROSOFT_OAUTH_CLIENT_SECRET` and `MICROSOFT_OAUTH_TENANT` to show the Microsoft sign-in button.
+    </ParamField>
+
+    <ParamField body="MICROSOFT_OAUTH_CLIENT_SECRET" type="string">
+      Microsoft OAuth client secret, paired with `MICROSOFT_OAUTH_CLIENT_ID`.
+    </ParamField>
+
+    <ParamField body="MICROSOFT_OAUTH_TENANT" type="string">
+      The specific Microsoft tenant (directory) ID to sign in against.
+
+      Must be a single-tenant GUID. A multi-tenant value (`common`, `organizations`, or `consumers`) disables Microsoft sign-in at startup, since the tenant can't be safely verified in that mode.
+    </ParamField>
+
+    <ParamField body="OAUTH_ALLOWED_DOMAINS" type="string">
+      Comma-separated email domains allowed to sign in via SSO.
+
+      A signed-in identity must match this list or `OAUTH_ALLOWED_EMAILS` to be admitted. Leaving both unset locks SSO sign-in out for everyone, even with a provider configured.
+    </ParamField>
+
+    <ParamField body="OAUTH_ALLOWED_EMAILS" type="string">
+      Comma-separated individual email addresses allowed to sign in via SSO, in addition to `OAUTH_ALLOWED_DOMAINS`.
+    </ParamField>
+
+    ### Service
 
     <ParamField body="PORT" type="string" default="8080">
       HTTP port the orchestrator listens on. The Fly.io internal proxy routes traffic to this port automatically, so you typically do not need to change it.
@@ -133,7 +173,9 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
       HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Set the same value on the GitHub App's webhook configuration, pointed at `https://<orchestrator-host>/api/github/webhook`.
 
-      Leaving it unset disables one capability: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing polls for review feedback, so without a working webhook someone has to comment `/ai-implement` to get another pass.
+      Leaving it unset disables the webhook endpoint entirely, which turns off two capabilities:
+      - **Automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing else polls for review feedback.
+      - **The `/ai-implement` comment trigger.** Commenting `/ai-implement` on a pull request is handled by this same webhook — without it, comments go unanswered.
 
       <Note>
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/latest/setup/github-app).
@@ -218,7 +260,7 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
           Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint, which starts a gap-fill run against an existing pull request. Leaving it unset disables the endpoint.
 
-          This is not needed for the `/ai-implement` comment trigger. That path runs entirely inside the `comment-trigger.yml` workflow in your target repo and never calls the orchestrator. Set this only if you drive gap-fill runs from your own automation.
+          This is unrelated to the built-in `/ai-implement` comment trigger — that path is handled by the GitHub webhook (see `GITHUB_WEBHOOK_SECRET` above), not this endpoint. Set `GAP_FILL_TRIGGER_SECRET` only if you're driving gap-fill runs from your own external automation.
         </ParamField>
       </Accordion>
 
@@ -277,7 +319,7 @@ Pick the tab that matches where you're configuring right now.
   </Tab>
 
   <Tab title="Target-repo workflow secrets">
-    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml`, `claude-plan.yml`, and `comment-trigger.yml` when the workflows run.
+    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml` and `claude-plan.yml` when the workflows run.
     
     Configure under **Settings → Secrets and variables → Actions** on each target repo (or at the organization level so all target repos inherit them).
 
@@ -337,7 +379,11 @@ Pick the tab that matches where you're configuring right now.
 
     ### Gap-fill run caps
 
-    Three repository variables cap `/ai-implement` comment-triggered gap-fill runs the same way per-project caps cap orchestrator-initiated runs. All three are optional — unset means "use the default."
+    <Warning>
+      These variables only take effect on repos that still have `comment-trigger.yml` installed — repos that haven't re-run **Sync workflows** since it was replaced by the orchestrator's own comment handling. Once a repo re-syncs, `/ai-implement` comment-triggered gap-fill runs automatically inherit the same per-project caps configured in the admin UI; see [Project mappings](/latest/configuration/team-repo-mappings).
+    </Warning>
+
+    Three repository variables cap `/ai-implement` comment-triggered gap-fill runs on repos still using `comment-trigger.yml`, the same way per-project caps cap orchestrator-initiated runs. All three are optional — unset means "use the default."
 
     <ParamField body="AI_IMPLEMENT_MAX_TURNS" type="string" default="50">
       Cap on Claude turns per implement pass. Applies to both Anthropic and Bedrock providers.
@@ -380,10 +426,10 @@ Pick the tab that matches where you're configuring right now.
       This selects which runner executes the job, and therefore which machines your repository secrets are exposed to. Point it only at runners you trust.
     </ParamField>
 
-    <ParamField body="AI_IMPLEMENT_SKILLS_REPO" type="string">
-      Skills repository as `owner/repo`, cloned into the workspace so Claude can use its skills during `/ai-implement` comment-triggered runs.
+    <ParamField body="AI_IMPLEMENT_SKILLS_REPO" type="string" deprecated>
+      Skills repository as `owner/repo`, cloned into the workspace so Claude can use its skills during `/ai-implement` comment-triggered runs — only on repos still using `comment-trigger.yml` (see the Gap-fill run caps note above).
 
-      Mirrors the per-project skills setting in the admin UI, which covers orchestrator-initiated runs.
+      Once a repo re-syncs onto the current workflow templates, comment-triggered runs pick up the project's skills repository from the admin UI mapping automatically, and this variable has no effect.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">

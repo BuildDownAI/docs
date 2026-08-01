@@ -162,7 +162,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Gap-fill runs with /ai-implement">
-    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the orchestrator picks it up directly over its GitHub webhook.
 
     Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the gap analysis comment is updated automatically.
 

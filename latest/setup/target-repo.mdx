@@ -80,12 +80,15 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
 
     - `claude-implement.yml` — the main implementation workflow
     - `claude-plan.yml` — the planning workflow
-    - `comment-trigger.yml` — the `/ai-implement` comment trigger
     - `WORKFLOW.md` — the Claude implementation prompt template
     - `PLANNING.md` — the Claude planning prompt template
 
     <Note>
       `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
+    </Note>
+
+    <Note>
+      If the repo has an old `comment-trigger.yml` file from before the `/ai-implement` comment trigger moved into the orchestrator itself, the sync PR removes it — that's expected, not a mistake in the diff. The trigger keeps working with no workflow file involved; see the [`/ai-implement` comment trigger](/latest/reference/labels#ai-implement-comment-trigger).
     </Note>
 
     Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.

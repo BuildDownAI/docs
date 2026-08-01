@@ -46,9 +46,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="install">
-    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
-    
-    Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
+    Installs dependencies (`npm ci`, `yarn install`, or `pnpm install`, chosen by lockfile or an explicit `packageManager` setting) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
+
+    For a custom shell script instead of a dependency install, use the `setup` step below — that's the one driven by `WORKFLOW.md`'s `setup:` key. Override `install` itself to add cache management, dependency precompilation, or other logic around the install command.
   </Accordion>
 
   <Accordion title="setup">
@@ -64,17 +64,19 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="preflight">
-    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run. Automatically skipped when the `feedback-loop` did not approve the diff.
+    Runs your project's `typecheck`, `lint`, and `test` npm scripts after the implement/review loop finishes, so Claude's final diff is checked against your own quality gates before it's pushed.
+
+    Override to change which checks run or how their failures are handled.
   </Accordion>
 
   <Accordion title="push">
-    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Automatically skipped when the `feedback-loop` did not approve the diff.
-    
+    Commits Claude's changes, pushes the branch to the target repo, and opens the PR — including when the diff was never approved, in which case it opens a **draft PR** carrying the reviewer's final feedback instead of skipping the run entirely. Automatically skipped only on gap-fill runs (an existing PR number is already set), since there's no new branch to push.
+
     Override to customize commit message format, branch naming, or PR body construction.
   </Accordion>
 
   <Accordion title="verify">
-    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared or when the push was skipped.
+    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared, or when the diff was never approved (independently of whether push itself ran or was skipped).
 
     <Warning>
       The matching `teardown:` script (also declared in `WORKFLOW.md`) is handled by the runner inside a `finally` block — it always executes, even on failure, and is **not** a pipeline step you can override here.
@@ -145,8 +147,12 @@ steps:
     moduleId: hello        # loads custom/steps/hello.js (or .ts in dev)
   - id: clone
     type: clone
+  - id: install-skills
+    type: install-skills
   - id: install
     type: install
+  - id: setup
+    type: setup
   - id: feedback-loop
     type: custom
     moduleId: feedback-loop
@@ -154,10 +160,16 @@ steps:
     type: preflight
   - id: push
     type: push
+  - id: verify
+    type: verify
   - id: post-push-review
     type: custom
     moduleId: post-push-review
 ```
+
+<Note>
+  This mirrors the full built-in step order. If your override omits a step (e.g. `install-skills`, `setup`, `verify`), that step simply doesn't run — trim only the ones you don't need.
+</Note>
 
 <Tip>
   Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.

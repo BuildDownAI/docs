@@ -74,7 +74,7 @@ After reviewing the gap analysis, you can ask Claude to address the remaining it
     ```
   </Step>
   <Step title="Wait for the run">
-    The `comment-trigger.yml` workflow picks up the comment, parses the Linear issue metadata from the PR body, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
+    The orchestrator picks up the comment over its GitHub webhook, matches it to the originating issue, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
   </Step>
 </Steps>
 
