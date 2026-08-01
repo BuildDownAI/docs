@@ -46,14 +46,19 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
     "jql": "project = ACME",
     "repoFieldValue": "your-org/your-repo",
     "statusFieldOverride": "customfield_10500",
-    "repoFieldOverride": "customfield_10501"
+    "repoFieldOverride": "customfield_10501",
+    "profilesFieldOverride": "customfield_10502"
   }
   ```
 
   The extra configuration fields for Jira are used as follows:
   - `jql` scopes which issues this mapping watches.
   - `repoFieldValue` is the option value of the `AI-Implement Repo` custom field.
-  - The two `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous.
+  - The three `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous — for `AI-Implement Status`, `AI-Implement Repo`, and the multi-select `AI-Implement Profiles` field, respectively. `profilesFieldOverride` also has a dedicated **Profiles Field** dropdown in the admin UI's Jira step, so you rarely need to paste the ID by hand.
+
+  <Note>
+    The `AI-Implement Profiles` field is optional. When present, each issue's selected options are forwarded to the implementation run for your own custom pipeline steps to branch on — see [Custom pipeline steps](/latest/customize/custom-steps). If the field is absent, the orchestrator logs a warning and continues without it.
+  </Note>
   
   <Info>
     See [Jira manual custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.
@@ -123,6 +128,10 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   - `autonomous` — Claude works to completion without human interaction.
   - `interactive` — Claude pauses and waits for feedback at decision points.
   - `hybrid` — Claude proceeds autonomously but surfaces questions when it is uncertain.
+
+  <Warning>
+    Only takes effect when `executionMode` is `fly-machines`. Under the default `github-actions` execution mode, this setting has no effect and Claude always runs autonomously — setting `interactive` or `hybrid` here will not change that.
+  </Warning>
 </ParamField>
 
 <ParamField body="machineCpus" type="number" default="2">

@@ -86,9 +86,9 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
-    <Warning>
-      Unlike Linear, Jira has no built-in blocking semantics here. To stop an issue from being picked up, either gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
-    </Warning>
+    <Note>
+      Like Linear, an issue with an open **Blocks** link to another issue is skipped on each poll cycle until the blocking issue is resolved — you don't need to gate it through JQL for this case. This match is on the Jira link-type name "Blocks" exactly; if your instance renamed that link type, blocking silently stops working, so gate through JQL instead in that case, or move the issue to any status other than `Ready` or `Plan Approved` (the only two values the poll accepts).
+    </Note>
 
     ### Planning / Plan Approved
 
@@ -116,13 +116,21 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### Planning Failed / Implementation Failed
 
-    Set when the corresponding run errors out. The orchestrator posts a comment on the issue describing the failure. Neither status is cleared automatically — review the failure and either re-run by moving the status back to `Ready` (for planning) or `Plan Approved` (for implementation), or close out the issue.
+    Set when the run reports its own failure back to the orchestrator. The orchestrator posts a comment on the issue describing the failure. Neither status is cleared automatically — review the failure and either re-run by moving the status back to `Ready` (for planning) or `Plan Approved` (for implementation), or close out the issue.
+
+    <Note>
+      This only covers runs that get the chance to report back. If a run is stopped from the outside instead — a timed-out session, a killed job, cleanup of an orphaned machine — the orchestrator can't tell success from failure, so it plays it safe: it reverts the status to `Plan Approved` rather than setting `Implementation Failed`. Watch the dispatch log and the sessions panel for these cases rather than relying on the status field alone.
+    </Note>
   </Tab>
 </Tabs>
 
 ## Concurrency
 
-The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight (`AI-Working` in Linear, or `Implementing` in Jira) simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
+The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
+
+<Note>
+  Both the planning and implementation phases count against this limit — Linear issues labeled `AI-Working` **or** `AI-Planning`, or Jira issues with status `Implementing` **or** `Planning`. An issue still being planned occupies a slot just like one being implemented.
+</Note>
 
 You can change the concurrency cap for a team from the admin UI or by sending a `PATCH /api/mappings/:teamKey` request.
 
@@ -135,5 +143,7 @@ Anything you write after the trigger is passed to Claude as an instruction for t
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
+  The trigger is handled directly by the orchestrator — no workflow file in the target repo needs to run it. It just needs `GITHUB_WEBHOOK_SECRET` configured on the orchestrator and the GitHub App subscribed to `issue_comment` events; see [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret).
+
+  Older repos may still have a `comment-trigger.yml` workflow file from before this change — it's no longer used for `/ai-implement`, and running **Sync workflows** on the project row removes it.
 </Tip>

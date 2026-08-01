@@ -94,7 +94,7 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="/ai-implement comment does nothing">
     If a `/ai-implement` comment on a PR has no effect (no reaction, no new run), check the following:
 
-    1. **`comment-trigger.yml` is not installed.** The workflow must exist at `.github/workflows/comment-trigger.yml` in the target repo. It arrives with the workflow sync — use the **Sync workflows** action on the project's row in the admin UI, then merge the pull request it opens.
+    1. **The orchestrator's webhook isn't configured.** The `/ai-implement` trigger is handled by the orchestrator over a GitHub webhook, not by a workflow file in the target repo. Check that `GITHUB_WEBHOOK_SECRET` is set on the orchestrator and that the GitHub App's webhook is active and subscribed to `issue_comment` events — see [Create a GitHub App](/latest/setup/github-app).
     2. **The PR was not opened by AI-Implement.** The comment trigger only works on PRs that contain the `ai-implement-meta` metadata block in the PR body. PRs created by hand do not have this block.
     3. **Bedrock repo variables are not set.** If the repo uses Bedrock, you must set `AI_IMPLEMENT_PROVIDER=bedrock` and `AI_IMPLEMENT_AWS_REGION=<region>` as **repository variables** (not secrets) at **Settings → Secrets and variables → Actions → Variables**. Without these, comment-triggered runs default to the Anthropic provider, which may fail if the repo is configured for Bedrock.
     4. **The commenter does not have write access.** The comment trigger checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.

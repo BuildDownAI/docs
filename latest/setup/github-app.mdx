@@ -47,17 +47,17 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
   </Step>
 
   <Step title="Configure webhook delivery">
-    Webhook delivery is **optional**. AI-Implement's run loop is poll-driven and works without it.
+    Webhook delivery is **required for the `/ai-implement` comment trigger** — commenting `/ai-implement` on a pull request is handled directly by the orchestrator over this webhook, with no polling fallback. It also adds **automatic follow-up runs on review feedback**, again with no polling fallback.
 
-    It adds **automatic follow-up runs on review feedback** — when a reviewer leaves blocking comments on a pull request, AI-Implement picks them up and sends Claude back in **without** anyone commenting `/ai-implement`. An active webhook is the only automated route to it; there's no polling fallback.
-
-    Everything else works either way. Issues get picked up, runs dispatch, pull requests open, and merging one marks the issue done. `/ai-implement` gap-fill runs are handled by the `comment-trigger.yml` workflow in your target repo and never involve the orchestrator.
+    Everything else is poll-driven and works without a webhook: issues get picked up, runs dispatch, pull requests open, and merging one marks the issue done (merge detection just runs on the next poll instead of immediately).
 
     <Tabs>
       <Tab title="Without webhooks">
         Uncheck **Webhook active**. The event list disappears and there's nothing else to set here.
 
-        Comment `/ai-implement` when you want another pass over a pull request.
+        <Warning>
+          Without a webhook, commenting `/ai-implement` on a pull request has no effect — there is no other way to trigger a gap-fill run. Only skip the webhook if you don't need that capability.
+        </Warning>
       </Tab>
 
       <Tab title="With webhooks">

@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is protected by the `ADMIN_ACCESS_CODE` environment variable — if that variable is not set, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
+The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. Sign in with SSO (Google and/or Microsoft) or a shared access code — whichever your operator has configured. If neither is configured, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
 - **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
@@ -110,7 +110,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Info>
   **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
+  - Three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — are now available per project, in the **Edit** dialog on an existing project's row. Tune these to control cost and reliability. They aren't part of the creation stepper; set them after the project exists.
   - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
 </Info>
 
@@ -132,16 +132,6 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
-
-    | Field | Default if blank | Purpose |
-    |---|---|---|
-    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
-    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
-    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
-
-    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
-
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
       
@@ -153,6 +143,10 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
     Click **Create project**. The new mapping appears in the Projects table automatically — if it does not, reload the page.
   </Step>
 </Steps>
+
+<Tip>
+  The Capacity step in this stepper only sets **Max parallel AI issues**. The per-run caps — `maxTurns`, `maxIterations`, and `maxJobMinutes` — aren't part of project creation; set them afterwards from the project row's **Edit** dialog. Defaults if left blank: 50 turns, 3 iterations (2 for Bedrock), 90 minutes.
+</Tip>
 
 <Tip>
   Each row in the Projects table also exposes a **Sync workflows** action, which opens or updates a pull request in the target repo containing the workflow files and starter prompts. This is the normal way to push workflow updates from the orchestrator into target repos.
@@ -343,7 +337,7 @@ The table shows each file's:
 
 ## Admin API reference
 
-All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours.
+All `/api/*` endpoints except `/api/auth` and `/api/auth/*` require a `Bearer` token. Signing in through the browser UI (SSO or access code) sets this up for you automatically; the flow below is for scripting against the API directly, which only the access-code path supports. Tokens expire after 24 hours.
 
 ### Authentication
 
@@ -359,6 +353,10 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
     ```
 
     The response contains a `token` field. Store it for subsequent requests.
+
+    <Note>
+      This is the access-code path. If your orchestrator only has SSO configured (no `ADMIN_ACCESS_CODE`), obtain a session by signing in through the browser UI instead — there is no scriptable token exchange for SSO.
+    </Note>
   </Step>
   
   <Step title="Pass the token on subsequent requests">
@@ -379,9 +377,13 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
+| `GET` | `/api/auth/providers` | List which SSO providers are configured |
+| `GET` | `/api/auth/:provider/start` | Begin the SSO sign-in redirect for `google` or `microsoft` |
+| `GET` | `/api/auth/:provider/callback` | SSO provider redirects here after sign-in; sets the session cookie |
+| `POST` | `/api/auth/logout` | End the current SSO session |
 
 <Note>
-  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+  `/api/auth` and `/api/auth/*` are the only endpoints that don't require a bearer token — the SSO routes issue a session cookie instead. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
 </Note>
 
 #### Project mappings

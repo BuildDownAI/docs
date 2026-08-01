@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+When you sync AI-Implement to a target repo, it installs two GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
 ## Files installed by sync
 
@@ -27,9 +27,13 @@ Claude reads the codebase in read-only mode and produces structured planning com
 
 See [AI planning phase](/latest/configuration/planning) for the full flow.
 
-### `comment-trigger.yml`
+### The `/ai-implement` comment trigger
 
-Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
+Commenting `/ai-implement` on an open pull request dispatches `claude-implement.yml` with the existing PR number, so Claude can address remaining gaps without opening a new branch. This is handled by the orchestrator itself (via a GitHub webhook), not by a workflow file synced into the target repo — see [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) for what needs to be configured.
+
+<Note>
+  Repos that predate this change may still have an old `comment-trigger.yml` workflow file. It's no longer used, and a sync removes it if present.
+</Note>
 
 ### `WORKFLOW.md`
 
