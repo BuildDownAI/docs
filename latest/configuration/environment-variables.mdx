@@ -114,8 +114,12 @@ Pick the tab that matches where you're configuring right now.
 
     ### Service
 
-    <ParamField body="ADMIN_ACCESS_CODE" type="string">
-      Password for the admin UI at `/admin`. If this variable is not set, the admin UI is disabled entirely and all `/admin` and `/api/` routes return 404.
+    <ParamField body="ADMIN_ACCESS_CODE" type="string" deprecated>
+      Shared password for the admin UI at `/admin`. Using it logs a deprecation warning on each sign-in.
+      
+      Still works, and remains the simplest option for local development, but it identifies nobody and cannot be revoked for one person — prefer per-user sign-in on a deployed orchestrator.
+
+      The admin UI is enabled when this **or** any sign-in provider is configured. With neither, all `/admin` and `/api/` routes return 404.
     </ParamField>
 
     <ParamField body="PORT" type="string" default="8080">
@@ -139,6 +143,62 @@ Pick the tab that matches where you're configuring right now.
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/latest/setup/github-app).
       </Note>
     </ParamField>
+
+    ### Admin sign-in
+
+    Per-user sign-in through Google or Microsoft. Configure a provider's credentials to offer it, plus the shared base URL and allowlist below. See [Set up admin sign-in](/latest/setup/sso) for the provider walkthroughs.
+
+    <ParamField body="OAUTH_REDIRECT_BASE_URL" type="string">
+      **Required when any sign-in provider is configured.**
+
+      Public base URL of this orchestrator, used to build each provider's callback address — for example `https://your-orchestrator.fly.dev`, or `http://localhost:8080` locally.
+
+      <Warning>
+        It must match the redirect URI you registered with the provider exactly, since the callback is derived from it.
+      </Warning>
+    </ParamField>
+
+    <ParamField body="OAUTH_ALLOWED_DOMAINS" type="string">
+      Comma-separated domains whose addresses may sign in — for example `example.com,example.org`.
+    </ParamField>
+
+    <ParamField body="OAUTH_ALLOWED_EMAILS" type="string">
+      Comma-separated individual addresses that may sign in. An address matching either this or the domain list is admitted.
+    </ParamField>
+
+    <Warning>
+      The allowlist is **fail-closed**. With both lists empty, every sign-in is denied — configure at least one before enabling a provider.
+    </Warning>
+
+    <AccordionGroup>
+      <Accordion title="Google">
+        <ParamField body="GOOGLE_OAUTH_CLIENT_ID" type="string">
+          Client ID of a Google OAuth **Web** client. Set alongside the secret below to offer Google sign-in.
+        </ParamField>
+
+        <ParamField body="GOOGLE_OAUTH_CLIENT_SECRET" type="string">
+          Client secret for the same Google client.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Microsoft">
+        <ParamField body="MICROSOFT_OAUTH_CLIENT_ID" type="string">
+          Application (client) ID of a Microsoft Entra app registration. Set alongside the secret and tenant below to offer Microsoft sign-in.
+        </ParamField>
+
+        <ParamField body="MICROSOFT_OAUTH_CLIENT_SECRET" type="string">
+          Client secret **Value** for the same registration — not the Secret ID, which sits beside it in the Entra portal.
+        </ParamField>
+
+        <ParamField body="MICROSOFT_OAUTH_TENANT" type="string">
+          Directory (tenant) ID of the registration, as a GUID.
+
+          <Warning>
+            A multi-tenant value — `common`, `organizations`, or `consumers` — **disables Microsoft sign-in entirely**. Email verification relies on the account's tenant, which is only sound when the registration is bound to one directory.
+          </Warning>
+        </ParamField>
+      </Accordion>
+    </AccordionGroup>
 
     ### Notifications
 

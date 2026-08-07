@@ -128,6 +128,7 @@
                   "latest/setup/github-app",
                   "latest/setup/linear-app",
                   "latest/setup/deploy",
+                  "latest/setup/sso",
                   "latest/setup/target-repo"
                 ]
               },

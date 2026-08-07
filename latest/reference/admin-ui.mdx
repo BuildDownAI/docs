@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is protected by the `ADMIN_ACCESS_CODE` environment variable — if that variable is not set, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
+The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
 - **Work** — Overview, Issues, Pipelines, Pull requests, Blockers

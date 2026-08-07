@@ -104,7 +104,7 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="Admin UI returns 401">
     The admin API returns `401 Unauthorized` when the bearer token is missing, invalid, or expired.
 
-    - Confirm that `ADMIN_ACCESS_CODE` is set on the orchestrator. If the variable is unset, the admin UI is disabled entirely.
+    - Confirm that `ADMIN_ACCESS_CODE` or a sign-in provider is configured on the orchestrator. With neither, the admin UI is disabled entirely.
     - Session tokens expire after 24 hours. Re-authenticate by `POST`ing to `/api/auth` with your access code to obtain a new token.
     - If you are accessing the UI through a browser, clearing your browser's local storage for the admin origin and logging in again will resolve a stale token.
   </Accordion>

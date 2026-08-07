@@ -111,7 +111,7 @@ Running locally is the fastest way to test a configuration before committing to 
     Open the admin UI in your browser at `http://localhost:8080/admin`. You will be prompted for the `ADMIN_ACCESS_CODE` value from your `.env` file.
 
     <Note>
-      If `ADMIN_ACCESS_CODE` is not set, the admin UI is disabled entirely.
+      The admin UI is disabled only when neither `ADMIN_ACCESS_CODE` nor a sign-in provider is set. The access code is the simpler choice locally — see [Set up admin sign-in](/latest/setup/sso) for the deployed alternative.
     </Note>
   </Step>
 </Steps>

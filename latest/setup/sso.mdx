@@ -1,0 +1,187 @@
+---
+title: "Set up admin sign-in"
+description: "Configure Google or Microsoft sign-in for the AI-Implement admin UI, and control who is allowed in with the access allowlist."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+The admin UI supports per-user sign-in through **Google** or **Microsoft**, so each operator authenticates as themselves instead of sharing one access code. You can configure either provider, both, or neither.
+
+## How access is decided
+
+Two things must both be true for someone to reach the admin UI:
+- Their provider authenticates them
+- Their verified email matches your **allowlist**
+
+The **allowlist** is set through two variables, and an address matching either one is admitted:
+
+- `OAUTH_ALLOWED_DOMAINS` — comma-separated domains, admitting anyone with an address at them
+- `OAUTH_ALLOWED_EMAILS` — comma-separated individual addresses
+
+<Warning>
+    The allowlist is **fail-closed**. If both variables are empty, every sign-in is denied — including yours. Configure at least one before you switch operators over.
+</Warning>
+
+<Tip>
+    Prefer listing individual addresses over a whole domain. A domain entry admits **everyone** who has an address there.
+</Tip>
+
+## Create a provider application
+
+Pick the provider you want to sign in with. Configuring both is fine — operators then choose at the sign-in screen.
+
+<Tabs>
+    <Tab title="Google">
+        Google has 2 provider specific environment variables, both retrievable in the **Create the OAuth Client** step:
+        - `GOOGLE_OAUTH_CLIENT_ID`
+        - `GOOGLE_OAUTH_CLIENT_SECRET`
+
+        <Steps>
+            <Step title="Create a Google Cloud project">
+                In the [Google Cloud console](https://console.cloud.google.com), open the project picker in the top bar and choose **New Project**. Name it something recognizable, such as `ai-implement-sso`.
+
+                If your company has Google Workspace, set the parent organization so the project is governed by it. No billing is required for what follows.
+            </Step>
+
+            <Step title="Configure the consent screen">
+                Find **Google Auth Platform** and click **Get started**. A fresh project shows nothing else until this wizard is finished.
+
+                Work through its four steps:
+
+                1. **App information** — an app name and a user support email.
+                2. **Audience** — choose **External**.
+                3. **Contact information** — an email for Google's notices.
+                4. **Finish** — accept the user-data policy and click **Create**.
+
+                <Note>
+                    **Internal** restricts sign-in to addresses in your Workspace domain, which locks out any operator who doesn't have one.
+                    
+                    External lets your allowlist be the gate instead, which is where you want that decision made.
+                </Note>
+            </Step>
+
+            <Step title="Add your operators as test users">
+                On the **Audience** page, under **Test users**, click **Add users** and enter each operator's email, including any outside your domain.
+
+                An External app starts in testing mode, where only these accounts can authenticate, up to 100. Your allowlist still applies on top.
+
+                <Note>
+                    The **Publish app** button moves the app to production and removes the test-user limit, at the cost of an "unverified app" warning at sign-in until Google verifies your branding. Leave it in testing unless maintaining the list becomes a nuisance.
+                </Note>
+            </Step>
+
+            <Step title="Declare the scopes">
+                On the **Data Access** page, click **Add or remove scopes** and select the three the orchestrator requests:
+
+                - `openid`
+                - `.../auth/userinfo.email`
+                - `.../auth/userinfo.profile`
+
+                All three are non-sensitive, so no Google verification is required.
+            </Step>
+
+            <Step title="Create the OAuth client">
+                On the **Clients** page, click **Create client** and choose application type **Web application**. Give it an internal name — this one isn't shown to operators.
+
+                Under **Authorized redirect URIs**, add one entry per orchestrator, ending in `/api/auth/google/callback`:
+
+                ```
+                https://your-orchestrator.example.com/api/auth/google/callback
+                ```
+
+                Leave **Authorized JavaScript origins** empty. The orchestrator exchanges the authorization code server-side, so that field is unused.
+
+                <Warning>
+                    The redirect URI must match byte for byte — `https`, no trailing slash. A mismatch fails at sign-in with `redirect_uri_mismatch`.
+
+                    Don't add a `localhost` URI to a client that holds production credentials. If you want sign-in locally, create a separate client for it.
+                </Warning>
+
+                Create the client, then copy the **Client ID** and **Client secret** into `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`.
+            </Step>
+        </Steps>
+    </Tab>
+
+    <Tab title="Microsoft">
+        Microsoft has 3 provider specific environment variables, retrievable during different steps:
+        - `MICROSOFT_OAUTH_CLIENT_ID` — Register the application
+        - `MICROSOFT_OAUTH_TENANT` — Register the application
+        - `MICROSOFT_OAUTH_CLIENT_SECRET` — Create a client secret
+
+        <Steps>
+            <Step title="Register the application">
+                In [Microsoft Entra](https://entra.microsoft.com), go to **Entra ID → App registrations → New registration** and name it.
+
+                For **Supported account types**, choose **Accounts in this organizational directory only**. The orchestrator verifies a Microsoft email using the account's tenant, which is only sound when the application is bound to a single directory.
+
+                Set the **Redirect URI** to platform **Web**, ending in `/api/auth/microsoft/callback`:
+
+                ```
+                https://your-orchestrator.example.com/api/auth/microsoft/callback
+                ```
+
+                After registering, copy the **Application (client) ID** and the **Directory (tenant) ID** from the Overview page.
+
+                <Warning>
+                    Setting the tenant to a multi-tenant value — `common`, `organizations`, or `consumers` — **disables Microsoft sign-in entirely**. It does not degrade to a weaker check.
+                </Warning>
+            </Step>
+
+            <Step title="Create a client secret">
+                Go to **Certificates & secrets → Client secrets → New client secret**, add a description and expiry, then click **Add**. Copy the result into `MICROSOFT_OAUTH_CLIENT_SECRET`.
+
+                <Warning>
+                    Copy the **Value**, not the **Secret ID**. They appear side by side, and the Value is masked as soon as you leave the page.
+                    
+                    Using the ID by mistake fails at first sign-in with an invalid-client-secret error.
+                </Warning>
+            </Step>
+
+            <Step title="Add the email claim">
+                Microsoft does not include an email in the token by default. Go to **Token configuration → Add optional claim**, choose token type **ID**, check **email**, and click **Add**. Accept the prompt to turn on the matching Graph permission.
+
+                Without this, sign-in succeeds but the orchestrator has no address to check against your allowlist.
+            </Step>
+
+            <Step title="Make sure an operator can sign in">
+                A newly created tenant has no usable accounts. Either create a member user under **Entra ID → Users** and set its email attribute, or invite your operators as guests.
+            </Step>
+        </Steps>
+    </Tab>
+</Tabs>
+
+## Wire the orchestrator
+
+Alongside the provider credentials above, every orchestrator needs the callback base URL and the allowlist:
+
+```bash
+fly secrets set \
+  OAUTH_REDIRECT_BASE_URL=https://your-orchestrator.example.com \
+  OAUTH_ALLOWED_EMAILS=operator@example.com,other@example.com \
+  --app your-app
+```
+
+<Warning>
+    `OAUTH_REDIRECT_BASE_URL` must match the redirect URI you registered — the orchestrator builds the callback from it, so a mismatch produces the same failure as a mistyped URI.
+</Warning>
+
+Each variable is described in [Environment variables](/latest/configuration/environment-variables).
+
+## The shared access code
+
+`ADMIN_ACCESS_CODE` still works and is the right choice for local development, but it is **deprecated** for deployed orchestrators — it identifies nobody and cannot be revoked for one person.
+
+The admin UI is enabled when the access code **or** any sign-in provider is configured, so you can leave the code in place while operators move across, then remove it.
+
+## What's next
+
+<Columns cols={2}>
+    <Card title="Environment variables" icon="code" href="/latest/configuration/environment-variables">
+        Every sign-in variable, with its accepted values and defaults.
+    </Card>
+    <Card title="Admin UI reference" icon="sliders" href="/latest/reference/admin-ui">
+        What each panel in the admin UI does once you're signed in.
+    </Card>
+</Columns>

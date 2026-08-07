@@ -63,7 +63,7 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     | Variable | Default | Description |
     |---|---|---|
-    | `ADMIN_ACCESS_CODE` | _(none)_ | Password for the admin UI — UI is disabled if unset |
+    | `ADMIN_ACCESS_CODE` | _(none)_ | Password for the admin UI — needed unless you configure sign-in |
     | `NOTIFY_TYPE` | `slack` | Notification provider: `slack` or `teams` |
     | `NOTIFY_WEBHOOK_URL` | _(none)_ | Webhook URL — notifications are skipped if unset |
     | `POLL_INTERVAL_MS` | `60000` | How often the orchestrator polls for new issues, in milliseconds |
@@ -71,7 +71,7 @@ This guide walks you through running AI-Implement for the first time. By the end
     | `DEDUP_DB_PATH` | `./dedup.sqlite` | Path for the SQLite database |
 
     <Tip>
-      Set `ADMIN_ACCESS_CODE` to a non-empty value so you can access the admin UI at the project mapping step. Without it, the UI is disabled.
+      Set `ADMIN_ACCESS_CODE` to a non-empty value so you can reach the admin UI at the project mapping step. It's the quickest option for a first run; [admin sign-in](/latest/setup/sso) is the better fit once you deploy.
     </Tip>
   </Step>
 
