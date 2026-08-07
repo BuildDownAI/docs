@@ -30,10 +30,34 @@ If `NOTIFY_WEBHOOK_URL` is not set, notifications are silently skipped. No error
 
 ## What triggers a notification
 
-AI-Implement sends notifications at two points in the run lifecycle:
+AI-Implement notifies on two kinds of event.
 
-- **Dispatch** — when the orchestrator picks up an issue and dispatches a workflow run. The notification includes the issue identifier, title, and target repository.
-- **Completion** — when a workflow run finishes. The notification includes the outcome (`completed`, `failed`, or `timed_out`), a link to the PR (if one was opened), a link to the GitHub Actions run, and the run duration.
+**Run lifecycle**
+
+- **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
+- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+
+**Orchestrator lifecycle**
+
+- **Restarting** — the orchestrator is shutting down, so dispatches are paused until it returns.
+- **Back up** — it is serving again, saying whether this is a new version or the same one.
+
+## Deploy notifications
+
+When the orchestrator restarts, it announces the fact itself, so a pause in dispatches doesn't look like a fault.
+
+<Tip>
+  This needs no configuration beyond the webhook you already set — the same `NOTIFY_TYPE` and `NOTIFY_WEBHOOK_URL`.
+</Tip>
+
+You get a matched pair. The outgoing process posts **Orchestrator restarting** as it shuts down — the only one of these that sends an `@channel`, since the message that follows answers it. The incoming process replies once it's serving again:
+
+- **Orchestrator redeployed** — a new version is live.
+- **Orchestrator back up** — the same version came back, so this was a restart rather than a deploy.
+
+Each message names the app, its region, and how long it was down. The restarting notice omits the version deliberately: it is sent by the process being replaced, so the only version it knows is the one going away.
+
+These are sent only where the orchestrator can identify its own image, which in practice means Fly.io — running locally is silent. The first deploy after enabling this is silent too, by design: the outgoing process is still running the older build and has no shutdown handler, while the incoming one has no previous version to compare against. Restart the app once afterwards to see the full pair.
 
 ## Setting up Slack
 
