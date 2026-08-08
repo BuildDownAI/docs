@@ -372,8 +372,12 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
 
 <Note>
-  `/api/auth` is the only *operator-facing* endpoint that does not require a bearer token — every other route documented on this page returns `401 Unauthorized` if the token is missing or expired. A separate handful of `/api/*` routes used by runner sessions authenticate differently; see [Session-machine endpoints](#session-machine-endpoints) below.
+  `/api/auth` is the only *operator-facing* endpoint that does not require a bearer token — every other route documented on this page returns `401 Unauthorized` if the token is missing or expired.
 </Note>
+
+<Warning>
+  Bearer tokens are not a blanket gate on `/api/*`: a separate handful of routes used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
+</Warning>
 
 #### Project mappings
 
@@ -478,7 +482,7 @@ Two endpoints sit outside the operator API but are operator-configurable: you se
 
 ### Session-machine endpoints
 
-Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-machine nonce instead.
+Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -487,5 +491,5 @@ Three more `/api/*` routes are called by Fly Machine and local Docker runner ses
 | `POST` | `/api/step-report` | Receives per-step progress reports from the pipeline runner. |
 
 <Note>
-  Operators do not normally call these directly. They're documented here for the same reason as the runner callback endpoints above — so monitoring and ingress rules account for them correctly.
+  These are internal to the orchestrator and its runner sessions. They are listed here so monitoring and ingress rules account for them correctly — not as an interface to build against. Their paths, payloads, and authentication may change without notice, and nothing outside a runner session should call them.
 </Note>

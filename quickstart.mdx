@@ -132,7 +132,7 @@ This guide walks you through running AI-Implement for the first time. By the end
   </Step>
 
   <Step title="Review and merge the workflow pull request">
-    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, `comment-trigger.yml`, and a starter `WORKFLOW.md`.
+    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, and starter `WORKFLOW.md` and `PLANNING.md` files. `/ai-implement` PR comments are handled by the orchestrator directly — see [Create a GitHub App](/setup/github-app) for the webhook it needs.
 
     Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
 
@@ -179,7 +179,7 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
 
-    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has a gap analysis comment comparing the diff to your original ticket.
+    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has an automated review comment on its merge readiness.
 
     <Tip>
       If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, incorrect ticketing credentials (`LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.

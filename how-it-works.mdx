@@ -1,6 +1,6 @@
 ---
 title: "How AI-Implement works: the full lifecycle"
-description: "The end-to-end flow from marking an issue in Linear or Jira to a merged PR with gap analysis, including planning, labels, and gap-fill runs."
+description: "The end-to-end flow from marking an issue in Linear or Jira to a merged PR with an automated review, including planning, labels, and gap-fill runs."
 ---
 
 AI-Implement connects three systems — **Linear** or **Jira**, GitHub Actions, and Claude Code — through a small Node.js orchestrator. Understanding how these pieces fit together helps you write better tickets, configure the service correctly, and know what to expect at each stage of a run.
@@ -131,14 +131,10 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     </Tip>
   </Step>
 
-  <Step title="Gap analysis is posted to the PR">
-    After the PR is opened, a second Claude pass runs automatically. This is the gap analysis: Claude reads the PR diff and the original ticket, then posts a structured comment to the PR with three sections:
+  <Step title="Automated review is posted to the PR">
+    After the PR is opened, a second Claude pass runs automatically, reviewing the diff for merge readiness — bugs, missing requirements, unsafe behavior, and test gaps. If it finds blocking issues, it has Claude fix them and reviews again, up to 3 passes by default (2 for Bedrock); if it approves, it posts an "✅ Approved" comment and a native GitHub PR review.
 
-    - **Implemented** — requirements from the ticket that are fully addressed in the diff
-    - **Gaps / Partial Implementation** — requirements that are missing or only partially done
-    - **Manual Steps Required** — human actions needed, such as setting environment variables, running migrations, or configuring external services
-
-    The gap analysis uses a lighter model by default (`claude-haiku-4-5-20251001` on the Anthropic provider) to keep costs low. You can override this with the `gap_analysis_model:` field in `WORKFLOW.md`.
+    See [Post-push review](/reference/gap-analysis) for the full comment sequence and what happens if the iteration cap is reached without approval.
   </Step>
 
   <Step title="Issue is updated to Ready for Review">
@@ -154,13 +150,13 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
 
-    Your team can now review the PR and the gap analysis in GitHub, and see the status change in your ticketing system — no context-switching required.
+    Your team can now review the PR and the automated review comments in GitHub, and see the status change in your ticketing system — no context-switching required.
   </Step>
 
   <Step title="Gap-fill runs with /ai-implement">
-    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+    After reviewing the PR, you can send Claude back in for another pass without starting a new run. Comment on the PR with something **starting with** `/ai-implement`. On a repo synced to the current workflow templates, the orchestrator's own webhook picks up the comment directly — this needs the GitHub App's webhook configured and subscribed to PR-comment events (see [`GITHUB_WEBHOOK_SECRET`](/configuration/environment-variables#param-github-webhook-secret)); there's no other path that watches for this comment on such a repo.
 
-    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the gap analysis comment is updated automatically.
+    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the feedback from the previous pass. It pushes new commits to the same branch, and the automated review runs again against the updated diff.
 
     <Info>
       Gap-fill runs do not create new PRs or new branches. All work goes onto the existing PR branch, keeping your review history clean.
@@ -182,10 +178,10 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     - **Inline review comments** on specific lines of the diff
     - **Issue comments** on the PR containing actionable feedback
 
-    Each new piece of feedback is deduplicated against what Claude already addressed in earlier passes, then queued for the next follow-up run. The run pushes to the same PR branch — no new PRs or branches — and updates the gap analysis with what was newly addressed.
+    Each new piece of feedback is deduplicated against what Claude already addressed in earlier passes, then queued for the next follow-up run. The run pushes to the same PR branch — no new PRs or branches — and the automated review runs again to reflect what was newly addressed.
 
     <Tip>
-      To make AI-Implement wait for an external review bot's findings before running its own gap analysis (so both reviewers' feedback get folded into one pass), configure the `reviewProviders` field in `.ai-implement/config.yml`.
+      To make AI-Implement wait for an external review bot's findings before running its own review (so both reviewers' feedback get folded into one pass), configure the `reviewProviders` field in `.ai-implement/config.yml`.
       
       See [Repo-level configuration file](/customize/custom-steps#repo-level-configuration-file).
     </Tip>
