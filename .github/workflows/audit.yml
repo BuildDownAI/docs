@@ -77,5 +77,8 @@ jobs:
                 draft: true
                 labels: docs-audit
                 delete-branch: true
+                # `*.mdx` not `**/*.mdx` — git pathspec requires a literal directory component for the
+                # latter, so `**/*.mdx` silently drops every root-level page, which is all of stable's
+                # top-level tree. `*` matches `/` here, so this still reaches nested pages.
                 add-paths: |
-                    **/*.mdx
+                    *.mdx
