@@ -40,6 +40,8 @@ The source audit's file-scope rule (in `audit-prompt.md`) constrains which scope
 
 ## Task
 
+**Batch independent tool calls throughout, not just in the priming step.** Every step below operates over N runs × M files: each run's copy of a docs file, the fresh checkout's original, and the edits for different files are all independent, and belong in a single message rather than one per turn. A synthesis that issues one tool call per turn spends its whole budget on coordination instead of work — that is the difference between finishing and hitting the turn cap. Sequence only where a step genuinely needs the previous result.
+
 ### Step a — Detect run completeness FIRST
 
 Read `./audit-runs/.expected-runs` (a small text file containing the `inputs.runs` value, e.g., `3`). Count actual `audit-runs/run-*/audit-report.md` files present. If actual < expected, the synthesis runs in **incomplete mode**:
@@ -80,6 +82,10 @@ Number deduped findings from H-1, M-1, L-1 onward in the unioned report. Origina
 Apply the selected edit per HIGH finding to the FRESH docs checkout at `./` (NOT the artifact directories under `./audit-runs/`). For each applied edit:
 - Use `Edit` to write the change in-place at the canonical docs file path
 - Keep the surrounding context unchanged
+
+**Delegate this step per file.** Once step d has chosen the winning candidate for each file, applying it is mechanical and independent of every other file. Spawn one subagent per docs file and hand it three things: the canonical path in `./`, the path to the chosen candidate under `./audit-runs/run-N/`, and the finding IDs that edit covers. Subagent turns do not count against `--max-turns`, so this keeps the main loop's budget for the steps that need the whole union in view.
+
+**Keep step d in the main loop.** Choosing between candidate edits means comparing every run's version against the principles in `audit-reference.md` — judgment a per-file subagent cannot make from its slice. Delegate the application, never the selection.
 
 ### Step g — Write the unioned report
 

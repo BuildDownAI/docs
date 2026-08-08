@@ -101,8 +101,10 @@ jobs:
                 # the terminal result event carries every field the json envelope did
                 jq -c 'select(.type=="result")' claude-stream.jsonl | tail -1 > claude-envelope.json
                 [ -s claude-envelope.json ] || echo '{}' > claude-envelope.json
-                # one API response per distinct assistant message id — this is what --max-turns bounds
-                agentic=$(jq -r 'select(.type=="assistant") | .message.id' claude-stream.jsonl | sort -u | wc -l)
+                # one API response per distinct assistant message id, MAIN LOOP ONLY — subagent
+                # responses carry a parent_tool_use_id and are not what --max-turns bounds
+                agentic=$(jq -r 'select(.type=="assistant" and (.parent_tool_use_id // null) == null) | .message.id' claude-stream.jsonl | sort -u | wc -l)
+                delegated=$(jq -r 'select(.type=="assistant" and (.parent_tool_use_id // null) != null) | .message.id' claude-stream.jsonl | sort -u | wc -l)
                 turns=$(jq -r '.num_turns // "unknown"' claude-envelope.json)
                 outcome=$(jq -r '.subtype // "unknown"' claude-envelope.json)
                 {
@@ -112,6 +114,7 @@ jobs:
                   echo "|---|---|"
                   echo "| Outcome | ${outcome} |"
                   echo "| Agentic turns used | ${agentic} of ${MAX_TURNS} |"
+                  echo "| Subagent turns (uncapped) | ${delegated} |"
                   echo "| Tool results (num_turns) | ${turns} |"
                 } >> "$GITHUB_STEP_SUMMARY"
                 if [ "$outcome" = "error_max_turns" ]; then
