@@ -29,7 +29,7 @@ on:
                 required: false
                 default: ''
             synthesis_max_turns:
-                description: 'Override synthesis max-turns (blank = 100)'
+                description: 'Override synthesis max-turns (blank = 200)'
                 type: string
                 required: false
                 default: ''
@@ -84,7 +84,7 @@ jobs:
         env:
             TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
             EXPECTED_RUNS: ${{ github.event.inputs.runs || '3' }}
-            SYNTHESIS_MAX_TURNS: ${{ github.event.inputs.synthesis_max_turns != '' && github.event.inputs.synthesis_max_turns || '100' }}
+            SYNTHESIS_MAX_TURNS: ${{ github.event.inputs.synthesis_max_turns != '' && github.event.inputs.synthesis_max_turns || '200' }}
 
         steps:
             - name: Mint GitHub App installation token
@@ -156,16 +156,25 @@ jobs:
                     --output-format stream-json --verbose > claude-stream.jsonl
 
             - name: Report run telemetry
+              id: telemetry
               if: always()
               shell: bash
               run: |
+                # the PR step consumes this — a missing report means there is nothing to open
+                if [ -s audit-report.md ]; then
+                  echo "report=true" >> "$GITHUB_OUTPUT"
+                else
+                  echo "report=false" >> "$GITHUB_OUTPUT"
+                fi
                 if [ ! -s claude-stream.jsonl ]; then
                   echo "### Synthesis — no telemetry stream produced" >> "$GITHUB_STEP_SUMMARY"
                   exit 0
                 fi
                 jq -c 'select(.type=="result")' claude-stream.jsonl | tail -1 > claude-envelope.json
                 [ -s claude-envelope.json ] || echo '{}' > claude-envelope.json
-                agentic=$(jq -r 'select(.type=="assistant") | .message.id' claude-stream.jsonl | sort -u | wc -l)
+                # main loop only — subagent responses carry a parent_tool_use_id and are not capped
+                agentic=$(jq -r 'select(.type=="assistant" and (.parent_tool_use_id // null) == null) | .message.id' claude-stream.jsonl | sort -u | wc -l)
+                delegated=$(jq -r 'select(.type=="assistant" and (.parent_tool_use_id // null) != null) | .message.id' claude-stream.jsonl | sort -u | wc -l)
                 turns=$(jq -r '.num_turns // "unknown"' claude-envelope.json)
                 outcome=$(jq -r '.subtype // "unknown"' claude-envelope.json)
                 {
@@ -175,11 +184,16 @@ jobs:
                   echo "|---|---|"
                   echo "| Outcome | ${outcome} |"
                   echo "| Agentic turns used | ${agentic} of ${SYNTHESIS_MAX_TURNS} |"
+                  echo "| Subagent turns (uncapped) | ${delegated} |"
                   echo "| Tool results (num_turns) | ${turns} |"
                 } >> "$GITHUB_STEP_SUMMARY"
                 if [ "$outcome" = "error_max_turns" ]; then
                   echo "" >> "$GITHUB_STEP_SUMMARY"
                   echo "⚠️ **Turn cap reached** — this run was truncated. Raise \`synthesis_max_turns\` and re-run." >> "$GITHUB_STEP_SUMMARY"
+                fi
+                if [ ! -s audit-report.md ]; then
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  echo "❌ **No synthesis report produced** — \`audit-report.md\` is missing, so no pull request was opened. The outcome above is the reason." >> "$GITHUB_STEP_SUMMARY"
                 fi
 
             - name: Archive synthesis report (keep newest 5)
@@ -196,8 +210,9 @@ jobs:
                 ls -1 .github/audit-archive/
 
             - name: Open synthesis PR
-              # open PR even if synthesis partially completed
-              if: always()
+              # open PR even if synthesis partially completed — but only if it produced a report,
+              # otherwise create-pull-request fails on the missing body-path and buries the real cause
+              if: always() && steps.telemetry.outputs.report == 'true'
               uses: peter-evans/create-pull-request@v8
               with:
                 token: ${{ steps.app-token.outputs.token }}
@@ -214,3 +229,24 @@ jobs:
                     :!audit-runs/**
                     :!ai-implement/**
                     :!skills-source/**
+
+            # without this a failed synthesis leaves nothing to diagnose — the stream is the only
+            # record of where the turns went, and the runner is torn down with it
+            - name: Upload synthesis telemetry
+              if: always()
+              uses: actions/upload-artifact@v7
+              with:
+                name: synthesis-telemetry
+                path: |
+                    claude-stream.jsonl
+                    audit-report.md
+                retention-days: 7
+                if-no-files-found: warn
+
+            # the synthesis step is continue-on-error so partial output still reaches a PR; without
+            # this the job goes green when synthesis produced nothing at all
+            - name: Fail if synthesis produced no report
+              if: always() && steps.telemetry.outputs.report != 'true'
+              run: |
+                echo "::error::Synthesis produced no audit-report.md. See the run telemetry in the job summary for the outcome."
+                exit 1
