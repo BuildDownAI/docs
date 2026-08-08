@@ -129,7 +129,7 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
       HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Set the same value on the GitHub App's webhook configuration, pointed at `https://<orchestrator-host>/api/github/webhook`.
 
-      Leaving it unset disables one capability: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing polls for review feedback, so without a working webhook someone has to comment `/ai-implement` to get another pass.
+      Leaving it unset disables every webhook-driven behavior: automatic follow-up runs when a reviewer leaves blocking feedback, the faster merge-to-Done path, and — for target repos on the current workflow generation — handling of `/ai-implement` PR comments. Those repos have no fallback for the comment trigger once this secret is missing, since the orchestrator's webhook is the only thing listening for it. A poll-based path still moves merged PRs to Done without the webhook, just on a slower cadence.
 
       <Note>
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/setup/github-app).
@@ -159,6 +159,10 @@ Pick the tab that matches where you're configuring right now.
       <Warning>
         `shadow` is a testing mode. Every run consumes a GitHub Actions job and a Fly Machine, so it roughly doubles Fly session load for as long as it is enabled.
       </Warning>
+
+      <Note>
+        The admin UI's Reaper page also has a runner-mode toggle, backed by a setting stored in the database. Setting this variable always wins over that toggle — the UI toggle has no effect while the variable is set. To switch modes at runtime from the admin UI, leave this variable unset.
+      </Note>
     </ParamField>
 
     <ParamField body="FLY_SESSIONS_APP" type="string">
@@ -214,7 +218,7 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
           Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint, which starts a gap-fill run against an existing pull request. Leaving it unset disables the endpoint.
 
-          This is not needed for the `/ai-implement` comment trigger. That path runs entirely inside the `comment-trigger.yml` workflow in your target repo and never calls the orchestrator. Set this only if you drive gap-fill runs from your own automation.
+          This is a separate secret from `GITHUB_WEBHOOK_SECRET` and is not needed for the `/ai-implement` comment trigger — that path is authenticated by `GITHUB_WEBHOOK_SECRET` instead (on target repos still running the older, pre-sync workflow generation, it runs inside that repo's own `comment-trigger.yml` workflow and needs neither secret). Set `GAP_FILL_TRIGGER_SECRET` only if you drive gap-fill runs from your own automation.
         </ParamField>
       </Accordion>
 
@@ -238,7 +242,7 @@ Pick the tab that matches where you're configuring right now.
         </ParamField>
 
         <ParamField body="FLY_APP_NAME" type="string">
-          Fly.io app name for this instance. Read for logging only; the actual Fly deployment binds this automatically.
+          Fly.io app name for this instance. Fly sets this automatically, so you rarely need to. It tags every session machine this instance creates, and the cleanup sweep uses that tag to avoid touching another tenant's machines — in a shared sessions app, an incorrect value can cause one instance's cleanup to destroy another tenant's sessions.
         </ParamField>
       </Accordion>
 
@@ -321,6 +325,10 @@ Pick the tab that matches where you're configuring right now.
 
     Used so `/ai-implement` comment-triggered gap-fill runs route to the same provider as orchestrator-initiated runs.
 
+    <Warning>
+      Both variables below are read only by the older, pre-sync `comment-trigger.yml` workflow. Once a target repo has run **Sync workflows**, that file is removed and `/ai-implement` comments are handled by the orchestrator instead — provider and region for those runs come from the project's mapping in the admin UI, and these variables have no effect.
+    </Warning>
+
     <ParamField body="AI_IMPLEMENT_PROVIDER" type="string">
       Set to `bedrock` for Bedrock-backed target repos. Leave unset for the default Anthropic API path.
     </ParamField>
@@ -348,7 +356,7 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <Note>
-      Setting these here only affects `/ai-implement` comment-triggered runs. For orchestrator-initiated runs, set per-project caps in the admin UI under **Configure → Projects**. See [Project mappings](/configuration/team-repo-mappings) for that side.
+      Setting these here only affects `/ai-implement` comment-triggered runs on a target repo that has not yet run **Sync workflows** to move to the current templates — that older `comment-trigger.yml` workflow is the only thing that reads them. Once a repo syncs, `comment-trigger.yml` is removed, comment-triggered runs go through the orchestrator, and these variables are silently ignored — the equivalent caps live on the project's mapping in the admin UI under **Configure → Projects** for both orchestrator-initiated and comment-triggered runs. See [Project mappings](/configuration/team-repo-mappings) for that side.
     </Note>
 
     ### Runner image
@@ -379,7 +387,7 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="AI_IMPLEMENT_SKILLS_REPO" type="string">
       Skills repository as `owner/repo`, cloned into the workspace so Claude can use its skills during `/ai-implement` comment-triggered runs.
 
-      Mirrors the per-project skills setting in the admin UI, which covers orchestrator-initiated runs.
+      Mirrors the per-project skills setting in the admin UI, which covers orchestrator-initiated runs. Like the gap-fill run caps above, this variable is read only by the older, pre-sync `comment-trigger.yml` workflow — after a repo runs **Sync workflows**, comment-triggered runs pick up the skills repo from the project's mapping instead, and this variable has no effect.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">

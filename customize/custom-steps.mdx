@@ -61,12 +61,14 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="preflight">
-    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run. Automatically skipped when the `feedback-loop` did not approve the diff.
+    Runs the target repo's own `typecheck`/`lint`/`test` package-manager scripts against Claude's finished diff, immediately before push. Automatically skipped when the `feedback-loop` did not approve the diff — so it validates a reviewer-approved change, not the pre-implementation workspace.
+
+    A failing preflight check does not block push; the diff is pushed either way. Override to make preflight failures blocking, or to run additional checks.
   </Accordion>
 
   <Accordion title="push">
-    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Automatically skipped when the `feedback-loop` did not approve the diff.
-    
+    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Runs on every fresh implementation run — when the `feedback-loop` approved the diff it opens a normal PR, and when it didn't it still opens a **draft PR** carrying the reviewer's final feedback and per-pass stats. It's skipped only on gap-fill re-runs, where Claude commits and pushes to the existing PR branch directly instead.
+
     Override to customize commit message format, branch naming, or PR body construction.
   </Accordion>
 
@@ -79,9 +81,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="post-push-review">
-    Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
+    Runs a merge-readiness code review of the PR — checking for bugs, missing requirements, and test gaps — and posts the findings as a PR comment.
 
-    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to three times by default — before reporting whatever the final state is.
+    Before the review runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own review are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to three times by default — before reporting whatever the final state is: an "Approved" comment, or a "Reached review cap" comment when the iteration cap is hit without approval.
 
     The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
@@ -159,7 +161,7 @@ steps:
 <Tip>
   Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
   
-  Your YAML only needs to declare `id`, `type`, and optional `moduleId`.
+  Your YAML only needs to declare `id`, `type`, and optional `moduleId` — no other key is recognized. An `inputs:` key, for example, is parsed but silently ignored. A step whose `id` isn't one of the built-ins above always receives an empty `inputs` object, so a genuinely new custom step must read whatever it needs from the pipeline's shared context data rather than from step-level YAML config.
 </Tip>
 
 ## Repo-level configuration file
@@ -189,7 +191,7 @@ reviewProviders:
   
   When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
 
-  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. Any value outside the three above fails the run.
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside the three above isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
 </ParamField>
 
 <ParamField body="models.implement" type="string">
@@ -214,10 +216,10 @@ reviewProviders:
   The file is read fresh at the start of every run, so changes take effect on the next dispatch without needing to restart the orchestrator.
 </Tip>
 
-## custom/providers/ — reserved
+## custom/providers/ — override a ticketing provider
 
-The `custom/providers/` directory is reserved for future provider overrides. It is not yet wired up to a stable interface.
+Drop a TypeScript file at `custom/providers/<id>.ts` to replace the built-in Linear or Jira provider for that ID — same override mechanism and precedence as `custom/steps/`. The file's default export is used in place of the built-in provider whenever one is found.
 
 <Warning>
-  Do not use `custom/providers/` for production customizations — the interface is not yet stable and may change without notice.
+  The exported factory's interface shape may still change in a future release without notice, so treat a custom provider as something you'll need to revisit on upgrades.
 </Warning>

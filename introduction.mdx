@@ -3,7 +3,7 @@ title: "AI-Implement: From tickets to pull requests"
 description: "AI-Implement turns your Linear or Jira backlog into pull requests by running Claude Code against marked issues. Your tickets are the prompts."
 ---
 
-AI-Implement is an orchestration service that connects your **Linear** or **Jira** workspace to one or more GitHub repositories. You mark an issue with the `AI-Implement` label (Linear) or set its `AI-Implement Status` to `Ready` (Jira), and within minutes Claude Code checks out the right repo, reads your codebase, implements the ticket, opens a pull request, and posts a gap analysis comparing what was built to what you asked for. Your team reviews everything in the tools they already use — Linear or Jira, plus GitHub — without learning a new interface.
+AI-Implement is an orchestration service that connects your **Linear** or **Jira** workspace to one or more GitHub repositories. You mark an issue with the `AI-Implement` label (Linear) or set its `AI-Implement Status` to `Ready` (Jira), and within minutes Claude Code checks out the right repo, reads your codebase, implements the ticket, opens a pull request, and posts an automated merge-readiness review of its own diff. Your team reviews everything in the tools they already use — Linear or Jira, plus GitHub — without learning a new interface.
 
 ## Who it's for
 
@@ -48,8 +48,8 @@ Before you can run AI-Implement, you'll need accounts and credentials across fou
 
 **The ticket is the prompt.** Writing well-specified tickets is something teams already know how to do. AI-Implement uses that skill — and the cross-issue structure in your ticket backlog — instead of asking anyone to learn prompt engineering.
 
-**The PR is the work product.** Every run produces a pull request, a gap analysis comment, and a ticket-system status change. Reviewers see exactly what was attempted and where it fell short of the spec.
+**The PR is the work product.** Every run produces a pull request, an automated review comment, and a ticket-system status change. Reviewers see exactly what was attempted and where it fell short of the spec.
 
 **One orchestrator, many repos.** A single AI-Implement service can dispatch workflows across multiple repos in multiple GitHub organizations. **Project mappings** — each one connecting a Linear team or Jira JQL to a GitHub repo — are managed in the admin UI.
 
-**Gap-fill on demand.** After reviewing a PR, comment `/ai-implement` on it to send Claude back in for a second pass on the same branch. The gap analysis comment updates automatically.
+**Gap-fill on demand.** After reviewing a PR, comment `/ai-implement` on it to send Claude back in for a second pass on the same branch. The automated review runs again against the updated diff.

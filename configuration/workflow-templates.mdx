@@ -3,7 +3,7 @@ title: "Workflow template files and front matter"
 description: "How the workflow files synced to target repos work, the front matter keys they read from WORKFLOW.md and PLANNING.md, and how to run a resync."
 ---
 
-When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+When you sync AI-Implement to a target repo, it installs two GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
 ## Files installed by sync
 
@@ -13,7 +13,9 @@ The main implementation workflow, placed at `.github/workflows/claude-implement.
 
 It reads `WORKFLOW.md` from the repo root, substitutes issue variables into it, and passes the result to Claude Code as the implementation prompt.
 
-After Claude creates a PR, the workflow posts a gap analysis comment to the PR. The originating issue's status and any related comments are updated separately by the orchestrator via its provider-callback mechanism.
+After Claude creates a PR, the workflow posts an automated merge-readiness review to the PR. The originating issue's status and any related comments are updated separately by the orchestrator via its provider-callback mechanism.
+
+A comment on the PR that **starts with** `/ai-implement` is handled by the orchestrator itself, not by a workflow file — it checks the commenter's repo permission and dispatches `claude-implement.yml` against the existing PR branch so Claude can address remaining gaps without opening a new branch. This needs the GitHub App's webhook configured; see [Create a GitHub App](/setup/github-app).
 
 ### `claude-plan.yml`
 
@@ -22,10 +24,6 @@ The planning workflow, placed at `.github/workflows/claude-plan.yml`. Dispatched
 Claude reads the codebase in read-only mode and produces structured planning comments that get posted to the originating issue. The planning context is then included automatically in the implementation prompt when `claude-implement.yml` runs.
 
 See [AI planning phase](/configuration/planning) for the full flow.
-
-### `comment-trigger.yml`
-
-Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
 
 ### `WORKFLOW.md`
 
@@ -66,9 +64,9 @@ The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delim
 <ParamField body="gap_analysis_model" type="string">
   **Reserved — not currently read.** The seeded `WORKFLOW.md` ships this key commented out, and the front matter parser accepts it, but no step consumes it.
 
-  Gap analysis runs on the same model as the rest of the run — the `model` value above, or `claude-sonnet-4-6` when that is unset.
+  The post-push review runs on the same model as the rest of the run — the `model` value above, or `claude-sonnet-4-6` when that is unset.
 
-  Setting it has no effect, so it cannot be used to shift gap analysis onto a cheaper model.
+  Setting it has no effect, so it cannot be used to shift the review onto a cheaper model.
 </ParamField>
 
 <ParamField body="setup" type="string">
