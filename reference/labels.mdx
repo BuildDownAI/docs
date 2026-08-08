@@ -83,7 +83,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
     <Warning>
-      Unlike Linear, Jira has no built-in blocking semantics here. To stop an issue from being picked up, either gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+      An issue with an open **Blocks**-type issue link is skipped, the same as Linear — the block clears once the linked issue's status reaches the Done category. This only recognizes Jira's default "Blocks" link type; if your instance renamed it, gate the issue through your JQL instead. To stop an issue from being picked up for another reason, move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
     </Warning>
 
     ### Planning / Plan Approved
@@ -118,7 +118,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
 ## Concurrency
 
-The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight (`AI-Working` in Linear, or `Implementing` in Jira) simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
+The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight simultaneously. An issue counts against the limit for its entire time in the pipeline — in Linear, while it carries `AI-Planning` or `AI-Working`; in Jira, while its status is `Planning` or `Implementing`. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
 
 You can change the concurrency cap for a team from the admin UI or by sending a `PATCH /api/mappings/:teamKey` request.
 
@@ -126,10 +126,10 @@ You can change the concurrency cap for a team from the admin UI or by sending a 
 
 Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must **start with** `/ai-implement` and must be posted by a collaborator with write access to the repo.
 
-Anything you write after the trigger is passed to Claude as an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to let Claude work from the gap analysis alone.
+Anything you write after the trigger is passed to Claude as an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to let Claude work from the existing review comments alone.
 
-The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
+The gap-fill run checks out the existing PR branch, reviews prior review comments on the PR, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
+  The trigger is handled by the orchestrator directly once the target repo has synced its workflow files — use the **Sync workflows** action on its project row in the admin UI if the repo predates this. It also requires the GitHub App's webhook to be configured; see [Create a GitHub App](/setup/github-app).
 </Tip>

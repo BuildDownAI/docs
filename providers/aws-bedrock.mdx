@@ -11,7 +11,7 @@ AI-Implement supports AWS Bedrock as a provider, letting you invoke Claude model
 
 ## How authentication works
 
-The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS key path. On each run, the workflow calls `aws-actions/configure-aws-credentials` to exchange the GitHub OIDC token for a short-lived STS session. This happens twice per run: once before the main implementation step and once before the gap analysis step, so long-running jobs do not hit STS token expiry.
+The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS key path. Once per run, before the containerized implementation step starts, the workflow calls `aws-actions/configure-aws-credentials` to exchange the GitHub OIDC token for a short-lived STS session, requesting a 4-hour session so it comfortably outlasts the job and covers both implementation and its post-push review pass.
 
 <Note>
   Only OIDC is supported. Static AWS access keys (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) are not read or used by the workflow.
@@ -41,7 +41,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
   </Step>
 
   <Step title="Add repository variables for comment-triggered runs">
-    When someone comments `/ai-implement` on a PR, the gap-fill workflow is triggered directly from the repo — not by the orchestrator. To ensure these runs also use Bedrock, add two **repository variables** (not secrets).
+    When someone comments `/ai-implement` on a PR, the orchestrator dispatches the gap-fill run itself using the mapping's Provider and AWS Region fields, so no extra configuration is needed for repos synced to the current workflow templates. If your repo is still on the older, pre-sync workflow (`comment-trigger.yml` present in `.github/workflows/`), that workflow reads its provider settings from repository variables instead — add two **repository variables** (not secrets) so it stays consistent with the admin UI mapping.
 
     In your target repo, go to **Settings → Secrets and variables → Actions → Variables** and add:
 
@@ -106,7 +106,7 @@ For the role's permissions policy, grant `bedrock:InvokeModel` on the inference 
 ```
 
 <Note>
-  The workflow re-runs `aws-actions/configure-aws-credentials` before both the main implementation run and the gap analysis step. This prevents STS token expiry during long implementation runs.
+  The credential exchange happens once per run and requests a 4-hour session — long enough to cover implementation and the post-push review pass without a second STS round-trip.
 </Note>
 
 ## Model IDs
@@ -123,4 +123,4 @@ model: anthropic.claude-sonnet-4-6-20250805-v1:0
 model: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-6-20250805-v1:0
 ```
 
-For gap analysis on Bedrock, there is no default cheaper model — the workflow uses the same `model:` value for both steps unless you explicitly set `gap_analysis_model:` in `WORKFLOW.md`.
+The post-push review pass uses the same `model:` value as implementation — there is no separate, cheaper model for it on either provider.

@@ -38,7 +38,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     Hitting either usually means the ticket was over-scoped for one run rather than that anything is broken. Splitting the ticket is the more reliable fix — a narrower issue finishes inside the budget and produces a reviewable diff.
 
-    To raise the job timeout instead, open the project in the admin UI under **Configure → Projects**, choose **Edit**, and set **Job Timeout (min)**. For `/ai-implement` comment-triggered runs, set `AI_IMPLEMENT_MAX_JOB_MINUTES` on the target repository.
+    To raise the job timeout instead, open the project in the admin UI under **Configure → Projects**, choose **Edit**, and set **Job Timeout (min)** — this applies to both orchestrator-initiated and `/ai-implement` comment-triggered runs on a repo synced to the current workflow templates. `AI_IMPLEMENT_MAX_JOB_MINUTES` on the target repository only has effect on repos still running the older, pre-sync `comment-trigger.yml` workflow.
 
     <Note>
       **Job Timeout (min)** is only in the Edit dialog — the new-project stepper does not offer it. Create the project first, then reopen it to change the default.
@@ -48,17 +48,17 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="The automated review flagged the pull request">
     The run finished and opened a pull request, but the post-push review found blocking issues it could not resolve within its iteration budget. The pull request is left as a **draft** so it does not read as ready to merge.
 
-    This is a working outcome, not an error — the review did its job. Read the gap-analysis comment on the pull request: it lists what the review considered unresolved against the original ticket.
+    This is a working outcome, not an error — the review did its job. Read the review comment on the pull request: it lists what the review considered unresolved against the original ticket.
 
     From there you can finish the work yourself, or comment `/ai-implement` with a specific instruction to send Claude back over the same branch. Mark the pull request ready for review once you are satisfied.
   </Accordion>
 
-  <Accordion title="PR opened but gap analysis is missing">
-    The gap analysis step only runs when the implementation step succeeds **and** an open PR is found on the branch after implementation. If the gap analysis is missing:
+  <Accordion title="PR opened but no automated review comment appears">
+    The post-push review only runs when the implementation step succeeds **and** an open PR is found on the branch after implementation. If no review comment shows up:
 
     - Confirm that the Claude run succeeded and that a PR was actually opened. Check the GitHub Actions run logs for the `claude-implement.yml` workflow.
-    - If Claude ran but did not open a PR (e.g. it pushed commits to an existing branch without creating a new PR), the gap analysis step is skipped by design.
-    - If the workflow run failed before reaching the gap analysis step, fix the underlying failure first.
+    - If Claude ran but did not open a PR (e.g. it pushed commits to an existing branch without creating a new PR), the review is skipped by design.
+    - If the workflow run failed before reaching the review step, fix the underlying failure first.
   </Accordion>
 
   <Accordion title="provider=bedrock but workflow hard-fails with a model error">
@@ -88,13 +88,16 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="/ai-implement comment does nothing">
-    If a `/ai-implement` comment on a PR has no effect (no reaction, no new run), check the following:
+    If a `/ai-implement` comment on a PR has no effect (no 👀 reaction, no new run), check the following:
 
-    1. **`comment-trigger.yml` is not installed.** The workflow must exist at `.github/workflows/comment-trigger.yml` in the target repo. It arrives with the workflow sync — use the **Sync workflows** action on the project's row in the admin UI, then merge the pull request it opens.
-    2. **The PR was not opened by AI-Implement.** The comment trigger only works on PRs that contain the `ai-implement-meta` metadata block in the PR body. PRs created by hand do not have this block.
-    3. **Bedrock repo variables are not set.** If the repo uses Bedrock, you must set `AI_IMPLEMENT_PROVIDER=bedrock` and `AI_IMPLEMENT_AWS_REGION=<region>` as **repository variables** (not secrets) at **Settings → Secrets and variables → Actions → Variables**. Without these, comment-triggered runs default to the Anthropic provider, which may fail if the repo is configured for Bedrock.
-    4. **The commenter does not have write access.** The comment trigger checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
-    5. **The comment does not start with `/ai-implement`.** The trigger matches comments that *begin* with `/ai-implement`. Anything you write after it is passed to the run as an operator instruction, so `/ai-implement also update the tests` works and is often more useful than the bare command. A comment that merely mentions `/ai-implement` mid-sentence does not trigger.
+    1. **The GitHub App isn't subscribed to PR comments.** The App's webhook settings must include the `issue_comment` event. Without this subscription, GitHub never delivers the comment to the orchestrator in the first place.
+    2. **`GITHUB_WEBHOOK_SECRET` isn't set, or doesn't match.** The orchestrator verifies every delivery's signature against this value; it must be set to the same secret on both the GitHub App's webhook configuration and the orchestrator's environment, or deliveries are rejected. See [`GITHUB_WEBHOOK_SECRET`](/configuration/environment-variables#param-github-webhook-secret).
+    3. **The orchestrator isn't publicly reachable.** GitHub needs to reach the orchestrator's webhook endpoint over HTTPS. For local development this needs a tunnel.
+    4. **The target repo hasn't synced current workflow templates.** Run **Sync workflows** on the project's row in the admin UI and merge the pull request it opens — repos still on older templates aren't recognized by the orchestrator's webhook.
+    5. **The PR wasn't opened by AI-Implement.** The trigger only works against PRs the orchestrator has a dispatch record for. PRs created by hand won't match.
+    6. **Bedrock isn't configured for the mapping.** If the repo uses Bedrock, set **Provider** to `bedrock` and **AWS Region** on the project's mapping in the admin UI — comment-triggered runs use the same mapping as orchestrator-initiated runs.
+    7. **The commenter does not have write access.** The webhook checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
+    8. **The comment does not start with `/ai-implement`.** The trigger matches comments that *begin* with `/ai-implement`. Anything you write after it is passed to the run as an operator instruction, so `/ai-implement also update the tests` works and is often more useful than the bare command. A comment that merely mentions `/ai-implement` mid-sentence does not trigger.
   </Accordion>
 
   <Accordion title="Admin UI returns 401">
@@ -146,7 +149,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     - **What a turn is.** Each run gives Claude a fixed number of *turns*, where one turn is a single step in its work loop — it reads or edits something, runs a command, then decides what to do next. The run stops once it uses up the budget, even if the work is not done. The default budget is 50 turns.
     - **Why it happened.** The task needed more steps than the budget allowed — usually a large issue, or one that touches many files, though a run can also use up turns retrying the same thing.
-    - **How to fix it.** Raise the budget with the **Max Turns** field: open the project under **Configure → Projects**, choose **Edit**, and set it there — the new-project stepper does not expose it. For `/ai-implement` comment-triggered runs, set `AI_IMPLEMENT_MAX_TURNS` on the target repository instead. A higher budget lets one run do more work before it stops.
+    - **How to fix it.** Raise the budget with the **Max Turns** field: open the project under **Configure → Projects**, choose **Edit**, and set it there — the new-project stepper does not expose it. This covers both orchestrator-initiated and `/ai-implement` comment-triggered runs on a repo synced to the current workflow templates; `AI_IMPLEMENT_MAX_TURNS` on the target repository only has effect on repos still running the older, pre-sync `comment-trigger.yml` workflow. A higher budget lets one run do more work before it stops.
 
     <Tip>
       If runs keep hitting the cap after you raise it, the issue is likely too big for a single run — split it into smaller issues. A higher budget also means longer, costlier runs, so raise it deliberately rather than setting it very high by default.

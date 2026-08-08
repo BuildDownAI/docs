@@ -1,85 +1,58 @@
 ---
-title: "Gap analysis: what Claude posts on every PR"
-description: "How the gap analysis comment works, what it contains, and how to trigger a gap-fill run on an existing AI-Implement PR using the /ai-implement comment."
+title: "Post-push review: what Claude posts on every PR"
+description: "How the automated post-push review works, what its PR comments contain, and how to trigger a gap-fill run on an existing AI-Implement PR using the /ai-implement comment."
 ---
 
-After every implementation run, AI-Implement runs a second Claude pass that reviews the PR diff and posts a gap analysis comment. The gap analysis compares what was actually built — as visible in the diff — to what was specified in the original Linear ticket. It gives reviewers a structured summary of what was implemented, what was missed or only partially addressed, and any manual follow-up steps that a human needs to perform.
+After every implementation run pushes a branch, AI-Implement runs a second Claude pass that reviews the PR diff for merge readiness — bugs, missing requirements, unsafe behavior, test gaps, and other follow-up that should be fixed before merge. It posts its findings as PR comments and, when it finds blocking issues, has Claude fix them and re-reviews automatically before handing the PR to a human.
 
-## Comment format
+## How the review runs
 
-The gap analysis is posted as a PR comment with the following structure:
+The review posts a starting comment, then reviews the full diff against the ticket. If it finds no blocking issues, it approves the PR and posts an **"✅ Approved"** comment along with a native GitHub PR review. If it finds blocking issues, it posts them as a **"⚠️ Reviewer found issues"** comment, has Claude fix every listed item, and reviews the updated diff again.
 
-```markdown
-## 🔍 AI Implementation Gap Analysis
+This repeats until the review approves the diff or the iteration cap is reached — 3 passes by default for the Anthropic provider, 2 for Bedrock. If the cap is reached without approval, the review posts a **"⚠️ Reached review cap"** comment summarizing what's still blocking, and the run ends without approval (see [Reference: error codes](/reference/error-codes) for what happens to the PR in that case).
 
-### ✅ Implemented
-- [requirement that was fully addressed in the diff]
-- [another fully addressed requirement]
-
-### ⚠️ Gaps / Partial Implementation
-- [missing or only partially implemented requirement]
-- [another gap]
-(or "None identified." if everything in the ticket was addressed)
-
-### 🔧 Manual Steps Required
-- [human action needed, e.g. set an environment variable, run a migration, configure an external service]
-(or "None identified." if no manual steps are needed)
-
----
-*To implement remaining items, comment `/ai-implement` on this PR.*
-```
-
-The gap analysis is based only on the PR diff and PR body — Claude does not explore the broader codebase during this pass.
-
-## Model and cost
-
-The gap analysis uses a faster, cheaper model by default. For the Anthropic provider, this is `claude-haiku-4-5-20251001`. For the Bedrock provider, the gap analysis falls back to the same model specified in your `WORKFLOW.md` front matter, since there is no safe default Bedrock model ID.
-
-You can override the gap analysis model by adding `gap_analysis_model:` to the front matter of your repo's `WORKFLOW.md`:
-
-```yaml
----
-model: claude-sonnet-4-6
-gap_analysis_model: claude-haiku-4-5-20251001
----
-```
-
-Model IDs are passed through verbatim. Any valid Anthropic model ID or Bedrock model ID (including inference-profile ARNs) is accepted.
-
-## Updating an existing gap analysis
-
-If a gap analysis comment already exists on the PR when the workflow runs, it is updated in place rather than duplicated. The comment is identified by its opening line (`## 🔍 AI Implementation Gap Analysis`).
+Each new pass's comment carries a distinct marker, so a long-running review shows up as a sequence of comments on the PR rather than one comment edited in place.
 
 <Note>
-Gap analysis only runs when the implementation step succeeds and an open PR is found on the branch. If Claude does not open a PR during the implementation run, no gap analysis is posted.
+  If you've configured an external review provider (see `reviewProviders` in [Customize pipeline behavior](/customize/custom-steps#repo-level-configuration-file)), the review waits for it to finish and folds its blocking findings in alongside its own before deciding whether to approve.
 </Note>
+
+<Note>
+  The review only runs when the implementation step successfully pushes a branch and opens (or already has) a PR. If Claude doesn't get that far, no review comment is posted.
+</Note>
+
+## Model
+
+The review uses the same model as implementation — there is no separate, cheaper model for it on either provider.
 
 ## Triggering a gap-fill run
 
-After reviewing the gap analysis, you can ask Claude to address the remaining items without starting a new implementation from scratch.
+After reviewing the PR, you can ask Claude to address remaining feedback without starting a new implementation from scratch.
 
 <Steps>
   <Step title="Open the PR on GitHub">
     Navigate to the pull request that AI-Implement opened.
   </Step>
   <Step title="Post the trigger comment">
-    Add a comment containing exactly `/ai-implement` — no other text — on the PR. You must have write access to the repository.
+    Add a comment that **starts with** `/ai-implement` on the PR. You must have write access to the repository.
 
     ```
     /ai-implement
     ```
+
+    Anything after `/ai-implement` is passed to Claude as an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to let Claude work from the existing review comments alone.
   </Step>
   <Step title="Wait for the run">
-    The `comment-trigger.yml` workflow picks up the comment, parses the Linear issue metadata from the PR body, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
+    AI-Implement checks out the existing branch and pushes gap-fill commits directly to the PR — no new branch or PR is created. The post-push review then runs again against the updated diff.
+
+    <Info>
+      This requires the orchestrator's GitHub webhook to be configured — see [Configure webhook delivery](/setup/github-app). Without it, the comment has no effect.
+    </Info>
   </Step>
 </Steps>
 
-The Linear issue link, issue identifier, and issue description are all preserved from the original run — Claude sees the same ticket context it had during the first pass.
-
-<Warning>
-The `/ai-implement` trigger only works on PRs opened by AI-Implement. PRs created by hand do not contain the metadata block that the comment trigger reads, so the trigger will post a warning comment and exit without dispatching.
-</Warning>
+The issue link, identifier, and description are all preserved from the original run — Claude sees the same ticket context it had during the first pass.
 
 <Tip>
-You can run `/ai-implement` multiple times on the same PR. Each gap-fill run updates the existing gap analysis comment in place, so you can track progress without a growing thread of duplicate comments.
+You can run `/ai-implement` multiple times on the same PR. Each pass reviews the latest diff and posts its own comment, so you can track progress across the comment thread.
 </Tip>

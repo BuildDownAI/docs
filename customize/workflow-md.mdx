@@ -30,16 +30,6 @@ description: "How to customize WORKFLOW.md: set the model, repo context, quality
     This key is **required when using Bedrock** — there is no safe default for Bedrock model IDs because they are region- and account-specific. The workflow hard-fails with a clear error if you omit it on a Bedrock-mapped repo. For the Anthropic provider it defaults to `claude-sonnet-4-6` if omitted.
   </Accordion>
 
-  <Accordion title="gap_analysis_model">
-    The model used for the post-PR gap analysis step. Optional.
-
-    ```yaml
-    gap_analysis_model: claude-haiku-4-5-20251001
-    ```
-
-    When omitted, the Anthropic provider defaults to `claude-haiku-4-5-20251001` (a cheaper model suited to analysis). The Bedrock provider falls back to the same value as `model` because there is no generic Bedrock haiku ID to default to.
-  </Accordion>
-
   <Accordion title="setup">
     Path to a shell script to run **before** Claude starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
 
@@ -49,13 +39,13 @@ description: "How to customize WORKFLOW.md: set the model, repo context, quality
   </Accordion>
 
   <Accordion title="verify">
-    Path to a shell script to run **after Claude succeeds**. Use this to run your test suite or any other validation that must pass before the PR is opened.
+    Path to a shell script to run once the implement/review loop **approves** the change, immediately before the PR opens. Use this to run your test suite or any other validation you want as a final gate.
 
     ```yaml
     verify: scripts/ai-verify.sh
     ```
 
-    This script only runs when Claude completes without error.
+    A run that exhausts its review iterations without approval still opens a draft PR — but `verify` is skipped entirely for that PR, since the gate it runs on was never satisfied.
   </Accordion>
 
   <Accordion title="teardown">
@@ -118,7 +108,7 @@ feature described in the issue below, then open a pull request with:
 
 You are adding missing work to existing PR #${PR_NUMBER}.
 **Do NOT create a new branch or PR.** Commit your changes to the current
-branch and push. Review the gap analysis comment on the PR to understand
+branch and push. Review the review comments on the PR to understand
 what is still missing.
 
 ---

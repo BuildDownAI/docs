@@ -428,9 +428,9 @@ The most common failures are listed below.
 
 <AccordionGroup>
     <Accordion title="Reached max turns" description="The run stopped at the per-run turn limit before finishing">
-        Example: `Implementation failed: LLM invocation failed with exit code 1 … Reached max turns (50)`
-
         Claude stopped because it reached the maximum number of turns allowed for a single run — the work was too large to finish in the limit, or the run got stuck repeating steps.
+
+        Unlike the other failures on this page, this isn't a hard error: the run still pushes its work as a **draft PR** (carrying the reviewer's final feedback and per-pass stats) and posts a run-autopsy comment on the ticket with a per-pass breakdown, rather than failing with a bare invocation error.
 
         See [Troubleshooting](/reference/troubleshooting#reached-max-turns) for information on how to raise the limit.
     </Accordion>

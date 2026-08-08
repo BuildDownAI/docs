@@ -74,6 +74,10 @@ Lists every bot-opened pull request the orchestrator is tracking, with the follo
 - Time since last dispatch
 - Direct links to GitHub
 
+<Note>
+  The issue link on this panel, and the equivalent links on the Blockers and Sessions panels below, currently always point at `linear.app`. For a Jira-mapped project, that link is wrong — use the issue identifier shown alongside it to find the ticket in Jira instead.
+</Note>
+
 <Tip>
   Useful for spotting PRs that are stalled or failing review without scanning each repo individually.
 </Tip>
@@ -106,7 +110,6 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Info>
   **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
   - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
 </Info>
 
@@ -128,20 +131,12 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
-
-    | Field | Default if blank | Purpose |
-    |---|---|---|
-    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
-    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
-    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
-
-    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
+    The **Capacity** step here only sets the maximum number of issues this mapping can run in parallel. The per-run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) aren't part of the stepper — set them afterward from the project's **Edit** dialog. See [Project mappings](/configuration/team-repo-mappings#capacity) for those fields and their defaults.
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
       
-      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo and set the `AI_IMPLEMENT_PROVIDER` and `AI_IMPLEMENT_AWS_REGION` repo variables so comment-triggered gap-fill runs use the same auth path.
+      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo. If the repo is still on the legacy `comment-trigger.yml` contract, also set the `AI_IMPLEMENT_PROVIDER` and `AI_IMPLEMENT_AWS_REGION` repo variables so comment-triggered gap-fill runs use the same auth path — a repo on the current contract inherits this from the mapping automatically.
     </Warning>
   </Step>
 
@@ -377,7 +372,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
 
 <Note>
-  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+  `/api/auth` is the only *operator-facing* endpoint that does not require a bearer token — every other route documented on this page returns `401 Unauthorized` if the token is missing or expired. A separate handful of `/api/*` routes used by runner sessions authenticate differently; see [Session-machine endpoints](#session-machine-endpoints) below.
 </Note>
 
 #### Project mappings
@@ -472,11 +467,25 @@ Two endpoints sit outside the operator API but are operator-configurable: you se
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments, and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
-| `POST` | `/trigger/gap-fill` | Starts a gap-fill run against an existing pull request. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Returns `503` when the secret is unset (trigger disabled).
+| `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments (including `/ai-implement` gap-fill triggers), and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
+| `POST` | `/trigger/gap-fill` | Starts a gap-fill run against an existing pull request from your own automation — not used by the `/ai-implement` PR-comment trigger, which goes through `/api/github/webhook` above. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Returns `501` when the secret is unset (trigger disabled).
 
 <Warning>
   Both endpoints require their corresponding secret to be configured on the orchestrator.
   
   See [`GITHUB_WEBHOOK_SECRET`](/configuration/environment-variables#param-github-webhook-secret) and [`GAP_FILL_TRIGGER_SECRET`](/configuration/environment-variables#gap-fill-trigger)
 </Warning>
+
+### Session-machine endpoints
+
+Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-machine nonce instead.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/token` | Vends a short-lived GitHub App installation token to the running session. |
+| `POST` | `/api/status` | Receives session status updates (started, finished, failed) from Fly Machine sessions. |
+| `POST` | `/api/step-report` | Receives per-step progress reports from the pipeline runner. |
+
+<Note>
+  Operators do not normally call these directly. They're documented here for the same reason as the runner callback endpoints above — so monitoring and ingress rules account for them correctly.
+</Note>
