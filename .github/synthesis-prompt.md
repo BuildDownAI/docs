@@ -9,7 +9,7 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
 - Downgrade priorities. If a finding was HIGH in any run, it stays HIGH in the unioned report. Note disagreement in the finding body.
 - Upgrade priorities. If a finding was MEDIUM in all runs that surfaced it, it stays MEDIUM.
 - Edit files no source audit touched. You consolidate the audit-run edits; you don't generate new ones.
-- Modify any file under `./ai-implement/`. AI-Implement source is read-only context.
+- Modify any file under `./ai-implement/` or `./skills-source/`. Both are read-only source context.
 - Open pull requests, commit changes, or push branches. The workflow handles PR creation after you finish.
 
 ## Inputs
@@ -19,7 +19,7 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
   - `audit-runs/run-N/<docs-path>/<file>.mdx` — that run's edited copy of any HIGH-finding docs file, preserving the docs-relative path
 - **Expected-runs count** at `./audit-runs/.expected-runs` — the value of the workflow's `runs` input. The number of ACTUAL `run-N/` directories may be less if some matrix jobs failed (incompleteness handling — see Task step a).
 - **Fresh docs checkout** at `./` — no audit edits applied. This is where final edits land.
-- **AI-Implement source** at `./ai-implement/` — read-only, for spot-checking source citations.
+- **Source checkouts** at `./ai-implement/` and `./skills-source/` — read-only, for spot-checking source citations.
 
 ## Read these files FIRST (CI context priming)
 
@@ -67,14 +67,9 @@ When in doubt about whether two findings should dedupe, lean toward keeping them
 
 For each deduped finding:
 - **Priority:** keep the highest priority seen across runs. Record disagreement in the finding body (e.g., "HIGH in 2/3 runs, MEDIUM in 1/3").
-- **Edit selection (HIGH findings only):** for each docs file edited by multiple runs for this finding, inspect all candidate edits. Pick the ONE that best matches the reader-focused principles in `audit-reference.md`:
-  - No source paths or file:line citations in the MDX body
-  - No internal jargon (Mintlify component names in prose, TypeScript enum/field names, etc.)
-  - Semantic component choice (`<Note>` neutral, `<Tip>` operator-benefit, `<Warning>` blocking, `<Info>` permissions/context, `<Check>` success — not defaulting to `<Note>`)
-  - Scannable chunking (one-beat paragraphs, bulleted lists for parallel items)
-  - For `latest/*` pages: cross-links to other docs use `/latest/` prefix
+- **Edit selection (edit-receiving tiers only):** for each docs file edited by multiple runs for this finding, inspect all candidate edits and pick the ONE that best matches the edit principles in `audit-reference.md`. That file is the single source for what a good edit looks like; the criteria are deliberately not restated here so synthesis and the per-run audits cannot judge by different standards.
 
-  If two candidate edits are equally good, prefer the one touching less surrounding text. If only one run produced an edit, use that one.
+  If two candidates are equally good, prefer the one touching less surrounding text. If only one run produced an edit, use that one.
 
 ### Step e — Assign fresh canonical IDs
 
@@ -195,7 +190,8 @@ If incomplete (K < N planned), the title line is:
     - **Present in:** Run 1 MEDIUM, Run 2 MEDIUM, Run 3 MEDIUM
     - **Dedup reasoning:** ...
 
-    (no Edit candidates section for MEDIUM findings — they're report-only)
+    (Edit candidates appear only for findings in edit-receiving tiers — see the
+    tier → action table in `audit-reference.md`.)
 
     ### Incompleteness notes
     (only present if Step a detected K < N planned) Missing runs: run-X, run-Y.
@@ -210,17 +206,20 @@ If incomplete (K < N planned), the title line is:
     single hunk per candidate (not every file).
 
     **Nested-fence rule:** when an edit candidate itself contains a fenced code
-    block (an MDX example with its own ``` fence), wrap that candidate in a
-    4-backtick outer fence (````) so the inner ``` doesn't close the block early and
-    garble the rendered report. Candidates without an inner fence stay at the normal
-    3 backticks. Example of the 4-backtick case:
+    block, the wrapper fence must be **longer than the longest backtick run
+    inside it** — not a fixed width. Scan the candidate for its deepest fence
+    and add one: content whose deepest fence is 3 backticks needs a 4-backtick
+    wrapper; content whose deepest is 4 needs 5. Candidates with no inner fence
+    stay at 3.
 
-    ````mdx
-    Trigger a run by commenting on the PR:
-    ```bash
-    /ai-implement retry the failing check
-    ```
-    ````
+    A fixed 4-backtick wrapper is wrong whenever the candidate is itself
+    documentation about fenced content — a page showing a configuration block a
+    user types into an issue body carries its own 4-backtick wrapper, and
+    wrapping that in 4 closes the block early and garbles everything after it.
+
+    A second shape needs no fence at all: when the content *is* fence syntax
+    being described rather than code being shown, use inline code. Wrapping
+    backticks in backticks to talk about backticks fails at every width.
 
 The decisions-log section at the bottom is the audit trail. Reviewers can see WHY a finding came out the way it did when synthesis made a judgment call. Without it, a reviewer questioning "should H-1 really have used run-2's edit?" has no way to retrace.
 
@@ -228,11 +227,11 @@ The decisions-log section at the bottom is the audit trail. Reviewers can see WH
 
 Before finishing, verify:
 - [ ] `./audit-report.md` exists at repo root with the structure above
-- [ ] Every HIGH finding has a corresponding MDX edit applied to the fresh docs checkout
+- [ ] Every finding in an edit-receiving tier has a corresponding MDX edit applied to the fresh docs checkout
 - [ ] Every finding has a populated `Runs` column (e.g., `3/3`, `2/3`, `1/3`)
-- [ ] Every finding cites a real source `file:line` from `./ai-implement/`
+- [ ] Every finding cites a real source `file:line` from `./ai-implement/` or `./skills-source/`
 - [ ] No new docs files were created (synthesis only consolidates existing audit edits)
-- [ ] No edits to `./ai-implement/`
+- [ ] No edits to `./ai-implement/` or `./skills-source/`
 - [ ] If incompleteness was detected, the incompleteness banner is present at the top of the report AND the title line says "K of N planned"
 - [ ] Decisions-log section explains each non-trivial synthesis choice (dedups, edit selections, priority conflicts)
 

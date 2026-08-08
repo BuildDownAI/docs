@@ -4,7 +4,7 @@ on:
     workflow_call:
         inputs:
             target_branch:
-                description: 'AI-Implement branch to audit against'
+                description: 'Source branch to audit against (AI-Implement and skills)'
                 required: true
                 type: string
             docs_branch:
@@ -39,7 +39,7 @@ jobs:
                 client-id: ${{ secrets.app_client_id }}
                 private-key: ${{ secrets.app_private_key }}
                 owner: BuildDownAI
-                repositories: docs,AI-Implement
+                repositories: docs,AI-Implement,skills
 
             - name: Checkout docs repo
               uses: actions/checkout@v6
@@ -55,21 +55,69 @@ jobs:
                 path: ai-implement
                 token: ${{ steps.app-token.outputs.token }}
 
+            - name: Checkout target branch of skills
+              uses: actions/checkout@v6
+              with:
+                repository: BuildDownAI/skills
+                ref: ${{ inputs.target_branch }}
+                path: skills-source
+                token: ${{ steps.app-token.outputs.token }}
+
             - name: Install Claude Code CLI
               timeout-minutes: 3
               run: |
                 npm install -g @anthropic-ai/claude-code
                 claude --version
 
+            # the agent is a separate process — workflow inputs reach it only via the filesystem
+            - name: Record audit target for the prompt
+              env:
+                TARGET_BRANCH: ${{ inputs.target_branch }}
+              run: echo "$TARGET_BRANCH" > .audit-target-branch
+
             - name: Run audit
               timeout-minutes: 45
               continue-on-error: true
               env:
                 CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.claude_oauth_token }}
+                MAX_TURNS: ${{ inputs.max_turns }}
               run: |
                 claude -p "$(cat .github/audit-prompt.md)" \
-                    --max-turns "${{ inputs.max_turns }}" \
-                    --permission-mode acceptEdits
+                    --max-turns "$MAX_TURNS" \
+                    --permission-mode acceptEdits \
+                    --output-format stream-json --verbose > claude-stream.jsonl
+
+            - name: Report run telemetry
+              if: always()
+              shell: bash
+              env:
+                MAX_TURNS: ${{ inputs.max_turns }}
+                TARGET_BRANCH: ${{ inputs.target_branch }}
+              run: |
+                if [ ! -s claude-stream.jsonl ]; then
+                  echo "### Audit run — no telemetry stream produced" >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                fi
+                # the terminal result event carries every field the json envelope did
+                jq -c 'select(.type=="result")' claude-stream.jsonl | tail -1 > claude-envelope.json
+                [ -s claude-envelope.json ] || echo '{}' > claude-envelope.json
+                # one API response per distinct assistant message id — this is what --max-turns bounds
+                agentic=$(jq -r 'select(.type=="assistant") | .message.id' claude-stream.jsonl | sort -u | wc -l)
+                turns=$(jq -r '.num_turns // "unknown"' claude-envelope.json)
+                outcome=$(jq -r '.subtype // "unknown"' claude-envelope.json)
+                {
+                  echo "### Audit run — ${TARGET_BRANCH}"
+                  echo ""
+                  echo "| Metric | Value |"
+                  echo "|---|---|"
+                  echo "| Outcome | ${outcome} |"
+                  echo "| Agentic turns used | ${agentic} of ${MAX_TURNS} |"
+                  echo "| Tool results (num_turns) | ${turns} |"
+                } >> "$GITHUB_STEP_SUMMARY"
+                if [ "$outcome" = "error_max_turns" ]; then
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  echo "⚠️ **Turn cap reached** — this run was truncated. Raise \`max_turns\` and re-run." >> "$GITHUB_STEP_SUMMARY"
+                fi
 
             - name: Stage changed files for artifact
               if: always()
@@ -78,10 +126,12 @@ jobs:
                 mkdir -p artifact-staging
                 # audit-report.md is untracked; git diff won't catch it
                 [ -f audit-report.md ] && cp audit-report.md artifact-staging/
+                [ -f claude-envelope.json ] && cp claude-envelope.json artifact-staging/
+                [ -f claude-stream.jsonl ] && gzip -c claude-stream.jsonl > artifact-staging/claude-stream.jsonl.gz
                 # MDX edits are in tracked files; capture only what the audit actually changed
                 git diff --name-only HEAD -- '*.mdx' | while read -r f; do
                     case "$f" in
-                        ai-implement/*) continue ;;
+                        ai-implement/*|skills-source/*) continue ;;
                     esac
                     [ -f "$f" ] && cp --parents "$f" artifact-staging/
                 done
