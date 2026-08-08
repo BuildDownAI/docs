@@ -1,17 +1,17 @@
-name: Audit AI-Implement docs vs source
+name: Audit docs vs source
 
 on:
     workflow_dispatch:
         inputs:
             branch:
-                description: 'AI-Implement branch to audit against'
+                description: 'Source branch to audit against (AI-Implement and skills)'
                 type: choice
                 options:
                     - main
                     - testing
                 default: main
             max_turns:
-                description: 'Override max-turns (blank = branch default: 75 main / 100 testing)'
+                description: 'Override max-turns (blank = branch default: 120 main / 140 testing)'
                 type: string
                 required: false
                 default: ''
@@ -30,7 +30,7 @@ jobs:
         with:
             target_branch: ${{ github.event.inputs.branch || 'testing' }}
             docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
-            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '75' || '100') }}
+            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '120' || '140') }}
             artifact_name: audit-output
         secrets:
             app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
@@ -72,7 +72,7 @@ jobs:
                 token: ${{ steps.app-token.outputs.token }}
                 branch: audit/${{ github.run_id }}
                 base: ${{ github.event.inputs.docs_branch || github.ref_name }}
-                title: "Docs audit: AI-Implement ${{ env.TARGET_BRANCH }} branch"
+                title: "Docs audit: sources on ${{ env.TARGET_BRANCH }}"
                 body-path: audit-report.md
                 draft: true
                 labels: docs-audit

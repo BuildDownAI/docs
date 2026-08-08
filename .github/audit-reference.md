@@ -4,11 +4,23 @@ This file grounds the audit by example. It defines the priority rubric, shows wh
 
 ## Priority rubric
 
-Apply these criteria when categorizing drift between AI-Implement source and the docs:
+Apply these criteria when categorizing drift between source and the docs:
 
-- **HIGH** — A reader following the current docs would take an incorrect action. Either the docs claim something the code no longer supports, or a load-bearing feature exists in code with no documentation at all. HIGH findings receive **draft doc edits** in the audit output.
-- **MEDIUM** — Coverage gaps or outdated phrasing where the reader can mostly still succeed but the docs lag the code. New optional features, additions to existing tables, renamed fields with backward-compat shims. MEDIUM findings are **report-only** — no edits.
-- **LOW** — Polish, structure, internal-only changes that don't affect reader behavior. Refactoring, code-comment improvements, dependency bumps. LOW findings are **counted in aggregate** — not individually enumerated.
+- **HIGH** — A reader following the current docs would take an incorrect action. Either the docs claim something the code no longer supports, or a load-bearing feature exists in code with no documentation at all.
+- **MEDIUM** — Coverage gaps or outdated phrasing where the reader can mostly still succeed but the docs lag the code. New optional features, additions to existing tables, renamed fields with backward-compat shims.
+- **LOW** — Polish, structure, internal-only changes that don't affect reader behavior. Refactoring, code-comment improvements, dependency bumps.
+
+### Tier → action
+
+**This table is the single source of truth for which tiers produce edits.** Both prompts and the report templates derive from it and deliberately do not restate it — changing it here changes the whole pipeline.
+
+| Tier | Audit output | Report detail per finding |
+|---|---|---|
+| **HIGH** | draft MDX edits applied | Docs / Source / Edit |
+| **MEDIUM** | report-only, no edits | Docs / Source |
+| **LOW** | counted in aggregate | one line |
+
+"Edit-receiving tiers" throughout the prompts means whichever tiers this table marks as producing edits.
 
 ## Required shape for every finding
 
@@ -17,13 +29,13 @@ Apply these criteria when categorizing drift between AI-Implement source and the
 - What the docs currently say (with the docs path)
 - What the code actually shows
 - Priority tier
-- For HIGH only: a brief suggested edit (1–3 sentences)
+- For edit-receiving tiers: a brief suggested edit (1–3 sentences)
 
 ## Reader-focused edit principles
 
-When applying HIGH-priority edits to MDX, follow these principles. Examples D–F below illustrate them in practice; this section lists the rules.
+When applying HIGH-priority edits to MDX, follow these principles. The worked examples below illustrate them in practice; this section lists the rules.
 
-- **No internal vocabulary in MDX.** Drop source paths, `file:line` citations, TypeScript type-system terms (enum/interface/field names), Mintlify component names in prose ("uses the `<Update>` component"), and meta-mechanic explanations ("the runner-callback handles this"). The reader doesn't know the implementation. Per-page MDX describes user-relevant behavior in user-relevant language. (The changelog has more leeway — see Example F.)
+- **No internal vocabulary in MDX.** Drop source paths, `file:line` citations, TypeScript type-system terms (enum/interface/field names), Mintlify component names in prose ("uses the `<Update>` component"), and meta-mechanic explanations ("the runner-callback handles this"). The reader doesn't know the implementation. Per-page MDX describes user-relevant behavior in user-relevant language.
 - **Component choice by semantic intent.** `<Note>` for neutral important facts. `<Tip>` for operator-benefit / relief callouts. `<Warning>` for blocking issues that prevent functionality. `<Info>` for permissions or context-setting. `<Check>` for success states. Don't default to `<Note>` — pick by what the callout is *for*.
 - **Scannable chunking within components.** A `<ParamField>` body that covers what-it-does + accepted-values + defaults + when-to-use should be 2–4 short paragraphs separated by blank lines, not one wall of prose. Use bulleted lists for parallel items (accepted values, file lists). The eye should land on structure before reading.
 - **Cross-link discipline.** Verify the destination anchor exists. Mintlify anchor rules:
@@ -31,43 +43,31 @@ When applying HIGH-priority edits to MDX, follow these principles. Examples D–
   - `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix)
   - `<Step title>` inside `<Steps>`, `<Tab title>` inside `<Tabs>` → **no anchor generated**; fall back to a page-level link
   - For `latest/*` pages, every cross-link to another docs page must use the `/latest/` prefix. This covers both `]( )` Markdown links AND `href="..."` component props (e.g., `<Card href=...>`)
-- **Internal-only changes go to changelog (testing audits) or are omitted (main audits).** Per the prompt's File-scope section. A change with no operator-visible behavior is not a per-page edit; it's a changelog entry (testing) or no entry at all (main, until a stable changelog page exists).
+- **Internal-only changes are report-only.** A change with no operator-visible behavior — an internal refactor, a database column, an auth-plumbing shift, a telemetry foundation — is not a per-page edit on either branch. Record it in `audit-report.md` and stop there. Release notes are written when a version ships, from the whole set of changes in it; an audit running between releases has no correct place to put one.
+- **"Optional" needs a consequence clause.** When omitting a setting silently disables documented behavior, say what is lost, at the point where the reader decides. "Optional" alone reads as "safe to skip." A webhook secret documented as optional turned out to be the only route to automatic re-runs on review feedback, with no polling fallback — the docs said it was optional and never said what it bought.
+- **Callouts must earn their box, and adding one is often a swap.** Before adding a `<Note>`/`<Tip>`/`<Warning>`, count the components already in the enclosing step, tab, or section. If yours would make three or more, rank them by how *surprising* each is to a reader who has read the surrounding prose — keep the least predictable one boxed and write the rest as prose. Baseline prerequisites lose that ranking every time. The test for whether something belongs in a box at all: could a reader delete it and still follow the section? If not, it is the argument — write it as prose with bold for weight.
+- **Don't restate what another section or page already owns.** Before adding a summary table or a reassurance paragraph, check whether each fact is already stated at its natural home. If it is, the copy is maintenance burden that will drift — and it is the copy that drifts, because the natural home is what gets updated. When the same fact legitimately belongs in two places, keep it at the **point of action** (the field the reader fills in) and drop it at the point of consequence (where the failure surfaces).
+- **Don't document baseline-expected behavior.** If a reader would assume it without being told — that a Docker command needs Docker running, that a local process doesn't notify a team channel — stating it costs attention and buys nothing. This also means: don't invent setup steps for controls a vendor doesn't expose.
+- **Provider-neutral phrasing on shared surfaces.** Anything covering both ticketing providers uses a neutral concept plus a parenthetical naming both, not one provider's vocabulary. "Label" is Linear's word and "status field" is Jira's — a sentence built on either excludes half the readers.
+- **`<ParamField>` defaults belong in the `default` prop**, not in body prose. Always quoted (`default="90"`), since the value may be conditional (`default="3 (Anthropic), 2 (Bedrock)"`) which `{}` cannot express.
 
 ## Worked examples
 
 These illustrate the audit shape across three different drift types. Use them as a template for findings produced during the audit.
 
-### Example A — Feature removal (HIGH)
-
-**Title**: `ORCHESTRATOR_URL` no longer read; consolidated into `RUNNER_CALLBACK_BASE_URL`
-
-- **Docs**: `configuration/environment-variables.mdx` documents `ORCHESTRATOR_URL` as a separate orchestrator-runtime variable under "Runner callbacks."
-- **Source**: `.env.example` (variable removed); `src/index.ts` (no longer reads `process.env.ORCHESTRATOR_URL`) — `RUNNER_CALLBACK_BASE_URL` now serves the same purpose.
-- **Edit**: Remove the `ORCHESTRATOR_URL` `<ParamField>` block from the Orchestrator-runtime tab. Add a one-line transition note in the surrounding prose: "Previously, `ORCHESTRATOR_URL` was a separate variable; it has been consolidated into `RUNNER_CALLBACK_BASE_URL`."
-
-**Priority rationale**: HIGH — readers setting `ORCHESTRATOR_URL` would expect it to do something; it has no effect.
-
-### Example B — Feature addition (HIGH)
+### Worked finding (HIGH)
 
 **Title**: Per-project run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) added to `RepoMapping`
 
-- **Docs**: `configuration/team-repo-mappings.mdx` lists the mapping fields but does not include the three caps. `reference/admin-ui.mdx` describes the Projects panel without mentioning the Capacity step's new inputs.
-- **Source**: `src/config.ts:52` (new fields on the `RepoMapping` interface); `src/admin-ui/pages/projects.ts:273` (stepper exposes the three fields) — fully wired through schema, database migration, dispatch payload, and admin UI.
-- **Edit**: Add three `<ParamField>` blocks to `configuration/team-repo-mappings.mdx` after `provider`, with per-provider defaults noted (Bedrock=2 vs Anthropic=3 for `maxIterations`). Mention the Capacity-step additions in the Projects panel description of `reference/admin-ui.mdx`.
+- **Docs**: `configuration/team-repo-mappings.mdx` lists the mapping fields but not the three caps. `reference/admin-ui.mdx` describes the Projects panel without mentioning the Capacity step's inputs.
+- **Source**: `src/config.ts` (new fields on the `RepoMapping` interface); `src/admin-ui/pages/projects.ts` (the edit dialog exposes them) — wired through schema, migration, dispatch payload, and admin UI.
+- **Edit**: Add three `<ParamField>` blocks to `configuration/team-repo-mappings.mdx`, with per-provider defaults noted. Mention the Capacity additions in the Projects panel description of `reference/admin-ui.mdx`.
 
-**Priority rationale**: HIGH — operators reading the docs won't learn about a feature explicitly designed to control cost and reliability.
+**Priority rationale**: HIGH — operators won't learn about a feature designed to control cost and reliability.
 
-### Example C — Structural refactor (HIGH)
+The same shape applies to removals (docs describe a variable the code no longer reads) and structural refactors (docs list override points that no longer execute). What changes is the evidence, not the format.
 
-**Title**: Planning is now a separate executor; five planning-pipeline steps removed
-
-- **Docs**: `customize/custom-steps.mdx` AccordionGroup lists the deleted step IDs (`test-plan`, `work-unit-decomposition`, `architecture-analysis`, `cross-story-context`, `post-to-ticketing`) as override points readers can implement.
-- **Source**: `src/run-planning.ts` (new entry point); `src/pipeline/steps/` (the five step files are deleted from the codebase); `src/pipeline/types.ts` (`StepType` enum lost six values) — planning now runs through a dedicated executor; custom override files using those filenames would never execute.
-- **Edit**: Remove the five planning-step accordions from the overridable-step list. Add a `<Note>` explaining that planning now runs through a dedicated planning workflow (`claude-plan.yml`) and is not part of the customizable autonomous pipeline.
-
-**Priority rationale**: HIGH — readers following the custom-steps guide would write code that has no effect.
-
-### Example D — Reader-focused vs source-citing edit (BAD vs GOOD)
+### Reader-focused vs source-citing edit (BAD vs GOOD)
 
 A HIGH finding identifies that `reviewProviders` is a new optional field in `.ai-implement/config.yml` (verified at `src/pipeline/steps/install.ts:25-71`). The audit's draft edit should look like this:
 
@@ -95,59 +95,19 @@ Issues: cites `file:line`, names internal `ExternalReviewState` enum, mentions i
 
 Why: drops source paths and internal type names; chunks the body into one-beat paragraphs; describes user-relevant behavior and choices. The reader can decide whether to set this field without knowing how it's implemented.
 
-### Example E — Version-prefix for `latest/` cross-links (BAD vs GOOD)
+### Version-prefix on `latest/` cross-links
 
-When editing `latest/*.mdx` files, cross-links to other docs pages must use the `/latest/` prefix. Otherwise they resolve to root-level (stable) pages and bounce the latest reader out of their version.
+Cross-links from a `latest/*` page must carry the `/latest/` prefix, or they resolve to the stable page and bounce the reader out of their version.
 
-**BAD (un-prefixed link from a `latest/` page):**
-
-````mdx
-See [Project mappings](/configuration/team-repo-mappings) for the admin-UI side.
-````
-
-````mdx
-<Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
-  Edit the Claude prompt template to match your repo's stack and conventions.
-</Card>
-````
-
-Issues: both links land on root-level (stable) versions of those pages. A reader currently on `/latest/configuration/environment-variables` who clicks the first link gets bounced to `/configuration/team-repo-mappings` (stable), losing their version context.
-
-**GOOD (prefixed, both shapes):**
+The non-obvious part is that this applies to **two** pattern families, and a sweep handling only the first misses the second:
 
 ````mdx
 See [Project mappings](/latest/configuration/team-repo-mappings) for the admin-UI side.
+
+<Card title="Customize WORKFLOW.md" href="/latest/customize/workflow-md">
 ````
 
-````mdx
-<Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/latest/customize/workflow-md">
-  Edit the Claude prompt template to match your repo's stack and conventions.
-</Card>
-````
-
-Why: explicit `/latest/` prefix keeps the reader in their version. Note that **both** `]( )` Markdown link syntax AND `href="..."` component props (Cards, Buttons, etc.) need the prefix — a bulk-sweep that only handles Markdown links misses the `href=` props.
-
-### Example F — Internal-only change → changelog entry (testing audits only)
-
-When a `testing` audit surfaces a change that has no operator-visible behavior (internal refactor, DB column addition, auth-plumbing shift, telemetry foundation), the finding does NOT become a per-page edit. Instead, add an entry to `./latest/changelog.mdx` using the `<Update>` component.
-
-Example: testing branch added stream-JSON telemetry for the runner — entirely internal plumbing the operator never sees directly. The audit emits:
-
-````mdx
-<Update label="Runner telemetry stream added" description="Available in latest" tags={["Internal", "Pipeline"]}>
-  Runner sessions now emit structured JSON telemetry to the orchestrator over a streaming channel, providing the foundation for richer step-progress reporting in the admin UI.
-
-  No operator action needed — entirely internal. The runner image, workflow files, and orchestrator are all updated together via the standard `sync-workflows` action.
-</Update>
-````
-
-Why this works:
-
-- It's added to `./latest/changelog.mdx` (the testing-audit target for internal-only findings), not to a per-page docs file
-- The changelog audience is broader than per-page docs (operators + AI-Implement developers cross-referencing commit history), so high-level mentions of internal handling are OK
-- The entry IS self-contained: a reader gets the change context without clicking elsewhere
-- The `<Update label="...">` produces the anchor `#runner-telemetry-stream-added` automatically, available for future cross-references
-- `tags={["Internal", ...]}` flags the entry as internal-plumbing in the filterable sidebar
+A prior bulk sweep that handled only Markdown links left twelve `<Card href=>` props unprefixed across five pages.
 
 ### LOW findings — what aggregate format looks like
 
@@ -167,18 +127,65 @@ LOW findings do **not** need:
 
 ## Anti-patterns
 
-Do not produce findings that match any of these patterns:
+These are failure modes the positive rules above don't obviously forbid. Do not produce findings that match any of these:
 
 - **Do not fabricate documentation pages.** If a feature exists in code and no corresponding docs page exists, flag it as a finding describing the gap. Do not create new docs files.
 - **Do not document code that does not exist.** Every claim must point to a real `file:line` citation. If the source cannot be located, the finding is invalid.
 - **Do not categorize stylistic improvements as HIGH.** "This sentence could be clearer" is LOW. HIGH means a reader takes a wrong action.
-- **Do not propose changes outside the docs repo.** AI-Implement source is read-only context. Never suggest source-code edits as part of an audit finding.
-- **Do not flag intentional simplification as drift.** Docs sometimes omit internal implementation detail for reader clarity. If user-facing behavior matches what the docs describe, no finding — even if the source has internal complexity not surfaced in the docs.
-- **Do not cite source paths in MDX edits.** `file:line` references, source file names, and internal module paths belong only in `audit-report.md`, not in the docs themselves. The reader doesn't have the source open.
-- **Do not use internal jargon in MDX prose.** TypeScript type-system terms (enum/interface/field names), internal function names, internal state-machine values, and Mintlify component names in prose ("uses the `<Update>` component") all fail the reader-focus test. Either rephrase user-facingly or omit.
-- **Do not default to `<Note>` for every callout.** Pick the component by semantic intent (see Reader-focused edit principles section above).
-- **Do not leave cross-links unprefixed on `latest/*` pages.** Un-prefixed paths resolve to root-level (stable) pages, bouncing readers out of their version. Both Markdown `]( )` syntax and `href="..."` props need the `/latest/` prefix.
-- **Do not link to non-anchored elements.** `<Step title>` and `<Tab title>` do not generate anchors. Cross-links to `#step-title-slug` silently land at page top. Fall back to a page-level link with prose guidance.
+- **Do not propose changes outside the docs repo.** Source is read-only context. Never suggest source-code edits as part of a finding.
+- **Do not flag intentional simplification as drift.** Docs sometimes omit internal implementation detail for reader clarity. If user-facing behavior matches what the docs describe, there is no finding — even where the source has internal complexity the docs don't surface.
+- **Do not announce findings you are not listing.** A note telling the reviewer that some set of findings was excluded — as already-fixed, out of scope, or uncertain — is unactionable: they cannot tell what is missing or judge whether the exclusion was sound. Either report the finding at its tier, or leave it out with no reference to it. This is distinct from the `## Audit incomplete` section, which names work you did not reach and *is* actionable.
+
+## Verifying a claim before documenting it
+
+These checks catch drift that a prose-versus-source comparison structurally cannot. Each one exists because a real audit missed something.
+
+**Diff environment-variable docs against their canonical sources, in both directions.** Two machine-readable sources are maintained alongside the code and are usually ahead of the docs: `.env.example` for orchestrator variables, and the `# Optional repository or organization variables:` header blocks in each synced workflow for target-repo variables. Compare the documented set against both:
+
+- In a source but not the page → undocumented variable.
+- On the page but not a source → removed or renamed variable.
+- In both, but the source comment says more than the page → the page is stale on semantics.
+
+The third direction is the valuable one and the easiest to skip. Four findings came out of this in one pass, from two file reads, after five prior audits had missed all four — because asking "does this variable appear in the source?" finds a stale reference and confirms it, while a set difference cannot be satisfied by a single confirming hit.
+
+**A key being accepted is not the same as a key being used.** Before documenting a configuration value, check two things separately: that a parser accepts it, and that something *reads* it outside the parser. A front-matter key sat in the accepted-key list and on the interface while no pipeline step consumed it — so it round-tripped silently, and an operator setting it to a cheaper model was ignored and paid full rate. A documented default that appears nowhere in production source (only in test fixtures) is strong evidence the consumer is gone.
+
+**Read the guard clauses, not just the happy path.** An early return above the logic you are reading may fire routinely rather than rarely. A label-removal path was documented as unconditional; a terminal-state guard sat above the label filter and fired systematically, because the tracker's own integration closed issues faster than the poll ran. Ask which path is *typical*, and whether an external mechanism races the one you are describing.
+
+**In troubleshooting content, the cause may be inferred but the remediation must be verified.** Causes often can only come from source. Remediations name something the reader operates, and are always checkable — verify the **exact label** the user sees (not the internal field name), **which surface exposes it** (creation flow, edit dialog, config file, environment variable — these diverge, and docs are usually read during the creation flow), and **whether it is configurable at all**. A fix pointed at "Max Job Minutes on the project mapping" when the control is labelled "Job Timeout (min)" and appears only in the edit dialog, not the creation stepper.
+
+### Configuration surfaces
+
+Deriving reachability per key is expensive; the set of *surfaces* is small and changes rarely. Use this map, and run the acceptance-and-consumption check above only for a surface not listed here.
+
+| Surface | Where the user writes it | Accepted keys |
+|---|---|---|
+| `.ai-implement/config.yml` | target repo root | `packageManager`, `models.implement`, `models.review`, `reviewProviders` |
+| Pipeline YAML (`custom/pipelines/*.yml`) | orchestrator install | **only** `id`, `type`, `moduleId` per step — an `inputs:` key is silently dropped |
+| `WORKFLOW.md` front matter | target repo root | accepted: `model`, `setup`, `verify`, `teardown`, `gap_analysis_model` — **consumed: the first four only** |
+| `.ai-implement/image.yml` | target repo root | runner image pin |
+| Project mapping | admin UI stepper, edit dialog, or API | the documented mapping fields — note the stepper exposes fewer than the edit dialog |
+| Orchestrator environment | `.env` or deployment secrets | as per `.env.example` |
+| Target-repo CI | GitHub Actions secrets and variables | as referenced by the synced workflows |
+| Issue description block | tracker issue body | `feature_branch.mode` |
+
+### Sweep for claims that age
+
+Surveying source-first answers "is this documented?" and finds gaps. It cannot find a claim that is documented *wrongly* — that still answers yes. On an actively-developed codebase most drift is of the second kind: a statement that was accurate when written and was silently invalidated by a change elsewhere, with nobody editing the doc.
+
+Grep the docs for these shapes directly, then verify each hit against current source. The greps produce candidates, not findings — some hits will be fine, and that is cheap to establish.
+
+| Shape | Grep for | Why it rots |
+|---|---|---|
+| Exclusivity | `the only`, `only branch`, `sole` | false the moment a second option exists |
+| Temporal hedge | `currently`, `at present`, `for now`, `not yet` | the hedge admits the author expected change |
+| Enumeration | `two endpoints`, `four groups`, `eight`, `three steps` | any addition breaks the count without touching the sentence |
+| Specific default | a version, model ID, timeout, or cap stated as a value | changes independently of the prose around it |
+| Negation | `does not support`, `cannot be`, `is not` | the cheapest thing for a release to falsify |
+
+Real instances: "this is the only branch that currently supports plugin installation" — true when written, false once the default branch gained a catalog. "Two endpoints sit outside the namespace" — there were three. A documented default that existed only in test fixtures.
+
+Of one manual pass's thirteen highest-priority findings, **seven were false rather than missing**. Nothing in the source announces that a doc sentence became wrong, so only a docs-first pass surfaces them.
 
 ## Areas commonly affected by drift
 
@@ -194,7 +201,7 @@ These are the source areas where drift typically appears first. Start the audit 
 
 Other source areas (`src/log.ts`, `src/webhook.ts`, low-level utilities) often have changes with little reader-facing impact — survey them only if time permits.
 
-For `testing` audits specifically, `./latest/changelog.mdx` is the home for any finding with no operator-visible behavior (internal refactors, telemetry foundations, auth-plumbing shifts, etc.) — see Example F above. For `main` audits, internal-only findings are omitted entirely; no stable changelog page exists by design.
+Findings with no operator-visible behavior are report-only on both branches — see the internal-only rule under Reader-focused edit principles.
 
 ## Note on file:line citations
 
