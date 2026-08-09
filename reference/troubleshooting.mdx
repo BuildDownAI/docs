@@ -19,6 +19,10 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="The run failed">
     AI-Implement reports a failed run when the runner exits non-zero, or when an implementation run finishes without opening a pull request. The notification names the phase — **planning** or **implementation** — which tells you how far it got.
 
+    <Tip>
+      When a run fails, the orchestrator posts a run autopsy comment to the ticket, summarizing what happened and where it stopped. Check the ticket first — the post-mortem is often enough to point you at the cause before you dig into the logs.
+    </Tip>
+
     Start with the run logs in the target repo's Actions tab. The failure is almost always visible there, and the exit code in the notification points at which step ended the run.
 
     Common causes:
@@ -119,8 +123,12 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="The same issue is being picked up repeatedly">
-    Issues are deduplicated for 24 hours after dispatch. If the same issue keeps being dispatched, check the dedup window:
+    A dedup entry is written when an issue is dispatched and **stays until something clears it**:
+    - A failed or timed-out run clearing its own entry
+    - A session being destroyed
+    - An operator clearing it
 
+    Nothing ages out on a timer, so an entry can persist indefinitely. If the same issue keeps being dispatched, check the dedup entries:
     - Open the admin UI and go to the Deduplication panel, or call `GET /api/dedup`.
     - If the issue is not in the dedup window, it means the dedup entry was cleared (manually or by a session-destroy action) and the orchestrator is treating the issue as new.
     - If the issue should not be redispatched, clear its trigger — remove the `AI-Implement` label on Linear, or move `AI-Implement Status` away from `Ready` on Jira. Adding an issue back into the dedup window by hand is not supported through the UI, so clearing the trigger is the simpler path.
@@ -136,7 +144,7 @@ This page covers the most common issues you may encounter when running AI-Implem
       <Step title="Destroy the stuck session">
         Click the destroy button next to the session, or call `DELETE /api/sessions/:machineId`.
 
-        Destroying the session also clears the in-progress marker on the associated issue (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira) and removes the issue from the 24-hour dedup window.
+        Destroying the session also clears the in-progress marker on the associated issue (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira) and clears its dedup entry.
       </Step>
       <Step title="Re-trigger the issue if needed">
         If you want the orchestrator to retry the issue, re-apply the trigger on the issue. The orchestrator will pick it up on the next poll.
