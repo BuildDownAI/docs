@@ -101,6 +101,8 @@ On a `latest/…` page, every cross-link to another docs page must carry the `/l
 
 **Claims you haven't verified.** Every claim must be true of the product. Confirm the behavior at its source before writing it down — don't infer a feature from a configuration key, a name, or what an adjacent page implies.
 
+This bites hardest on numbers. When a correction appears to contradict a figure already on the page, the usual cause is two mechanisms rather than one error — a retention ceiling and a page size, a summary window and a lookup guard. Establish what each figure measures before replacing either.
+
 **Cosmetic rewrites of text that is already correct.**
 
 ## Tool bindings
