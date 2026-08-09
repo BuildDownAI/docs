@@ -31,25 +31,15 @@ Apply these criteria when categorizing drift between source and the docs:
 - Priority tier
 - For edit-receiving tiers: a brief suggested edit (1–3 sentences)
 
-## Reader-focused edit principles
+## How edits should read
 
-When applying HIGH-priority edits to MDX, follow these principles. The worked examples below illustrate them in practice; this section lists the rules.
+The docs repo's own `./CLAUDE.md` holds the rules for how documentation here is written — reader focus, component choice by intent, chunking, callout density, anchor and version-prefix discipline, and what never becomes a page edit. Read it before applying any edit.
 
-- **No internal vocabulary in MDX.** Drop source paths, `file:line` citations, TypeScript type-system terms (enum/interface/field names), Mintlify component names in prose ("uses the `<Update>` component"), and meta-mechanic explanations ("the runner-callback handles this"). The reader doesn't know the implementation. Per-page MDX describes user-relevant behavior in user-relevant language.
-- **Component choice by semantic intent.** `<Note>` for neutral important facts. `<Tip>` for operator-benefit / relief callouts. `<Warning>` for blocking issues that prevent functionality. `<Info>` for permissions or context-setting. `<Check>` for success states. Don't default to `<Note>` — pick by what the callout is *for*.
-- **Scannable chunking within components.** A `<ParamField>` body that covers what-it-does + accepted-values + defaults + when-to-use should be 2–4 short paragraphs separated by blank lines, not one wall of prose. Use bulleted lists for parallel items (accepted values, file lists). The eye should land on structure before reading.
-- **Cross-link discipline.** Verify the destination anchor exists. Mintlify anchor rules:
-  - H2/H3/H4 markdown headings, `<Accordion title="X">`, `<Update label="X">` → `#<slugified-text>`
-  - `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix)
-  - `<Step title>` inside `<Steps>`, `<Tab title>` inside `<Tabs>` → **no anchor generated**; fall back to a page-level link
-  - For `latest/*` pages, every cross-link to another docs page must use the `/latest/` prefix. This covers both `]( )` Markdown links AND `href="..."` component props (e.g., `<Card href=...>`)
-- **Internal-only changes are report-only.** A change with no operator-visible behavior — an internal refactor, a database column, an auth-plumbing shift, a telemetry foundation — is not a per-page edit on either branch. Record it in `audit-report.md` and stop there. Release notes are written when a version ships, from the whole set of changes in it; an audit running between releases has no correct place to put one.
-- **"Optional" needs a consequence clause.** When omitting a setting silently disables documented behavior, say what is lost, at the point where the reader decides. "Optional" alone reads as "safe to skip." A webhook secret documented as optional turned out to be the only route to automatic re-runs on review feedback, with no polling fallback — the docs said it was optional and never said what it bought.
-- **Callouts must earn their box, and adding one is often a swap.** Before adding a `<Note>`/`<Tip>`/`<Warning>`, count the components already in the enclosing step, tab, or section. If yours would make three or more, rank them by how *surprising* each is to a reader who has read the surrounding prose — keep the least predictable one boxed and write the rest as prose. Baseline prerequisites lose that ranking every time. The test for whether something belongs in a box at all: could a reader delete it and still follow the section? If not, it is the argument — write it as prose with bold for weight.
-- **Don't restate what another section or page already owns.** Before adding a summary table or a reassurance paragraph, check whether each fact is already stated at its natural home. If it is, the copy is maintenance burden that will drift — and it is the copy that drifts, because the natural home is what gets updated. When the same fact legitimately belongs in two places, keep it at the **point of action** (the field the reader fills in) and drop it at the point of consequence (where the failure surfaces).
-- **Don't document baseline-expected behavior.** If a reader would assume it without being told — that a Docker command needs Docker running, that a local process doesn't notify a team channel — stating it costs attention and buys nothing. This also means: don't invent setup steps for controls a vendor doesn't expose.
-- **Provider-neutral phrasing on shared surfaces.** Anything covering both ticketing providers uses a neutral concept plus a parenthetical naming both, not one provider's vocabulary. "Label" is Linear's word and "status field" is Jira's — a sentence built on either excludes half the readers.
-- **`<ParamField>` defaults belong in the `default` prop**, not in body prose. Always quoted (`default="90"`), since the value may be conditional (`default="3 (Anthropic), 2 (Bedrock)"`) which `{}` cannot express.
+Those rules live there and are deliberately not restated here, so there is one home to improve.
+
+Do not confuse it with `./ai-implement/CLAUDE.md`, which describes the source codebase's architecture and is read for a different purpose.
+
+This file covers what is specific to auditing: how to prioritize a finding, what a finding must contain, how to hunt for claims that have gone stale, and the failure modes to avoid.
 
 ## Worked examples
 
@@ -73,27 +63,27 @@ A HIGH finding identifies that `reviewProviders` is a new optional field in `.ai
 
 **BAD (source-citing, jargon-heavy):**
 
-````mdx
+```mdx
 <ParamField body="reviewProviders" type="string[]">
-  Opts the `post-push-review` step (handler at `src/pipeline/steps/post-push-review.ts:235`) into waiting for external review providers. The implementation uses an `ExternalReviewState` enum with values "skipped" | "absent" | "running" | "completed". When set, the orchestrator's `resolveExternalReview()` function performs check-name matching.
+  Controls whether the `post-push-review` step (handler at `src/pipeline/steps/post-push-review.ts:235`) waits on external review providers. The implementation uses an `ExternalReviewState` enum with values "skipped" | "absent" | "running" | "completed". When the key is absent, `resolveExternalReview()` performs check-name matching; an empty array short-circuits it.
 </ParamField>
-````
+```
 
-Issues: cites `file:line`, names internal `ExternalReviewState` enum, mentions internal function `resolveExternalReview()`. Reader doesn't know the codebase; this is hostile to them.
+Issues: cites `file:line`, names the internal `ExternalReviewState` enum and the `resolveExternalReview()` function. The reader doesn't have the codebase open; this is hostile to them.
 
 **GOOD (reader-focused):**
 
-````mdx
+```mdx
 <ParamField body="reviewProviders" type="string[]">
-  Opts the `post-push-review` step into waiting for and integrating findings from external GitHub Actions review checks on the same PR.
+  Controls whether the `post-push-review` step waits for an external review check on the pull request and folds its findings into its own review.
 
-  Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action). Unknown values are silently filtered out.
+  Leave the field out and the step waits, detecting the external check on its own. This is the default.
 
-  When omitted or empty, `post-push-review` runs its own analysis without coordinating with external reviewers.
+  Set it to an empty list to turn the wait off, so the step reviews the pull request by itself. Set it to `github-claude-code-review` to wait explicitly; unrecognized entries are ignored.
 </ParamField>
-````
+```
 
-Why: drops source paths and internal type names; chunks the body into one-beat paragraphs; describes user-relevant behavior and choices. The reader can decide whether to set this field without knowing how it's implemented.
+Why: it drops the source path and the internal type names, chunks the body into one-beat paragraphs, and — the part the earlier version got wrong — states omitting the field and setting it to an empty list as the opposite outcomes they are, rather than collapsing them into one clause.
 
 ### Version-prefix on `latest/` cross-links
 
@@ -182,6 +172,7 @@ Grep the docs for these shapes directly, then verify each hit against current so
 | Enumeration | `two endpoints`, `four groups`, `eight`, `three steps` | any addition breaks the count without touching the sentence |
 | Specific default | a version, model ID, timeout, or cap stated as a value | changes independently of the prose around it |
 | Negation | `does not support`, `cannot be`, `is not` | the cheapest thing for a release to falsify |
+| Collapsed states | a state word — `omitted`, `unset`, `blank`, `empty`, `absent`, `missing` — joined to another by `or` | a guard is usually written that way *because* the two states differ |
 
 Real instances: "this is the only branch that currently supports plugin installation" — true when written, false once the default branch gained a catalog. "Two endpoints sit outside the namespace" — there were three. A documented default that existed only in test fixtures.
 
@@ -201,7 +192,7 @@ These are the source areas where drift typically appears first. Start the audit 
 
 Other source areas (`src/log.ts`, `src/webhook.ts`, low-level utilities) often have changes with little reader-facing impact — survey them only if time permits.
 
-Findings with no operator-visible behavior are report-only on both branches — see the internal-only rule under Reader-focused edit principles.
+Findings with no operator-visible behavior are report-only on both branches — see *What never becomes a page edit* in `./CLAUDE.md`.
 
 ## Note on file:line citations
 
