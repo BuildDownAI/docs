@@ -74,7 +74,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="verify">
-    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared or when the push was skipped.
+    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared, or when the feedback loop did not approve the change.
 
     <Warning>
       The matching `teardown:` script (also declared in `WORKFLOW.md`) is handled by the runner inside a `finally` block — it always executes, even on failure, and is **not** a pipeline step you can override here.
@@ -84,7 +84,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   <Accordion title="post-push-review">
     Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
 
-    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass — up to three times by default — before reporting whatever the final state is.
+    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
+
+    It runs up to three review passes by default, which force-push at most two revised versions: on the third pass the step reports that it reached the review cap rather than force-pushing again.
 
     The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
@@ -128,9 +130,32 @@ Pipeline YAML follows this schema:
 id: <pipeline-id>
 steps:
   - id: <step-id>
-    type: <StepType>
-    moduleId: <registry-key>  # optional; defaults to type
+    type: <one of the eight values below>
+    moduleId: <registry-key>  # defaults to type — a custom step needs its own module ID
 ```
+
+The `type:` field accepts exactly eight values — anything else fails to load:
+- `clone`
+- `install`
+- `implement`
+- `review`
+- `preflight`
+- `push`
+- `await_ci`
+- `custom`
+
+<Note>
+  Several built-in steps are **not** types of their own:
+  - `setup`
+  - `feedback-loop`
+  - `install-skills`
+  - `verify`
+  - `post-push-review`
+
+  Each runs as `type: custom` with a `moduleId` naming the module.
+
+  Writing any of them as a type — `type: verify` — fails to load, because these names are module IDs, not step types.
+</Note>
 
 The `moduleId` field is what connects a pipeline step to your custom step module. When `moduleId` is set, the runner looks for `custom/steps/<moduleId>.js` (or `.ts` in development). When omitted, it defaults to the value of `type`.
 
@@ -206,11 +231,12 @@ reviewProviders:
 </ParamField>
 
 <ParamField body="reviewProviders" type="string[]">
-  Opts the `post-push-review` step into waiting for and integrating findings from external GitHub Actions review checks on the same PR.
-  
-  Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action). Unknown values are silently filtered out.
-  
-  When omitted or empty, `post-push-review` runs its own analysis without coordinating with external reviewers.
+  Controls whether the `post-push-review` step waits for an external GitHub Actions review check on the same PR and folds its findings into its own review.
+
+  This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The three cases each do something different:
+  - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting checks named `claude-review` or `claude code review`.
+  - **Empty list** — the step skips the external wait entirely and runs only its own review.
+  - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
 </ParamField>
 
 <Tip>
