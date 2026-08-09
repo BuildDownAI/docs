@@ -119,7 +119,7 @@ Pick the tab that matches where you're configuring right now.
       
       Still works, and remains the simplest option for local development, but it identifies nobody and cannot be revoked for one person — prefer per-user sign-in on a deployed orchestrator.
 
-      The admin UI is enabled when this **or** any sign-in provider is configured. With neither, all `/admin` and `/api/` routes return 404.
+      The admin UI is enabled when this **or** any sign-in provider is configured. With neither, all `/admin` and `/api/` routes return `503`, with a response body naming the missing variable.
     </ParamField>
 
     <ParamField body="PORT" type="string" default="8080">
@@ -251,7 +251,7 @@ Pick the tab that matches where you're configuring right now.
       Still read when the newer variable is unset, and ignored when both are set.
     </ParamField>
 
-    <ParamField body="LOCAL_RUNNER_IMAGE" type="string">
+    <ParamField body="LOCAL_RUNNER_IMAGE" type="string" default="ai-implement-runner:local">
       Container image to use when `RUNNER_MODE=local`. Built locally via `npm run build:runner:local`.
     </ParamField>
 
@@ -289,8 +289,10 @@ Pick the tab that matches where you're configuring right now.
           When `true`, the reaper logs what it would destroy but takes no action. Useful for verifying rules before enabling live cleanup.
         </ParamField>
 
-        <ParamField body="REAPER_ALERT_THRESHOLD" type="string">
-          Number of destructions in a 24-hour window above which the reaper emits an alert notification (via the configured `NOTIFY_TYPE`). Helps catch runaway destruction bugs.
+        <ParamField body="REAPER_ALERT_THRESHOLD" type="string" default="10">
+          Number of destructions in a **single sweep** above which the reaper emits an alert notification (via the configured `NOTIFY_TYPE`).
+
+          The count resets on the next pass rather than accumulating over time. Helps catch runaway destruction bugs.
         </ParamField>
       </Accordion>
 
