@@ -25,10 +25,11 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
 
 Local Claude Code auto-loads CLAUDE.md/AGENTS.md from added directories. CI runs don't — you must read them explicitly. Batch the following reads as parallel tool calls in a single message:
 
-1. `./.github/audit-reference.md` — the priority rubric + finding shape + reader-focused principles + anti-pattern list. The unioned report's finding format must match this shape exactly (so a reviewer skimming a multi-run synthesis sees the same structure as a single-run audit). Synthesis preserves the source audits' conventions, not invents new ones.
-2. `./ai-implement/CLAUDE.md` — AI-Implement's codebase architecture guide. Useful for spot-checking whether dedup candidates are really the same drift (e.g., do these two cited file:lines point at related code?).
-3. `./audit-runs/.expected-runs` — single integer; the synthesis target count.
-4. Each `./audit-runs/run-N/audit-report.md` — the per-run findings.
+1. `./CLAUDE.md` — the docs repo's own guide to how documentation here must be written. You judge candidate edits against it. Not the same file as `./ai-implement/CLAUDE.md` at item 3.
+2. `./.github/audit-reference.md` — the priority rubric, finding shape, and anti-pattern list. The unioned report's finding format must match this shape exactly (so a reviewer skimming a multi-run synthesis sees the same structure as a single-run audit). Synthesis preserves the source audits' conventions, not invents new ones.
+3. `./ai-implement/CLAUDE.md` — AI-Implement's codebase architecture guide. Useful for spot-checking whether dedup candidates are really the same drift (e.g., do these two cited file:lines point at related code?).
+4. `./audit-runs/.expected-runs` — single integer; the synthesis target count.
+5. Each `./audit-runs/run-N/audit-report.md` — the per-run findings.
 
 ## Repo context
 
@@ -69,7 +70,7 @@ When in doubt about whether two findings should dedupe, lean toward keeping them
 
 For each deduped finding:
 - **Priority:** keep the highest priority seen across runs. Record disagreement in the finding body (e.g., "HIGH in 2/3 runs, MEDIUM in 1/3").
-- **Edit selection (edit-receiving tiers only):** for each docs file edited by multiple runs for this finding, inspect all candidate edits and pick the ONE that best matches the edit principles in `audit-reference.md`. That file is the single source for what a good edit looks like; the criteria are deliberately not restated here so synthesis and the per-run audits cannot judge by different standards.
+- **Edit selection (edit-receiving tiers only):** for each docs file edited by multiple runs for this finding, inspect all candidate edits and pick the ONE that best matches the rules in `./CLAUDE.md`. That file is the single source for what a good edit looks like; the criteria are deliberately not restated here so synthesis and the per-run audits cannot judge by different standards.
 
   If two candidates are equally good, prefer the one touching less surrounding text. If only one run produced an edit, use that one.
 
@@ -85,7 +86,7 @@ Apply the selected edit per HIGH finding to the FRESH docs checkout at `./` (NOT
 
 **Delegate this step per file.** Once step d has chosen the winning candidate for each file, applying it is mechanical and independent of every other file. Spawn one subagent per docs file and hand it three things: the canonical path in `./`, the path to the chosen candidate under `./audit-runs/run-N/`, and the finding IDs that edit covers. Subagent turns do not count against `--max-turns`, so this keeps the main loop's budget for the steps that need the whole union in view.
 
-**Keep step d in the main loop.** Choosing between candidate edits means comparing every run's version against the principles in `audit-reference.md` — judgment a per-file subagent cannot make from its slice. Delegate the application, never the selection.
+**Keep step d in the main loop.** Choosing between candidate edits means comparing every run's version against the rules in `./CLAUDE.md` — judgment a per-file subagent cannot make from its slice. Delegate the application, never the selection.
 
 ### Step g — Write the unioned report
 

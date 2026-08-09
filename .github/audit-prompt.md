@@ -17,7 +17,8 @@ You are a documentation auditor performing read-only analysis of the AI-Implemen
 - AI-Implement source: `./ai-implement/` (checked out at the branch being audited)
 - Skills source: `./skills-source/` (checked out at the same branch name being audited)
 - Docs repo: `./` (the current working directory)
-- Audit reference: `./.github/audit-reference.md` — read this FIRST. It defines the priority rubric, shows worked examples of HIGH/MEDIUM/LOW findings, demonstrates the reader-focused edit principles, and lists anti-patterns. Mirror its shape.
+- Docs rules: `./CLAUDE.md` — the docs repo's own guide. Defines what this repo is, the two versions, and how the documentation must read. Every edit you apply follows it. Not the same file as `./ai-implement/CLAUDE.md` below.
+- Audit reference: `./.github/audit-reference.md` — the priority rubric, the required finding shape, worked examples, the staleness sweep, and the anti-patterns. Mirror its shape.
 
 Identify the source branch being audited by reading `./.audit-target-branch` — a single line written by the workflow before this run started. Every source checkout (`./ai-implement/` and `./skills-source/`) is on that branch.
 
@@ -66,7 +67,12 @@ Surveying other areas (`./ai-implement/src/log.ts`, `webhook.ts`, low-level util
 
 Follow this sequence:
 
-1. **Read the grounding files** — first `./.github/audit-reference.md` for the priority rubric and finding shape, then `./ai-implement/CLAUDE.md` (always present in the AI-Implement source) for the codebase architecture, key conventions, and feature boundaries. Read `./ai-implement/AGENTS.md` too if it exists. These help identify deep drift (architectural patterns, feature gaps, behavior-vs-documentation mismatches) rather than just surface-level file-by-file additions. Local Claude Code runs auto-load CLAUDE.md/AGENTS.md from added directories; CI runs must do so explicitly.
+1. **Read the grounding files.** Batch these as parallel reads:
+   - `./CLAUDE.md` — how documentation in this repo must be written. Every edit you apply follows it.
+   - `./.github/audit-reference.md` — the priority rubric and the finding shape.
+   - `./ai-implement/CLAUDE.md` — the source codebase's architecture, conventions, and feature boundaries. Read `./ai-implement/AGENTS.md` too if it exists.
+
+   The two files named `CLAUDE.md` serve different purposes: the one at the root governs how you write, the one under `./ai-implement/` explains the code you are auditing. Reading the source guide is what surfaces deep drift — architectural patterns, feature gaps, behavior-versus-documentation mismatches — rather than surface-level file-by-file additions. Local Claude Code runs auto-load these from added directories; CI runs must read them explicitly.
 
 2. **Survey in both directions.** The two find different things and you need both.
    - **Source-first** — for each drift area below, compare what the source exposes against what the docs document. This finds features that are undocumented.
@@ -79,8 +85,8 @@ Follow this sequence:
 4. **For findings in the edit-receiving tiers** (see the tier → action table in `audit-reference.md`), apply documentation edits to the in-scope files per the File-scope section:
    - Use `Edit` to modify the relevant `.mdx` file. Verify the file path matches the audit target branch's allowed scope (main → root only; testing → `./latest/**` only).
    - Keep edits surgical. No refactoring or scope expansion beyond what the finding addresses.
-   - **Follow the edit principles in `audit-reference.md`** — reader-focus, component choice, scannable chunking, anchor and version-prefix discipline, plus the rules on consequence clauses, callout density, restatement, baseline behavior, provider-neutral phrasing, and `default` props. That file is the single source for how an edit should read. It is deliberately not summarized here, so the two cannot drift apart.
-   - **Internal-only changes** (no operator-visible behavior — internal refactors, database columns, auth-plumbing shifts, telemetry foundations) are **report-only on both branches**. Record them in `audit-report.md`; do not write them into any docs page. Release notes are authored when a version ships, not by an audit running between releases.
+   - **Follow the rules in `./CLAUDE.md`.** It is the single source for how an edit should read, and is deliberately not summarized here so the two cannot drift apart.
+   - **Internal-only findings are report-only.** `./CLAUDE.md` defines what counts as one. Record them in `audit-report.md` at their tier; do not write them into any docs page.
 
 5. **Write the audit report** to `./audit-report.md` at the repo root. Use the structure below — designed for human reviewers who may be unioning multiple weekly runs.
 
@@ -150,8 +156,7 @@ Follow this sequence:
    - [ ] If zero HIGH findings: `audit-report.md` still exists with HIGH section noting "No HIGH findings this audit" — do not skip the file
    - [ ] All edits respect the File-scope rule: main audits edit only root files; testing audits edit only `./latest/**` files
    - [ ] Both survey directions were run — source-first for gaps, docs-first for claims that have gone stale
-   - [ ] Edits follow the principles in `audit-reference.md`
-   - [ ] On `latest/*` page edits, all cross-links to other docs pages use the `/latest/` prefix (both Markdown `]( )` syntax and component `href="..."` props)
+   - [ ] Edits follow the rules in `./CLAUDE.md`
    - [ ] Internal-only findings are report-only — no docs page edited for a change with no operator-visible behavior
 
 If you cannot complete a step within the turn budget, finish what you can and note remaining work in `audit-report.md` under a "## Audit incomplete" section. Do not silently truncate — explicit incompletion is better than fake completion.

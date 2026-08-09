@@ -11,7 +11,7 @@ on:
                     - testing
                 default: main
             max_turns:
-                description: 'Override max-turns (blank = branch default: 120 main / 140 testing)'
+                description: 'Override max-turns (blank = 140)'
                 type: string
                 required: false
                 default: ''
@@ -30,7 +30,7 @@ jobs:
         with:
             target_branch: ${{ github.event.inputs.branch || 'testing' }}
             docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
-            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || ((github.event.inputs.branch || 'testing') == 'main' && '120' || '140') }}
+            max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || '140' }}
             artifact_name: audit-output
         secrets:
             app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
