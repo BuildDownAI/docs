@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `404`. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
+The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
 - **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
@@ -52,7 +52,7 @@ A second table breaks down in-progress counts by project mapping for real-time v
 
 The dispatch log under its real internal name (`jobs` in the sidebar).
 
-Shows the last ~500 dispatch entries (timestamped) across all teams with full execution history:
+Shows dispatch entries (timestamped) across all teams with full execution history:
 - Issue ID
 - Repo
 - Team (the `teamKey` shown in the row)
@@ -64,16 +64,22 @@ Shows the last ~500 dispatch entries (timestamped) across all teams with full ex
 
 Planning and implementation dispatches for the same issue are grouped visually as a single job.
 
+Unfiltered, the panel shows the most recent 100 entries. Applying a time-range filter narrows the view to a chosen window, but shows the full retained history during that window rather than the newest 100.
+
 <Tip>
   Use this log to audit activity or diagnose why an issue was or was not picked up.
 </Tip>
+
+<Warning>
+  The log retains only the most recent 500 dispatches. Older entries are deleted permanently, so no filter will surface them.
+</Warning>
 
 ### Pull requests
 
 Lists every bot-opened pull request the orchestrator is tracking, with the following information:
 - Issue link
 - Repo
-- Current job status (`running` / `completed` / `failed` / `review_failed`)
+- Current job status (`running` / `completed` / `failed` / `review_failed` / `timed_out`)
 - Iteration count (the dispatch number)
 - Time since last dispatch
 - Direct links to GitHub
@@ -96,6 +102,7 @@ Per-issue rows include:
 - Issue identifier
 - Project mapping
 - Blocking reason
+- Detail (further context on the blocking reason)
 - Direct link back to the ticket
 
 ## Configure
@@ -237,7 +244,9 @@ You can destroy a stuck session directly from this panel. Destroying a session a
 
 The reconciliation-sweep dashboard.
 
-The top of the page hosts the **runner mode toggle** (`default` / `gha` / `fly` / `local` / `shadow`).
+The top of the page hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
+
+`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
 
 <Note>
   If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
@@ -464,7 +473,7 @@ Three endpoints sit outside the `/api/*` namespace and are called by **runners**
 | `POST` | `/runner/progress` | Streams step-by-step progress updates throughout a run (each pipeline step's status, elapsed time, and any structured output). The token is **multi-use** so the runner can post many updates during a single dispatch; consumed independently of the result token. |
 | `GET` | `/runner/planning-context` | Fetches the planning comments recorded on the originating issue, so an implementation run can include the approved plan in its prompt without the runner needing ticketing credentials. |
 
-The two `POST` endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since neither can validate tokens without it.
+All three endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
 
 <Note>
   Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.
