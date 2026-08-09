@@ -58,7 +58,11 @@ Write the docs the way a reader uses them, not the way the product is built.
 
 **Break parallel items into a list.** Three or more items of the same kind in a sentence — accepted values, file names, prerequisites — become a bulleted list, anywhere on the page. This applies to ordinary prose, accordion bodies, and component bodies alike, not just parameter descriptions.
 
-**Keep bodies scannable.** A block covering what-it-does, accepted values, default, and when-to-use is 2–4 short paragraphs with blank lines between them, not one dense run. The eye should land on structure before reading. A `<ParamField>` body is the most common instance of this, not the only one.
+**One beat per paragraph.** A beat is one thing the reader learns: what a field does, how it behaves in an edge case, what it defaults to, why they would change it. Before finishing any block of prose, count its beats — if there is more than one, put a blank line at each boundary. Two tight sentences carrying two beats are still two paragraphs.
+
+Two tells that a boundary is being papered over: an em-dash or semicolon joining two complete thoughts, and a sentence that opens by restating the subject of the one before it. Both mean the split was already there and got written as punctuation instead.
+
+This governs every block of prose on a page — ordinary paragraphs, accordion bodies, `<Step>` bodies, and `<ParamField>` bodies alike.
 
 **Use `<Steps>` for ordered procedures.** Any sequence where each action depends on the previous one completing — install → restart → verify, a setup walkthrough — goes in a `<Steps>` block, not a bare numbered list or a run of separate paragraphs. The reader is following along as they go.
 
