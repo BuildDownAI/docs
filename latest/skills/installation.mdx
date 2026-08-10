@@ -138,6 +138,23 @@ To pin a specific release instead of tracking a checkout:
 ./install.sh --from-git https://github.com/BuildDownAI/skills.git@v1.0.0
 ```
 
+### Script options
+
+The two commands above cover the common paths. Run `./install.sh --help` for the authoritative list; the options that change what you can do are:
+
+- **`--project <path>`** — install into `<path>/.claude/skills` instead of your home directory, scoping the skills to a single repository rather than your user account.
+- **`--uninstall`** — remove the installed skills, backing out either kind of install.
+- **`--copy`** — copy the skills instead of symlinking them, so a later `git pull` in the checkout leaves your installed copy untouched. This is the alternative to the default symlink behavior described above.
+- **`--update`** — fetch and reset the managed clone to a newer ref before installing, which is how you move a pinned `--from-git` install onto a later release.
+
+The rest round out the surface:
+
+- **`--user`** — install into `~/.claude/skills`, the default when `--project` is not given.
+- **`--force`** — overwrite skills already installed at the target.
+- **`--prune`** — clear installed skills that were renamed or removed upstream, worth adding when upgrading across versions.
+- **`--ref <ref>`** — the branch, tag, or SHA to install when using `--from-git`, as an alternative to appending `@<ref>` to the URL.
+- **`--dry-run`** — report what the script would do without changing anything.
+
 ## Next step
 
 With the skills installed, set up your project so the `bd-` skills know where your issues and repo live.
