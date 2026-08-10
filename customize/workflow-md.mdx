@@ -27,7 +27,11 @@ description: "How to customize WORKFLOW.md: set the model, repo context, quality
     model: anthropic.claude-sonnet-4-6-20250805-v1:0
     ```
 
-    This key is **required when using Bedrock** — there is no safe default for Bedrock model IDs because they are region- and account-specific. The workflow hard-fails with a clear error if you omit it on a Bedrock-mapped repo. For the Anthropic provider it defaults to `claude-sonnet-4-6` if omitted.
+    This key is **required when using Bedrock**. There is no Bedrock-specific default — the model resolves from a single provider-agnostic chain that ends in `claude-sonnet-4-6`.
+
+    Omit it on a Bedrock-mapped repo and that Anthropic model ID is substituted silently. It is invalid on Bedrock, so the run fails when the model is invoked rather than up front.
+
+    For the Anthropic provider, `claude-sonnet-4-6` is the intended default and omitting the key is safe.
   </Accordion>
 
   <Accordion title="setup">
