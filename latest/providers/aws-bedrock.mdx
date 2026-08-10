@@ -76,7 +76,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
     ```
 
     <Warning>
-      `model:` is required for Bedrock — the IDs are account- and region-specific and include date stamps, so there is no safe default.
+      `model:` is required for Bedrock — the IDs include date stamps and are specific to your account and region, so there is no safe default.
 
       Nothing validates the model against the provider. Omit it and the run substitutes an Anthropic model ID, which fails when that model is invoked rather than up front as a configuration error.
     </Warning>

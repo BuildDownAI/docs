@@ -7,8 +7,9 @@
 #                          or an inference-profile ARN (arn:aws:bedrock:...)
 # The default below works for the Anthropic provider. If this repo's mapping
 # is switched to provider=bedrock in the orchestrator admin UI, replace this
-# with a Bedrock model ID — the workflow will hard-fail otherwise, since
-# Bedrock IDs are account- and region-specific and have no safe default.
+# with a Bedrock model ID — nothing validates the value, so an Anthropic ID
+# passes straight through and the run fails at invocation. Bedrock IDs are
+# account and region specific, so there is no safe default to fall back on.
 model: claude-sonnet-4-6
 ---
 
