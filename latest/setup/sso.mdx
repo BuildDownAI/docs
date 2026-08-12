@@ -62,14 +62,17 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
                 </Note>
             </Step>
 
-            <Step title="Add your operators as test users">
-                On the **Audience** page, under **Test users**, click **Add users** and enter each operator's email, including any outside your domain.
+            <Step title="Publish the consent screen">
+                On the **Audience** page, click **Publish app** to move the consent screen from testing to production.
 
-                An External app starts in testing mode, where only these accounts can authenticate, up to 100. Your allowlist still applies on top.
+                The three scopes this app requests are non-sensitive (`openid`, `email`, `profile`), so Google requires no verification and the publish takes effect immediately.
 
-                <Note>
-                    The **Publish app** button moves the app to production and removes the test-user limit, at the cost of an "unverified app" warning at sign-in until Google verifies your branding. Leave it in testing unless maintaining the list becomes a nuisance.
-                </Note>
+                Publishing clears two limits that testing mode imposes:
+
+                - The 100-account cap on who can authenticate
+                - The "unverified app" interstitial shown at sign-in
+
+                Your allowlist (`OAUTH_ALLOWED_EMAILS` / `OAUTH_ALLOWED_DOMAINS`) stays the real access gate. Publishing widens who Google will authenticate, but the orchestrator still admits only allowlisted addresses, fail-closed — so it does not weaken access control.
             </Step>
 
             <Step title="Declare the scopes">
@@ -85,16 +88,19 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             <Step title="Create the OAuth client">
                 On the **Clients** page, click **Create client** and choose application type **Web application**. Give it an internal name — this one isn't shown to operators.
 
-                Under **Authorized redirect URIs**, add one entry per orchestrator, ending in `/api/auth/google/callback`:
+                Under **Authorized redirect URIs**, add two entries per orchestrator — one for admin sign-in and one for the MCP client flow:
 
                 ```
                 https://your-orchestrator.example.com/api/auth/google/callback
+                https://your-orchestrator.example.com/mcp/callback/google
                 ```
 
                 Leave **Authorized JavaScript origins** empty. The orchestrator exchanges the authorization code server-side, so that field is unused.
 
                 <Warning>
-                    The redirect URI must match byte for byte — `https`, no trailing slash. A mismatch fails at sign-in with `redirect_uri_mismatch`.
+                    Register **both** URIs. Admin sign-in working confirms only that its own callback is registered — the MCP callback is a separate entry, and omitting it fails every MCP client connection with `redirect_uri_mismatch`.
+
+                    Each URI must match byte for byte — `https`, no trailing slash. A mismatch fails at sign-in with the same error.
 
                     Don't add a `localhost` URI to a client that holds production credentials. If you want sign-in locally, create a separate client for it.
                 </Warning>
@@ -116,11 +122,14 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
 
                 For **Supported account types**, choose **Accounts in this organizational directory only**. The orchestrator verifies a Microsoft email using the account's tenant, which is only sound when the application is bound to a single directory.
 
-                Set the **Redirect URI** to platform **Web**, ending in `/api/auth/microsoft/callback`:
+                Set the platform to **Web** and register two redirect URIs per orchestrator — one for admin sign-in and one for the MCP client flow:
 
                 ```
                 https://your-orchestrator.example.com/api/auth/microsoft/callback
+                https://your-orchestrator.example.com/mcp/callback/microsoft
                 ```
+
+                Both are required. The admin callback alone lets operators sign in but fails every MCP client connection with `redirect_uri_mismatch`.
 
                 After registering, copy the **Application (client) ID** and the **Directory (tenant) ID** from the Overview page.
 
@@ -168,6 +177,12 @@ fly secrets set \
 </Warning>
 
 Each variable is described in [Environment variables](/latest/configuration/environment-variables).
+
+<Tip>
+    Run one OAuth client per provider for the whole organization, in a GCP or Entra project owned by your admin group. Every orchestrator points at that same client.
+
+    Adding an orchestrator is then two edits: register its two callback URIs on the existing client, and give it its own allowlist.
+</Tip>
 
 ## The shared access code
 
