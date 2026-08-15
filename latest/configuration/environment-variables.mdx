@@ -137,7 +137,7 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
       HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Set the same value on the GitHub App's webhook configuration, pointed at `https://<orchestrator-host>/api/github/webhook`.
 
-      Leaving it unset disables one capability: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing polls for review feedback, so without a working webhook someone has to comment `/ai-implement` to get another pass.
+      Leaving it unset disables two things: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request, and the **`/ai-implement` comment trigger** itself. Workflow sync removes the old standalone `comment-trigger.yml` file from a target repo and routes that comment through this webhook instead, so without it configured, commenting `/ai-implement` on a pull request has no effect.
 
       <Note>
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/latest/setup/github-app).
@@ -278,7 +278,7 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
           Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint, which starts a gap-fill run against an existing pull request. Leaving it unset disables the endpoint.
 
-          This is not needed for the `/ai-implement` comment trigger. That path runs entirely inside the `comment-trigger.yml` workflow in your target repo and never calls the orchestrator. Set this only if you drive gap-fill runs from your own automation.
+          This is a separate mechanism from the `/ai-implement` comment trigger, which runs through the orchestrator's own GitHub webhook and `GITHUB_WEBHOOK_SECRET` instead. Set `GAP_FILL_TRIGGER_SECRET` only if you drive gap-fill runs from your own automation rather than a PR comment.
         </ParamField>
       </Accordion>
 
@@ -294,6 +294,32 @@ Pick the tab that matches where you're configuring right now.
 
           The count resets on the next pass rather than accumulating over time. Helps catch runaway destruction bugs.
         </ParamField>
+      </Accordion>
+
+      <Accordion title="Dispatch breaker">
+        Controls the circuit breaker that stops retrying an issue after repeated dispatch failures.
+
+        <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="string" default="3">
+          Number of consecutive failed dispatches for the same issue and phase (planning or implementation) before the orchestrator parks the issue and stops dispatching it.
+
+          Set to `0` to disable the breaker entirely. A parked issue stays parked until an operator unparks it from the **Runners** panel in the admin UI, or until the issue's provider marker is cleared and reapplied.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Self-deploy">
+        Lets the orchestrator redeploy itself on Fly.io when its own watched branch moves, without waiting for the `deploy-clients.yml` CI workflow.
+
+        <ParamField body="FLY_DEPLOY_TOKEN" type="string">
+          Fly API token scoped to deploy this orchestrator's own app, created with `fly tokens create deploy --app <this-app> --expiry 8760h`.
+
+          Distinct from `FLY_SESSIONS_TOKEN`, which is scoped to the sessions app and cannot deploy the orchestrator itself. Leave unset and self-deploy is unavailable; everything else runs normally.
+        </ParamField>
+
+        <Note>
+          `AI_IMPLEMENT_SOURCE_COMMIT`, `AI_IMPLEMENT_SOURCE_REPO`, and `AI_IMPLEMENT_SOURCE_BRANCH` are stamped into the running image at build time from `Dockerfile` build args — they are not variables you set yourself. The three together tell a running instance which commit, repo, and branch it was built from, so it can compare against the branch head and redeploy when they diverge.
+
+          A build that omits any of the three leaves self-deploy inert: the orchestrator reports its deployment availability as unknown rather than up to date, instead of failing loudly. Setting them by hand in a local `.env` exercises the feature without an image build, but they then describe a build that doesn't exist.
+        </Note>
       </Accordion>
 
       <Accordion title="Multi-tenant deploys">

@@ -10,7 +10,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
-- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
 - **Platform** — Runners, Sessions, Reaper, Secrets, Settings
 - **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
@@ -105,6 +105,28 @@ Per-issue rows include:
 - Detail (further context on the blocking reason)
 - Direct link back to the ticket
 
+### Reports
+
+Fleet-wide outcome metrics over a selectable window (7, 30, or 90 days), optionally filtered to one repo.
+
+A **Fleet by repo** table breaks down, per repo:
+- Jobs
+- Issues
+- Completed
+- Failed
+- Merged
+- Average review passes
+- Cost in USD
+
+Three KPI cards summarize outcomes across the whole fleet:
+- **One-shot** — the share of runs approved on their first dispatch
+- **Eventual** — the share of issues eventually approved across all dispatches
+- **Escape rate** — the share of merged PRs that received human edits afterward
+
+A **Planning A/B** table compares the same metrics across issues that went through planning and issues that didn't, to show whether the planning phase improves outcomes.
+
+A **Runaways** table lists issues with three or more dispatches, or three or more consecutive failures — the issues most likely to need manual intervention.
+
 ## Configure
 
 ### Projects (team/repo mappings)
@@ -116,9 +138,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 </Note>
 
 <Info>
-  **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
-  - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
+  **New in latest:** The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
 </Info>
 
 #### Create a new project mapping
@@ -139,15 +159,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
-
-    | Field | Default if blank | Purpose |
-    |---|---|---|
-    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
-    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
-    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
-
-    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
+    The **Capacity** step sets `maxInProgressAiIssues` (the concurrency cap) here. The run-cap fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — aren't in the stepper; set them after creation from the project's **Edit** dialog. See [Project mappings](/latest/configuration/team-repo-mappings#capacity) for their defaults.
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
@@ -206,7 +218,17 @@ The table lists each project's:
 
 ### Runners
 
-High-level runner-infrastructure dashboard.
+High-level runner-infrastructure dashboard, and where the global runner-mode toggle lives.
+
+The top of the page hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
+
+`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
+
+<Note>
+  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
+
+  Changing runner mode via the UI or API while `RUNNER_MODE` is set in the environment still persists the new value to the database, but it has no effect until the env var is removed and the orchestrator is restarted.
+</Note>
 
 KPI cards show:
 - Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
@@ -220,6 +242,22 @@ A per-project table shows each mapping's:
 - Configured execution mode
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
+
+A **Parked issues** section appears once the dispatch circuit breaker has parked at least one issue.
+
+An issue is parked after too many consecutive dispatch failures in the same phase, and stays parked until you unpark it. Each row shows:
+- Issue
+- Repo
+- Phase
+- Failure count
+- Last conclusion
+- Time since parked
+
+An **Unpark** action on each row makes the issue eligible for dispatch again.
+
+<Note>
+  Set `DISPATCH_BREAKER_THRESHOLD` (default 3) to change the failure count that trips the breaker.
+</Note>
 
 ### Sessions
 
@@ -242,15 +280,7 @@ You can destroy a stuck session directly from this panel. Destroying a session a
 
 ### Reaper
 
-The reconciliation-sweep dashboard.
-
-The top of the page hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
-
-`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
-
-<Note>
-  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
-</Note>
+The reconciliation-sweep dashboard. The runner-mode toggle that used to sit at the top of this page now lives on [Runners](#runners).
 
 A summary card shows the 24-hour total of machines and jobs the reaper destroyed, broken down by rule:
 - `orphan`
@@ -268,10 +298,6 @@ A recent-actions table lists the latest destructions with:
 - Associated issue
 - Age at destruction (in seconds)
 - `dry-run` or `destroyed` badge (indicating whether the action was a no-op or executed)
-
-<Note>
-  If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
-</Note>
 
 ### Secrets
 
@@ -315,16 +341,20 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 
 ### Audit log
 
-Shows the dispatch-deduplication ledger for the last 24 hours.
+Shows the dispatch-deduplication ledger.
 
 Each row includes:
 - Issue identifier and title
 - When the issue was dispatched
 - A delete button to remove it from the dedup window
 
-Issues are deduplicated for 24 hours after dispatch to prevent the orchestrator from picking up the same issue repeatedly. The dedup panel shows every issue currently in the dedup window.
+An issue enters the dedup window as soon as it's dispatched, to prevent the orchestrator from picking up the same issue again while work is already in flight. The dedup panel shows every issue currently in the window.
 
-You can manually remove an issue from the dedup window if you want the orchestrator to re-dispatch it before the 24-hour window expires.
+<Warning>
+  A dedup entry has no expiry. It stays until a failed or timed-out run clears it, the reconcile loop finds the issue already at a terminal state, or you remove it manually — never on a timer. If the same issue keeps getting re-dispatched, or won't re-dispatch when you expect it to, check this panel rather than waiting.
+</Warning>
+
+You can manually remove an issue from the dedup window to make the orchestrator treat it as new again on the next poll.
 
 <Note>
   The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup window.
@@ -421,6 +451,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `GET` | `/api/blockers` | List issues currently blocked from dispatch, with reason |
 | `GET` | `/api/jobs/:jobId/steps` | Get step-by-step execution status for a specific job |
 | `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
+| `GET` | `/api/report` | Fleet-wide outcome report over a `days` window (7, 30, or 90), optionally scoped to one repo via `project` |
 
 #### Sessions, reaper, and deduplication
 
@@ -430,8 +461,10 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the associated issue |
 | `GET` | `/api/reaper/summary` | 24-hour reaper destruction summary, broken down by rule |
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
-| `GET` | `/api/dedup` | List issues in the 24-hour dedup window |
+| `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+| `GET` | `/api/parked` | List issues parked by the dispatch circuit breaker |
+| `POST` | `/api/parked/unpark` | Unpark an issue so it can be dispatched again |
 
 #### Runner mode and settings
 
@@ -441,6 +474,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/runner-mode` | Set runner mode |
 | `GET` | `/api/settings` | Get orchestrator settings |
 | `POST` | `/api/settings` | Update orchestrator settings |
+| `POST` | `/api/deploy` | Trigger a self-deploy immediately, instead of waiting for the orchestrator to notice its branch moved. Returns `501` when self-deploy isn't configured, `409` when a deploy is already in progress. |
 
 #### Secrets
 

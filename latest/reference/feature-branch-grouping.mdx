@@ -65,6 +65,8 @@ You can mark the whole tree at once. The ordering rules below sequence it for yo
 | Parent still has children in flight | Waits |
 | Parent's children are all finished | The parent's own work runs, landing on its own grouping branch |
 | Issue is blocked by an open blocking relation | Waits |
+| Issue's declared files overlap a sibling already dispatched to the same grouping branch | Waits until the conflicting sibling's pull request merges |
+| Issue is the top-of-tree parent, and its roll-up pull request into your default branch is already open | Held from dispatch until that pull request merges or closes |
 
 A parent can carry work of its own — a final cleanup, a piece of integration — that isn't part of any child. That work is deliberately held until every child is finished, so it builds on top of them rather than racing them.
 
@@ -82,7 +84,9 @@ Merge that final pull request however you like — merge commit, squash, or reba
 
 ## Merging child pull requests automatically
 
-By default every child pull request waits for a human, same as any other. Turning on **Auto Merge** for a project changes that: child pull requests are merged into their grouping branch once they're ready.
+Child pull requests into a grouping branch merge automatically once they're ready, for every project mapping that isn't paused. This is separate from ordinary pull requests, which always wait for a human.
+
+The project mapping's [`autoMerge`](/latest/configuration/team-repo-mappings#param-auto-merge) field doesn't gate this behavior. It currently has no effect on grouping-branch child merges, whether it's turned on or off.
 
 A child is merged only when all of the following hold:
 
@@ -91,17 +95,19 @@ A child is merged only when all of the following hold:
 - Its checks have finished, and passed
 - No reviewer has requested changes
 
-Anything else is left alone. Pending checks are waited on, failures and change-requests are skipped, and a pull request that can't be merged cleanly is left for you.
-
 <Note>
-  A run whose automated review found blockers opens its pull request as a **draft**. Because auto-merge skips drafts, flagged work is never merged past you even with the setting on.
+  A run whose automated review found blockers opens its pull request as a **draft**. Because auto-merge skips drafts, flagged work is never merged past you.
 </Note>
 
-<Warning>
-  Auto Merge never merges into your default branch. The final pull request out of the tree always waits for human review.
-</Warning>
+Anything else is left alone. Pending checks are waited on, and failures or change-requests are skipped rather than merged, same as ordinary pull requests.
 
-Turn it on per project — see [`autoMerge`](/latest/configuration/team-repo-mappings#param-auto-merge) in the project mapping reference.
+This mechanism only ever merges into a grouping branch, never into your default branch. The final pull request out of the tree always waits for human review.
+
+A pull request that can't be merged cleanly gets up to two automated conflict-resolution attempts pushed to it first. Only after both attempts fail is it left for you, with a notification.
+
+<Warning>
+  Don't resolve a merge conflict on a child pull request by hand while it's still within its automated attempts. A resolution could be pushed to the same branch while you're working on it.
+</Warning>
 
 ## Naming the grouping branch
 

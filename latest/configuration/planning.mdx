@@ -21,16 +21,11 @@ When `planningEnabled=true` (the default), AI-Implement runs a planning pass bef
   </Step>
 
   <Step title="Claude posts structured planning comments">
-    Claude posts up to four comments on the issue, each with a fixed header that the implementation workflow can locate later:
+    Claude writes exactly three comments on the issue, each with a fixed header that the implementation workflow can locate later:
 
-    - **Architecture Analysis** (`## 🏗️ AI Planning: Architecture Analysis`) — approach, specific files to create or modify, key architectural decisions, and risks or open questions.
-    - **Test Plan** (`## 🧪 AI Planning: Test Plan`) — unit tests, integration tests, and a manual verification checklist.
-    - **Work Units** (`## 🔧 AI Planning: Work Units`) — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must follow. Skipped when the issue is too small or too tightly coupled to decompose.
-    - **Cross-Story Context** (`## 🔗 AI Planning: Cross-Story Context`) — posted only when the issue has dependencies or sibling stories with meaningful coordination needs, covering upstream dependencies, downstream impact, and coordination notes.
-
-    <Info>
-      When eligible for **Work Units**, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time.
-    </Info>
+    - **Implementation Map** (`## 🗺 AI Planning: Implementation Map`) — the implementation approach, a Files section listing what to create, modify, test, or delete, and any constraints or hazards the implementer must not break. Cross-story coordination notes (from a parent, siblings, or dependencies) fold into this comment's constraints rather than getting a separate comment.
+    - **Acceptance Bar** (`## ✅ AI Planning: Acceptance Bar`) — a numbered list of falsifiable claims a reviewer can check directly against the diff or by running a specific command.
+    - **Risks & Open Questions** (`## ⚠️ AI Planning: Risks & Open Questions`) — edge cases, unknowns, and potential problems found while exploring the codebase.
   </Step>
 
   <Step title="Issue marker is updated">

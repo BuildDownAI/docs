@@ -383,13 +383,18 @@ These report how a run finished:
 
 The orchestrator checks for eligible issues on a schedule. When it skips one, the Blockers view in the admin UI shows why.
 
-Most reasons clear on their own once the condition changes — a slot frees up, or the dedup window passes — but `no-mapping` needs you to add a project mapping.
+Reasons clear differently:
+
+- `concurrency` and `file-overlap` clear on their own once the condition changes — a slot frees up, or the sibling issue holding the overlap merges.
+- `dedup` clears only when something explicitly removes the entry: the run fails or times out, the reconcile loop reaches a terminal state for the issue, or an operator deletes it manually. There is no time-based expiry.
+- `no-mapping` needs you to add a project mapping.
 
 | Reason | Message shown | When |
 |---|---|---|
 | `concurrency` | {team} at concurrency cap ({current}/{max}). Waiting for a slot. | The team is at its maximum number of in-progress issues |
-| `dedup` | Already dispatched recently. Waiting for the in-flight job. | The issue was dispatched within the last 24 hours |
+| `dedup` | Already dispatched recently. Waiting for the in-flight job. | The issue has an unresolved dispatch entry — see above for how it clears |
 | `no-mapping` | No mapping for team {team}. Add one in Projects. | The issue's team has no project mapping |
+| `file-overlap` | Declared files overlap sibling {identifier}: {files}. Deferred until it merges. | A feature-tree sibling's declared `Files:` overlap an in-flight or already-selected sibling on the same grouping branch — see [Feature-branch grouping](/latest/reference/feature-branch-grouping) |
 
 <Note>
     An issue is also skipped if it has open blocking issues linked to it. That is a separate eligibility check, not one of the reasons above.

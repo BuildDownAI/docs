@@ -15,7 +15,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 **YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. This block is stripped before Claude sees anything; Claude never receives it.
 
-**Markdown body** — everything after the front matter. This is rendered through `envsubst` (variable substitution) and then sent to Claude as the prompt.
+**Markdown body** — everything after the front matter. The runner substitutes the variables below into it — not with the `envsubst` utility, but with its own fixed-token substitution — and sends the result to Claude as the prompt.
 
 ## Front matter keys
 
@@ -39,13 +39,9 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
   </Accordion>
 
   <Accordion title="gap_analysis_model">
-    The model used for the post-PR gap analysis step. Optional.
+    No longer read. The front-matter parser recognizes only `model`, `setup`, `verify`, and `teardown` — this key is dropped the same as any other unrecognized key, with no error or warning.
 
-    ```yaml
-    gap_analysis_model: claude-haiku-4-5-20251001
-    ```
-
-    When omitted, the Anthropic provider defaults to `claude-haiku-4-5-20251001` (a cheaper model suited to analysis). The Bedrock provider falls back to the same value as `model` because there is no generic Bedrock haiku ID to default to.
+    The post-push review (gap analysis) step always uses the same model as the rest of the run: the `model` key above, or `claude-sonnet-4-6` when that's unset. There is currently no way to set a different model for that step specifically.
   </Accordion>
 
   <Accordion title="setup">
@@ -57,13 +53,13 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
   </Accordion>
 
   <Accordion title="verify">
-    Path to a shell script to run **after Claude succeeds**. Use this to run your test suite or any other validation that must pass before the PR is opened.
+    Path to a shell script to run **after the pull request is already open**, once the review loop has approved the change. Use this for validation you want recorded or enforced post-approval, such as a fuller test suite.
 
     ```yaml
     verify: scripts/ai-verify.sh
     ```
 
-    This script only runs when Claude completes without error.
+    It does not run, and cannot block the PR from opening, when the review loop didn't approve the work.
   </Accordion>
 
   <Accordion title="teardown">
@@ -77,14 +73,14 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 ## Variables available in the body
 
-The markdown body is processed with `envsubst` before being sent to Claude. You can reference any of these variables anywhere in the body:
+The runner substitutes these `${UPPER_SNAKE}` tokens into the body via a fixed-token regular expression, not the `envsubst` utility — any other `${TOKEN}`-shaped text is replaced with an empty string, so a shell example containing one is silently blanked. You can reference any of the variables below anywhere in the body:
 
 | Variable | Description |
 |---|---|
 | `${ISSUE_IDENTIFIER}` | Ticketing-system identifier — `ENG-42` for Linear, `PROJ-42` for Jira |
 | `${ISSUE_TITLE}` | Issue title |
 | `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
-| `${ISSUE_ID}` | Issue UUID — useful if you want Claude to call the ticketing API directly |
+| `${ISSUE_ID}` | Ticket UUID. Rarely useful — the runner holds no ticketing credential, so it can't call the ticketing API directly; posting back to the ticket goes through the `ai-output/comments/` file convention instead. |
 | `${PR_NUMBER}` | Set on gap-fill re-runs; empty on first run |
 | `${PLANNING_CONTEXT}` | Concatenated planning comments fetched from the ticket and sanitized. Empty when planning is disabled or no planning comments are present. |
 
@@ -92,8 +88,8 @@ The markdown body is processed with `envsubst` before being sent to Claude. You 
 
 AI-Implement uses this single file for two distinct scenarios:
 
-- **When `${PR_NUMBER}` is empty** — Claude creates a new branch and opens a pull request.
-- **When `${PR_NUMBER}` is set** — Claude pushes commits to the existing PR branch without creating a new one. This happens when you comment `/ai-implement` on an existing PR, triggering a gap-fill run.
+- **When `${PR_NUMBER}` is empty** — Claude edits the checkout and leaves the changes uncommitted. The AI-Implement pipeline creates the commit, pushes a new branch, and opens the pull request once review passes.
+- **When `${PR_NUMBER}` is set** — Claude commits and pushes to the existing PR branch itself, and the pipeline skips its own push step. This happens when you comment `/ai-implement` on an existing PR, triggering a gap-fill run.
 
 The starter template handles both cases with a conditional section. You can read `${PR_NUMBER}` in your own template body to branch the instructions however your workflow requires.
 
@@ -106,19 +102,19 @@ Read CLAUDE.md if it exists for repo-specific context and conventions.
 
 ---
 
-If `${PR_NUMBER}` is set (value: "${PR_NUMBER}"), skip to the **Gap-fill instructions**
-section below and ignore New implementation.
-
----
-
 ## New implementation
 
-Create a branch named `${ISSUE_IDENTIFIER}/short-description`, implement the
-feature described in the issue below, then open a pull request with:
+Implement the feature described in the issue below in the current checkout.
+Do NOT create or switch branches. Do NOT commit, push, or open a pull request.
+Leave your file changes unstaged and uncommitted. The AI-Implement pipeline
+will create the implementation commit, push an issue-scoped branch, and open
+the PR after review passes.
 
-- **Title:** `${ISSUE_IDENTIFIER}: ${ISSUE_TITLE}`
-- **Body:** must include `Fixes ${ISSUE_IDENTIFIER}` so Linear automatically
-  closes the issue when the PR is merged.
+After making the code changes, write a brief implementation summary to
+`ai-output/comments/01-summary.md` — a paragraph describing what changed
+plus a checklist of what was tested. The orchestrator reads this file and
+posts it back to the ticketing issue. Do NOT post comments directly to
+Linear or Jira from this workflow.
 
 ---
 
@@ -128,6 +124,10 @@ You are adding missing work to existing PR #${PR_NUMBER}.
 **Do NOT create a new branch or PR.** Commit your changes to the current
 branch and push. Review the gap analysis comment on the PR to understand
 what is still missing.
+
+After your changes are pushed, write a short note about what you addressed
+to `ai-output/comments/01-gap-fill-summary.md`. The orchestrator reads
+this file and posts it back to the ticketing issue.
 
 ---
 
@@ -151,7 +151,7 @@ ${ISSUE_DESCRIPTION}
 
 ## Quality checklist
 
-Before opening or updating the PR, verify:
+Before you finish, verify:
 
 - [ ] Tests pass
 - [ ] No lint errors. Build completes successfully
@@ -161,7 +161,7 @@ Before opening or updating the PR, verify:
 ````
 
 <Note>
-  The starter template's `Fixes ${ISSUE_IDENTIFIER}` line triggers GitHub's auto-close integration with Linear when the PR merges. Jira issues won't auto-close on merge through this mechanism (GitHub doesn't auto-recognize Jira keys) — set up Jira automation if you want similar behavior.
+  The pipeline includes `Fixes ${ISSUE_IDENTIFIER}` in the pull request it generates, which triggers GitHub's auto-close integration with Linear when the PR merges. Jira issues won't auto-close on merge through this mechanism (GitHub doesn't auto-recognize Jira keys) — set up Jira automation if you want similar behavior.
 </Note>
 
 ## Customizing the "Repo context" section

@@ -91,11 +91,9 @@ Running locally is the fastest way to test a configuration before committing to 
     </Tabs>
 
     <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
-      so variables in `.env` are ignored unless you load them yourself.
+      `.env` is auto-loaded. Both `npm run dev` and `npm run dev:local` pass `--env-file-if-exists=.env` to `tsx`, so no manual export step is needed.
 
-      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
-      first with `set -a; source .env; set +a` before starting the orchestrator.
+      If you invoke `tsx src/index.ts` directly instead of through an npm script, load `.env` yourself first, for example with `set -a; source .env; set +a`.
     </Note>
 
     Either mode starts the polling loop and HTTP server on port 8080.
@@ -169,12 +167,18 @@ For production use, deploy the orchestrator as a Fly.io app. Each client (team o
   </Step>
 </Steps>
 
-### Auto-deploy on push (`FLY_API_TOKEN`)
+### Self-deploy (`FLY_DEPLOY_TOKEN`)
 
-The `deploy-clients.yml` workflow in the orchestrator repo deploys every client in `clients/*.toml` on each push to `main`. It authenticates with a single GitHub Actions secret, `FLY_API_TOKEN`, set on the orchestrator repo under **Settings → Secrets and variables → Actions**.
+The standard way an already-running orchestrator picks up its next version: it builds and releases itself. Trigger one from an authenticated admin session:
+
+```bash
+curl -X POST https://<app-name>.fly.dev/api/deploy -H "Authorization: Bearer <session-token>"
+```
+
+A `202` means the deploy started, not finished — the release replaces the machine running the deploy, so nothing checks the result afterward; confirm it separately. This needs `FLY_DEPLOY_TOKEN` set (scoped to this app — **not the same token as `FLY_SESSIONS_TOKEN`**, which is a runtime variable the orchestrator reads to spawn Fly Machine session machines), the running image built with its `AI_IMPLEMENT_SOURCE_REPO` and `AI_IMPLEMENT_SOURCE_BRANCH` stamps, and an admin auth method configured.
 
 <Note>
-  This is **not the same token as `FLY_SESSIONS_TOKEN`**. `FLY_API_TOKEN` is a CI secret used only to run `flyctl deploy`. `FLY_SESSIONS_TOKEN` is a runtime environment variable the orchestrator reads to spawn Fly Machine session machines.
+  `deploy-clients.yml`, the workflow in the orchestrator repo that deploys every client in `clients/*.toml` on push to `main`, currently deploys nothing: `.gitignore` excludes real `clients/*.toml` files from the repo and un-ignores only the example, which the workflow explicitly skips. It finds zero clients on every run and reports success without deploying anything.
 </Note>
 
 ### Fly.io infrastructure details

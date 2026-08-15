@@ -32,6 +32,10 @@ You can either **replace** a built-in step or **introduce an entirely new one** 
 
 The orchestrator pipelines reference these step IDs. Any of them can be overridden by placing a matching file in `custom/steps/`.
 
+<Warning>
+  A step or pipeline override must live in the AI-Implement fork's own `custom/` directory at the point its runner image is built — not in the target repo being implemented against. Both the pipeline definition and step modules resolve before the clone step runs, so a `custom/` directory that only exists in the target repo's checkout arrives too late to be honored, and the run silently falls back to the built-in step.
+</Warning>
+
 <AccordionGroup>
   <Accordion title="clone">
     Clones the target repo into the workspace at the start of an implementation run.
@@ -45,8 +49,14 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
+  <Accordion title="dependency-auth">
+    Fetches a short-lived, read-only dependency token from the orchestrator and installs it as a git credential helper (and as `COMPOSER_AUTH`), so the `install` step can resolve private sibling repositories. Automatically skipped when the project has no Dependency Token Scope configured.
+
+    Override to change how the dependency token is obtained or which credential helper it installs.
+  </Accordion>
+
   <Accordion title="install">
-    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
+    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, `reviewProviders`, and `reviewCheckNames` settings.
     
     Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
   </Accordion>
@@ -64,11 +74,13 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="preflight">
-    Pre-implementation checks — validates the workspace and expected tools before Claude starts on a fresh run. Automatically skipped when the `feedback-loop` did not approve the diff.
+    Runs the target repo's `typecheck`, `lint`, and `test` npm scripts (whichever exist in `package.json`) against Claude's implemented changes, after `feedback-loop` approves the diff and before `push` runs. Its pass/fail summary feeds the PR body's Test Plan section, but a failing check doesn't block the PR. Automatically skipped when `feedback-loop` did not approve the diff.
+
+    Override to change which checks run or how their output is summarized.
   </Accordion>
 
   <Accordion title="push">
-    Commits Claude's changes, pushes the branch to the target repo, and opens the PR. Automatically skipped when the `feedback-loop` did not approve the diff.
+    Commits Claude's changes, pushes the branch, and opens the PR — including when the review didn't approve the work, in which case it opens the PR as a draft or with a `[NEEDS REVIEW — unapproved]` title, carrying the reviewer's final feedback. Automatically skipped on gap-fill runs, where Claude commits and pushes to the existing PR branch itself instead.
     
     Override to customize commit message format, branch naming, or PR body construction.
   </Accordion>
@@ -185,7 +197,7 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `dependency-auth`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
   
   Your YAML only needs to declare `id`, `type`, and optional `moduleId`.
 </Tip>
@@ -217,7 +229,7 @@ reviewProviders:
   
   When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
 
-  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. Any value outside the three above fails the run.
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. Any value other than `yarn` or `pnpm` — including a typo — is not validated, and silently falls back to the `npm` install command.
 </ParamField>
 
 <ParamField body="models.implement" type="string">
@@ -236,17 +248,29 @@ reviewProviders:
   This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The three cases each do something different:
   - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting checks named `claude-review` or `claude code review`.
   - **Empty list** — the step skips the external wait entirely and runs only its own review.
-  - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
+  - **Populated with a recognized value** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action).
+
+  <Note>
+    A populated list whose entries are all unrecognized collapses to the **empty list** behavior, not the omitted behavior — unknown values are filtered out first, and a list with nothing left after filtering skips the external wait.
+  </Note>
+</ParamField>
+
+<ParamField body="reviewCheckNames" type="string[]">
+  Overrides which check-run names the `post-push-review` step recognizes as the external review gate, when `reviewProviders` is waiting for one.
+
+  When omitted, it recognizes exact names `review`, `code-review-plugin`, `claude-review`, `claude code review`, and `claude-code-review`, plus — as a fallback — any check-run name containing both "claude" and "review".
+
+  Set this if your repo has an unrelated CI check named `review` (or another name that collides with the defaults) that you don't want mistaken for the review gate — setting it switches matching to your exact list only, with no heuristic fallback.
 </ParamField>
 
 <Tip>
   The file is read fresh at the start of every run, so changes take effect on the next dispatch without needing to restart the orchestrator.
 </Tip>
 
-## custom/providers/ — reserved
+## custom/providers/ — override a ticketing provider
 
-The `custom/providers/` directory is reserved for future provider overrides. It is not yet wired up to a stable interface.
+A file at `custom/providers/<id>.ts` exporting a provider factory overrides the built-in provider for that ID, the same filename-match mechanism as `custom/steps/`. When present, it's used instead of the built-in Linear or Jira provider.
 
 <Warning>
-  Do not use `custom/providers/` for production customizations — the interface is not yet stable and may change without notice.
+  The interface may still change without notice — treat a provider override as more likely to need updating across upgrades than a step override.
 </Warning>

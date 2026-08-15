@@ -86,9 +86,9 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
-    <Warning>
-      Unlike Linear, Jira has no built-in blocking semantics here. To stop an issue from being picked up, either gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
-    </Warning>
+    <Note>
+      An issue with an open Jira issue link of type `Blocks` pointing to an incomplete issue is skipped, the same as Linear's blocking-relation check. To stop an issue from being picked up some other way, gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+    </Note>
 
     ### Planning / Plan Approved
 
@@ -122,7 +122,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
 ## Concurrency
 
-The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight (`AI-Working` in Linear, or `Implementing` in Jira) simultaneously. The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
+The `maxInProgressAiIssues` setting on each team/repo mapping controls how many issues a team mapping can have in flight simultaneously, counting both the planning and implementation phases (`AI-Planning` or `AI-Working` in Linear; `Planning` or `Implementing` in Jira). The default is `3`. The orchestrator counts in-progress issues before dispatching and skips teams that are at their limit.
 
 You can change the concurrency cap for a team from the admin UI or by sending a `PATCH /api/mappings/:teamKey` request.
 
@@ -135,5 +135,7 @@ Anything you write after the trigger is passed to Claude as an instruction for t
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
+  The trigger requires a working orchestrator webhook — `GITHUB_WEBHOOK_SECRET` configured on the orchestrator, and the GitHub App subscribed to the **Issue comment** event. See [Configure webhook delivery](/latest/setup/github-app#create-the-github-app).
+
+  It no longer depends on a `comment-trigger.yml` file in the target repo — syncing workflows now removes that file rather than adding it.
 </Tip>

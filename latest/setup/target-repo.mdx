@@ -14,16 +14,6 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
     If you did not install the GitHub App on all repositories during the [GitHub App setup](/latest/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
   </Step>
 
-  <Step title="Enable pull request creation in the target repo">
-    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
-
-    Without this setting, the implementation workflow will fail when it attempts to open a PR.
-
-    <Warning>
-      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
-    </Warning>
-  </Step>
-
   <Step title="Set up the trigger in your ticketing system">
     <Tabs>
       <Tab title="Linear">
@@ -76,13 +66,16 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
   </Step>
 
   <Step title="Review and merge the workflow pull request">
-    Saving the project opens a pull request in the target repo that adds the following files to `.github/workflows/` and the repo root:
+    Saving the project opens a pull request in the target repo that adds or updates the following files:
 
     - `claude-implement.yml` — the main implementation workflow
     - `claude-plan.yml` — the planning workflow
-    - `comment-trigger.yml` — the `/ai-implement` comment trigger
     - `WORKFLOW.md` — the Claude implementation prompt template
     - `PLANNING.md` — the Claude planning prompt template
+
+    If a `comment-trigger.yml` file exists in `.github/workflows/` from an earlier setup, the PR removes it.
+
+    The `/ai-implement` comment trigger is now handled by the orchestrator's GitHub webhook instead of a workflow file. See [Configure webhook delivery](/latest/setup/github-app#create-the-github-app) to keep that trigger working.
 
     <Note>
       `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.

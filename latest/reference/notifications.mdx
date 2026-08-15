@@ -30,12 +30,17 @@ If `NOTIFY_WEBHOOK_URL` is not set, notifications are silently skipped. No error
 
 ## What triggers a notification
 
-AI-Implement notifies on two kinds of event.
+AI-Implement notifies on three kinds of event.
 
 **Run lifecycle**
 
 - **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
-- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+- **Completion** — a run finishes. Includes the outcome (`completed`, `review_failed` — shown as "AI Implementation Needs Review" — `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+
+**Operational alerts**
+
+- **Stuck run give-up** — a run has failed repeated automated retries and is no longer being retried automatically, so it needs a human to look at it.
+- **Reaper burst** — the reaper destroyed an unusually large number of machines in a single sweep, which can signal infrastructure trouble worth checking.
 
 **Orchestrator lifecycle**
 

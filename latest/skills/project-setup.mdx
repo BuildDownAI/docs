@@ -65,6 +65,16 @@ Running the skill leaves your project with three things in place:
 - **A standing pre-approval** — so the other skills can reach the tracker without asking for permission on every run.
 - **Recorded bindings** — a small record of your tracker, workspace, and repository that every `bd-` skill reads to orient itself.
 
+## Binding a knowledge graph (optional)
+
+`bd-project-setup` can also bind a project to an optional knowledge graph, which the KG-aware skills (`bd-kg-search`, `bd-kg-refresh`, `bd-system-questions`) query for past issues, pull requests, decisions, and learnings. This is a separate, opt-in pass — it never runs as part of the steps above, and invoking it is a deliberate second step, not something the base setup does automatically.
+
+<Note>
+  A project that skips this stays fully usable. The KG-aware skills just no-op with a clear message until it's bound — a project without a knowledge graph isn't misconfigured, it's just KG-less.
+</Note>
+
+If your project has no knowledge graph repo yet, `bd-kg-create` builds one from a template first. Binding then registers the orchestrator's MCP server and records the binding in `CLAUDE.md`.
+
 ## Key rules
 
 - **One tracker per project.** A project is bound to Linear **or** Jira, never both at once. Choose the tracker that owns this project's issues.
