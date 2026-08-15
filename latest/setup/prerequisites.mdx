@@ -43,7 +43,7 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
         A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/latest/setup/deploy) for instructions.
       </Card>
       <Card title="Any server running Node.js" icon="server">
-        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/latest/setup/deploy).
+        You can run the orchestrator on any server or local machine that has Node.js 24 installed. The local development workflow is covered in [Deploy the orchestrator](/latest/setup/deploy).
       </Card>
     </Columns>
   </Step>
@@ -62,8 +62,10 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
     </Note>
   </Step>
 
-  <Step title="Node.js 20 or later (for local development)">
-    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 20 or later installed on your machine. For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
+  <Step title="Node.js 24 (for local development)">
+    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 24 installed on your machine. The orchestrator checks the Node major version at startup and exits with an error if it doesn't match, so other majors won't work.
+
+    For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
   </Step>
 </Steps>
 

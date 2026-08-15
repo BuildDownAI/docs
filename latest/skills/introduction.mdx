@@ -17,9 +17,12 @@ Running a ticket-to-pull-request pipeline surfaces four recurring questions. Eac
 These skills run inside your own Claude Code session while you plan and review. They're separate from the AI-Implement orchestrator, which is what later picks up a marked issue and opens the pull request.
 
 <Note>
-    The remaining two skills sit outside that sequence:
+    Several more skills sit outside that sequence:
     - `bd-project-setup` runs once to wire a project to its tools
     - `bd-belay-on` formalizes handing a question to a different tool at any point along the way
+    - `bd-high-plan` settles the shape of a new capability into one planning issue, before `bd-build-up` or `bd-mega-build-up` decomposes any part of it
+    - `bd-kg-create`, `bd-kg-refresh`, and `bd-kg-search` build, rebuild, and search a project's optional knowledge graph
+    - `bd-system-questions` answers direct questions about the orchestrator itself — why a ticket isn't running, whether a pipeline is stuck, overall health
 </Note>
 
 ## How the skills fit together
@@ -27,6 +30,7 @@ These skills run inside your own Claude Code session while you plan and review. 
 ```mermaid
 graph TD
     setup(["bd-project-setup<br/>run once per project"])
+    high["bd-high-plan<br/>settle the shape first"]
     up["bd-build-up<br/>plan the work"]
     mega["bd-mega-build-up<br/>plan, grilled harder"]
     push["bd-summit-push<br/>sequence and harden"]
@@ -37,6 +41,8 @@ graph TD
 
     setup --> up
     setup --> mega
+    high -.-> up
+    high -.-> mega
     up --> push
     mega --> push
     push ==> agent
@@ -57,13 +63,14 @@ They also read the same recorded project bindings rather than each asking you wh
 
 They assume a common setup: a connected issue tracker, a connected GitHub account, browser automation for preview testing, and a coding agent that responds to pull request comments.
 
-Six of the eight understand feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
+`bd-build-up`, `bd-mega-build-up`, `bd-summit-push`, `bd-build-down`, `bd-super-build-down`, and `bd-smoke-jumper` understand feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
 
 ## Available skills
 
 | Skill | What it does |
 | --- | --- |
 | `bd-project-setup` | Wires a project to its tools once — creates the tracker connection, authorizes it, and **records the settings every other skill reads**. |
+| `bd-high-plan` | Settles the shape of a new capability at high altitude — a small set of simple, discrete steps captured as one planning parent issue, before any detailed decomposition. |
 | `bd-build-up` | Turns an objective or design into a **sequenced, dependency-aware set of tracker issues**, shown for your review before anything is filed. |
 | `bd-mega-build-up` | A deeper `bd-build-up` for larger work — pressure-tests the design first, then files issues alongside attached design and plan documents. |
 | `bd-summit-push` | Optimizes a set of planned issues — their order, dependencies, and wording — for the best chance of one-shot success through the pipeline. |
@@ -71,10 +78,18 @@ Six of the eight understand feature-branch grouping. When a parent issue and its
 | `bd-super-build-down` | A faster, hands-off `bd-build-down` for many pull requests at once or unattended runs. |
 | `bd-smoke-jumper` | Smoke-tests a pull request's preview deploy, posts a verdict, and files issues for anything that fails. |
 | `bd-belay-on` | Coordinates handing a task off to another tool and folding the results back in cleanly. |
+| `bd-kg-create` | Builds a project's knowledge graph from a template repo — the setup step before `bd-kg-refresh` or `bd-project-setup`'s knowledge-graph binding can use it. |
+| `bd-kg-refresh` | Rebuilds a project's knowledge graph so search results reflect the current code and tracker state. |
+| `bd-kg-search` | Searches a project's knowledge graph directly, to check what past issues, PRs, decisions, and learnings already exist without running a full build-up or build-down session. |
+| `bd-system-questions` | Answers direct questions about the orchestrator — why a ticket isn't running, whether a pipeline is stuck, overall health, the project list, or the current runner mode. |
 
-**Tracker support varies by skill.** `bd-build-down` and `bd-mega-build-up` carry dedicated Jira handling alongside Linear.
+<Note>
+  `bd-kg-create`, `bd-kg-refresh`, `bd-kg-search`, and `bd-system-questions` depend on a project's optional knowledge-graph and orchestrator MCP binding, set up as part of `bd-project-setup`. Each no-ops with a clear message if that binding isn't in place.
+</Note>
 
-`bd-build-up`, `bd-summit-push`, and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
+**Tracker support varies by skill.** `bd-build-down`, `bd-build-up`, and `bd-mega-build-up` carry dedicated Jira handling alongside Linear — `bd-build-up` and `bd-mega-build-up` share one adapter.
+
+`bd-summit-push` and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
 
 <Note>
   `bd-project-setup` binds either tracker, and the remaining skills don't depend on one.

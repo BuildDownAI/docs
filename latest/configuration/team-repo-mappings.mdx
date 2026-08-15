@@ -92,6 +92,18 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   Leave unset to run without project skills. For `/ai-implement` comment-triggered runs, set the matching repo variable instead — see [`AI_IMPLEMENT_SKILLS_REPO`](/latest/configuration/environment-variables#param-ai-implement-skills-repo).
 </ParamField>
 
+<ParamField body="dependencyTokenScope" type="string">
+  Grants the run a short-lived, read-only token so its install step can fetch private sibling repositories that the GitHub App installation can see. Labeled **Dependency Token Scope** in the project's Edit dialog.
+
+  The only accepted value is `installation`. Leave it unset to disable the token.
+
+  <Warning>
+    This is all-or-nothing: the token can read every repository the App installation covers, not a chosen subset. It also requires a publicly reachable orchestrator, since the token is fetched over the runner callback.
+
+    A run dispatched without that reachability simply proceeds without private-dependency access, rather than failing.
+  </Warning>
+</ParamField>
+
 <ParamField body="sensitiveAddPatterns" type="array">
   Extra glob patterns treated as sensitive for this project, on top of the built-in list. A run that stages a matching file is blocked before it commits — see [Blocked by a security guardrail](/latest/reference/error-codes#blocked-by-a-security-guardrail).
 
@@ -107,6 +119,10 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
     Allow patterns are checked first and override the built-in list as well as your own additions — a file matching one is never blocked. Keep this list as narrow as you can.
   </Warning>
 </ParamField>
+
+<Note>
+  Both fields only take effect on a repo synced to the current workflow templates. A repo still running the older, pre-sync `comment-trigger.yml` workflow doesn't send these patterns to the runner, so they're silently ignored — run **Sync workflows** on the project's row to move it onto the current templates.
+</Note>
 
 ## Runner
 
@@ -175,7 +191,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="autoMerge" type="boolean" default="false">
-  When `true`, the orchestrator merges this project's child pull requests into their shared grouping branch once checks pass, so a parent issue's children collect without manual merging.
+  Reserved for per-project control over child-pull-request auto-merging. It does **not** currently affect dispatch behavior: the orchestrator merges this project's child pull requests into their shared grouping branch once checks pass regardless of this setting, for any non-paused project with a parent/child group.
 
   Applies only to issues that belong to a parent/child group — see [Feature-branch grouping](/latest/reference/feature-branch-grouping). Ordinary single-issue runs are unaffected.
 

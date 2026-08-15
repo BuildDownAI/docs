@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+When you sync AI-Implement to a target repo, it installs two GitHub Actions workflow files and two prompt template files into that repo, and removes a third workflow file if present. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
 ## Files installed by sync
 
@@ -27,9 +27,9 @@ Claude reads the codebase in read-only mode and produces structured planning com
 
 See [AI planning phase](/latest/configuration/planning) for the full flow.
 
-### `comment-trigger.yml`
+### `comment-trigger.yml` (removed by sync)
 
-Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
+Older setups had this file listen for `/ai-implement` comments on open pull requests and dispatch `claude-implement.yml` directly. Sync now **deletes** it if present — the `/ai-implement` comment trigger is handled by the orchestrator's GitHub webhook instead, so re-syncing an older repo also migrates it off this file. See [Configure webhook delivery](/latest/setup/github-app#create-the-github-app) for the webhook setup that replaces it.
 
 ### `WORKFLOW.md`
 
@@ -53,15 +53,23 @@ Within the admin UI, each project row has a **Sync workflows** action. This is t
 
 Either route opens a pull request in the target repo with the updated workflow files. It seeds `WORKFLOW.md` and `PLANNING.md` only if those files don't already exist.
 
-A command-line equivalent is available if you're scripting against a self-hosted orchestrator:
+A command-line fallback is available if you're scripting against a self-hosted orchestrator:
 
 ```bash
 gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
 ```
 
+<Note>
+  This fallback is not fully equivalent to an orchestrator-driven sync: it still syncs `comment-trigger.yml` rather than removing it. Prefer the admin UI's **Sync workflows** action or saving the project mapping, which migrates the repo off `comment-trigger.yml` onto the webhook-based trigger.
+</Note>
+
 ## `WORKFLOW.md` front matter
 
 The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delimiters) is stripped before the file is sent to Claude. Use it to configure model selection and lifecycle hooks.
+
+<Warning>
+  Never put `${PLANNING_CONTEXT}` in the body yourself. The runner substitutes it automatically and also appends the same planning context after your template. Referencing it manually makes it appear twice in the prompt.
+</Warning>
 
 <ParamField body="model" type="string">
   Model ID passed verbatim to `claude-code --model` for implementation runs. Required when `provider=bedrock`; optional for `anthropic` (default: `claude-sonnet-4-6`). For Bedrock, use a model ID such as `anthropic.claude-sonnet-4-6-20250805-v1:0` or an inference-profile ARN. The workflow passes this value through without validation — typos fail fast at Claude invocation time with a clear error.
@@ -106,7 +114,11 @@ teardown: scripts/ci-teardown.sh
 
 ## Variable substitution in `WORKFLOW.md`
 
-After stripping front matter and HTML comments, the workflow runs `envsubst` on the body of `WORKFLOW.md`. You can use these variables anywhere in the template:
+After stripping front matter and HTML comments, the runner substitutes a fixed set of `${UPPER_SNAKE}` variables into the body of `WORKFLOW.md`. This isn't a call to the `envsubst` utility, which would pull from the whole environment — only the variables listed below are replaced.
+
+Any other `${TOKEN}`-shaped text is silently replaced with an empty string, so a shell example containing one will read as blank. A plain `$VAR` without braces is left untouched.
+
+You can use these variables anywhere in the template:
 
 | Variable | Description |
 |---|---|
@@ -115,6 +127,7 @@ After stripping front matter and HTML comments, the workflow runs `envsubst` on 
 | `${ISSUE_DESCRIPTION}` | Full issue description in Markdown |
 | `${ISSUE_ID}` | Internal identifier — Linear's UUID or Jira's issue key |
 | `${PR_NUMBER}` | Existing PR number on gap-fill runs; empty on the first implementation run |
+| `${PLANNING_CONTEXT}` | The fetched planning comments. Already substituted into the prompt automatically — see the warning above before referencing it directly |
 
 ## Variable substitution in `PLANNING.md`
 

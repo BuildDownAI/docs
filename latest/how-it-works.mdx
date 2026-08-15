@@ -24,9 +24,9 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       <Tab title="Jira">
         The orchestrator polls your Jira workspace every 60 seconds (configurable via `POLL_INTERVAL_MS`). For each project mapping, it runs the configured JQL clause combined with `AI-Implement Status in (Ready, "Plan Approved")` and the mapping's `AI-Implement Repo` field value to find eligible issues.
 
-        <Warning>
-          Jira has no built-in blocking semantics. If you need to prevent an eligible issue from being picked up, narrow the project mapping's JQL or move the issue out of `Ready`.
-        </Warning>
+        <Note>
+          Jira blocking works the same way as Linear: an issue linked with an open `Blocks`-type issue link is skipped until that link resolves. This only recognizes a link type named exactly `Blocks` — a renamed link type won't be picked up.
+        </Note>
       </Tab>
     </Tabs>
 
@@ -59,7 +59,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     Two deduplication checks prevent duplicate dispatches:
 
     - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
-    - **Recent** — even after a job finishes, the same issue won't be re-dispatched within a 24-hour window of its previous dispatch.
+    - **Recent** — even after a job finishes, the same issue won't be re-dispatched until its dedup entry is cleared. Clearing happens when a failed or timed-out run clears its own entry, the reconcile loop reaches a terminal issue, or an operator removes it manually — never on a timer, so an entry can persist indefinitely.
 
     Either condition is enough to skip dispatch.
   </Step>
@@ -67,16 +67,11 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   <Step title="Planning phase (if enabled)">
     If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
 
-    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to four structured comments to the issue:
+    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts three structured comments to the issue:
 
-    - **Architecture Analysis** — how the codebase is structured and what changes are needed
-    - **Test Plan** — what tests should be written or updated
-    - **Work Units** — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must come after.
-    - **Cross-Story Context** — relevant context from related issues (if available)
-
-    <Note>
-      When the **Work Units** section is present, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time instead of one after another. Skipped when the issue is too small or too tightly coupled to decompose, in which case implementation runs as a single pass.
-    </Note>
+    - **Implementation Map** — the implementation approach, the files to create, modify, test, or delete, and any constraints or hazards the implementer must not break. Cross-story coordination notes fold in here when the issue has a parent, siblings, or dependencies.
+    - **Acceptance Bar** — a numbered list of falsifiable claims a reviewer can check directly against the diff.
+    - **Risks & Open Questions** — edge cases and unknowns found while exploring the codebase.
 
     When the planning workflow finishes successfully, these comments appear on the issue and its marker is updated:
     
@@ -135,14 +130,12 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     </Tip>
   </Step>
 
-  <Step title="Gap analysis is posted to the PR">
-    After the PR is opened, a second Claude pass runs automatically. This is the gap analysis: Claude reads the PR diff and the original ticket, then posts a structured comment to the PR with three sections:
+  <Step title="A review pass checks the PR before it's ready">
+    After the PR is opened, a second Claude pass runs automatically, using the same model as the implementation pass. It reads the PR diff against the original ticket and decides whether the change is ready to merge.
 
-    - **Implemented** — requirements from the ticket that are fully addressed in the diff
-    - **Gaps / Partial Implementation** — requirements that are missing or only partially done
-    - **Manual Steps Required** — human actions needed, such as setting environment variables, running migrations, or configuring external services
+    If it finds a bug, a missing requirement, or another blocking issue, it posts the findings as a PR comment, pushes a fix commit addressing them, and reviews again — up to 3 passes by default. If the cap is reached without approval, it posts a final comment listing what's still unresolved and leaves the PR for a human to finish.
 
-    The gap analysis uses a lighter model by default (`claude-haiku-4-5-20251001` on the Anthropic provider) to keep costs low. You can override this with the `gap_analysis_model:` field in `WORKFLOW.md`.
+    See [Gap analysis](/latest/reference/gap-analysis) for the full comment format and how to trigger another pass.
   </Step>
 
   <Step title="Issue is updated to Ready for Review">

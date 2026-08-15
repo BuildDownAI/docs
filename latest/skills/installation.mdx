@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-Both the marketplace and the plugin are named `builddown`. Installing gives you all eight `bd-` skills — see [BuildDown skills](/latest/skills/introduction) for what each one does.
+Both the marketplace and the plugin are named `builddown`. Installing gives you every `bd-` skill — see [BuildDown skills](/latest/skills/introduction) for what each one does.
 
 <Note>
   You need [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Everything below runs through its plugin manager.
@@ -61,7 +61,7 @@ Which version you get depends on how you added the marketplace:
 
 | How you added it | Channel | What you get |
 |---|---|---|
-| `BuildDownAI/skills` (no ref) | **Stable** | the most recent released version — currently `1.0.0` |
+| `BuildDownAI/skills` (no ref) | **Stable** | the most recent released version — see [Skills releases](/latest/skills/releases) for the current number |
 | `BuildDownAI/skills@testing` | **Development** | whatever has landed on the `testing` branch, released or not |
 | `./install.sh --from-git <url>@v1.0.0` | pinned | exactly that tag, without using the plugin system |
 | `./install.sh` from a local checkout | unversioned | whatever that checkout happens to contain |
@@ -142,6 +142,8 @@ To pin a specific release instead of tracking a checkout:
 
 The two commands above cover the common paths. Run `./install.sh --help` for the authoritative list; the options that change what you can do are:
 
+- **`--claude`** — install for Claude Code. This is the default, and the only host this page covers.
+- **`--codex`** — install for the Codex App and Codex CLI instead, a separate host this page doesn't otherwise document.
 - **`--project <path>`** — install into `<path>/.claude/skills` instead of your home directory, scoping the skills to a single repository rather than your user account.
 - **`--uninstall`** — remove the installed skills, backing out either kind of install.
 - **`--copy`** — copy the skills instead of symlinking them, so a later `git pull` in the checkout leaves your installed copy untouched. This is the alternative to the default symlink behavior described above.
