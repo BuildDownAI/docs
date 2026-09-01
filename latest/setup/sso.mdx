@@ -28,6 +28,22 @@ The **allowlist** is set through two variables, and an address matching either o
     Prefer listing individual addresses over a whole domain. A domain entry admits **everyone** who has an address there.
 </Tip>
 
+## Roles and page access
+
+Admission only decides who signs in — every admitted entry also carries a role, `admin` or `user`. An `admin` reaches every panel. A `user` reaches none of them until you grant specific pages from the **Access** panel at `/admin#access`.
+
+<Warning>
+    A domain entry (`OAUTH_ALLOWED_DOMAINS`) always seeds as `user`. Only an individual address (`OAUTH_ALLOWED_EMAILS`) can seed as `admin`.
+
+    A domain-only configuration admits everyone but leaves nobody able to grant pages or otherwise administer the orchestrator. Sign-in still works, but list at least one individual address if you want someone able to administer it.
+</Warning>
+
+<Note>
+    Page grants restrict the admin UI only, not the MCP connection. A signed-in `user` with no page grants at all can still call every MCP tool.
+</Note>
+
+See [Admin UI reference](/latest/reference/admin-ui#access) for what the Access panel manages.
+
 ## Create a provider application
 
 Pick the provider you want to sign in with. Configuring both is fine — operators then choose at the sign-in screen.

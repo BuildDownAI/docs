@@ -134,10 +134,16 @@ Pick the tab that matches where you're configuring right now.
       Absolute path to the SQLite file used for deduplication, dispatch logging, and project-mapping storage. Defaults to `/data/dedup.sqlite` in production (the Fly.io volume mount point) and `./dedup.sqlite` when running locally. Change this only if you are mounting the volume at a different path.
     </ParamField>
 
+    <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="string" default="3">
+      Number of consecutive failed dispatches for the same issue and phase before the orchestrator parks the issue — posting a comment and a notification, then leaving it out of further automatic retries. Set to `0` to disable parking entirely.
+
+      A parked issue doesn't retry on its own — unpark it from the **Parked issues** card on the Runners panel once the underlying problem is fixed. See [Runners](/latest/reference/admin-ui#runners).
+    </ParamField>
+
     <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
       HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Set the same value on the GitHub App's webhook configuration, pointed at `https://<orchestrator-host>/api/github/webhook`.
 
-      Leaving it unset disables one capability: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing polls for review feedback, so without a working webhook someone has to comment `/ai-implement` to get another pass.
+      Leaving it unset disables two capabilities, and there is no polling fallback for either: **`/ai-implement` comment replies**, since the comment is delivered to the orchestrator as a webhook event, and **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request.
 
       <Note>
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/latest/setup/github-app).
@@ -278,7 +284,7 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
           Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint, which starts a gap-fill run against an existing pull request. Leaving it unset disables the endpoint.
 
-          This is not needed for the `/ai-implement` comment trigger. That path runs entirely inside the `comment-trigger.yml` workflow in your target repo and never calls the orchestrator. Set this only if you drive gap-fill runs from your own automation.
+          This is not needed for the `/ai-implement` comment trigger — that path is delivered through `GITHUB_WEBHOOK_SECRET` and the orchestrator's own webhook instead. Set this only if you drive gap-fill runs from your own automation.
         </ParamField>
       </Accordion>
 
@@ -319,6 +325,46 @@ Pick the tab that matches where you're configuring right now.
 
         <ParamField body="CLAUDE_CODE_OAUTH_TOKEN" type="string">
           Claude Code OAuth token, forwarded to the runner session. Preferred over `ANTHROPIC_API_KEY` when both are set.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Self-deploy (advanced)">
+        Lets a Fly-hosted orchestrator redeploy itself when its watched branch moves, from the **Deployments** panel in the admin UI. See [Admin UI reference](/latest/reference/admin-ui#deployments).
+
+        <ParamField body="FLY_DEPLOY_TOKEN" type="string">
+          Fly deploy token scoped to this app only, used to build and release the orchestrator's own next version. Distinct from `FLY_SESSIONS_TOKEN`, which deploys session machines instead.
+
+          Leaving it unset disables self-deploy; everything else runs normally.
+        </ParamField>
+
+        <Note>
+          Self-deploy also needs the image build to stamp its source commit, repo, and branch (`Dockerfile` build args, not operator-set variables). A hand-built image that omits them leaves availability permanently `unknown` rather than reporting up to date.
+        </Note>
+      </Accordion>
+
+      <Accordion title="MCP server and knowledge graph (advanced)">
+        Configure the OAuth-authenticated `/mcp` endpoint and the knowledge-graph sidecar it serves. See [Admin sign-in](/latest/setup/sso) for the MCP OAuth redirect URIs to register.
+
+        <ParamField body="KG_SIDECAR_URL" type="string">
+          URL of the private knowledge-graph sidecar (streamable-HTTP MCP transport). The orchestrator Docker image sets this automatically when its bundled sidecar starts; leave it blank there.
+
+          For local development, start the sidecar manually and set this explicitly. Unset, `/mcp` returns `503`.
+        </ParamField>
+
+        <ParamField body="KG_SOURCE_REPO" type="string">
+          `owner/repo` cloned into the orchestrator image at build time as the knowledge-graph source. Required to serve a knowledge graph; unset builds without one.
+        </ParamField>
+
+        <ParamField body="MEMORY_PROVIDER" type="string" default="sidecar">
+          Memory provider ID for `/mcp`. The default serves the bundled knowledge-graph sidecar; an external provider can be registered separately.
+        </ParamField>
+
+        <ParamField body="MCP_ALLOWED_REDIRECT_ORIGINS" type="string">
+          Comma-separated HTTPS origins accepted as MCP OAuth redirect targets, in addition to loopback IP-literal callbacks. An arbitrary HTTPS callback outside this list is denied.
+        </ParamField>
+
+        <ParamField body="MCP_ACCESS_TOKEN_TTL" type="string" default="3600">
+          MCP access-token lifetime in seconds. Refresh tokens last 30 days and rotate on use regardless of this value, so clients re-authenticate in a browser monthly rather than hourly.
         </ParamField>
       </Accordion>
     </AccordionGroup>    
@@ -401,6 +447,10 @@ Pick the tab that matches where you're configuring right now.
 
     Three repository variables cap `/ai-implement` comment-triggered gap-fill runs the same way per-project caps cap orchestrator-initiated runs. All three are optional — unset means "use the default."
 
+    <Note>
+      These only take effect on a target repo that still has the legacy `comment-trigger.yml` workflow. On a repo synced with the current workflow templates, `/ai-implement` comments are dispatched by the orchestrator directly, and the project mapping's own **Max Turns** / **Max Iterations** apply automatically — these variables are read nowhere in that path. See [Project mappings](/latest/configuration/team-repo-mappings) for the mapping fields.
+    </Note>
+
     <ParamField body="AI_IMPLEMENT_MAX_TURNS" type="string" default="50">
       Cap on Claude turns per implement pass. Applies to both Anthropic and Bedrock providers.
     </ParamField>
@@ -443,9 +493,9 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_SKILLS_REPO" type="string">
-      Skills repository as `owner/repo`, cloned into the workspace so Claude can use its skills during `/ai-implement` comment-triggered runs.
+      Skills repository as `owner/repo`, cloned into the workspace so Claude can use its skills during `/ai-implement` comment-triggered runs on a repo that still has the legacy `comment-trigger.yml` workflow.
 
-      Mirrors the per-project skills setting in the admin UI, which covers orchestrator-initiated runs.
+      Mirrors the per-project skills setting in the admin UI, which covers orchestrator-initiated runs and, on a repo synced with the current workflow templates, `/ai-implement` runs too.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">

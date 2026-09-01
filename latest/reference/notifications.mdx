@@ -35,7 +35,7 @@ AI-Implement notifies on two kinds of event.
 **Run lifecycle**
 
 - **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
-- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, `timed_out`, or `review_failed` — the automated review found blocking issues it couldn't resolve within its iteration budget), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
 
 **Orchestrator lifecycle**
 
@@ -56,6 +56,12 @@ You get a matched pair. The outgoing process posts **Orchestrator restarting** a
 - **Orchestrator back up** — the same version came back, so this was a restart rather than a deploy.
 
 Each message names the app, its region, and how long it was down. The restarting notice omits the version deliberately: it is sent by the process being replaced, so the only version it knows is the one going away.
+
+<Note>
+  On an orchestrator with [self-deploy](/latest/setup/deploy#self-deploy) configured, a fourth notice — **Deployment available** — announces when the tracked branch has moved ahead of the running commit, pointing you at `/admin#deployments` to deploy it.
+
+  This one is optional: without `FLY_DEPLOY_TOKEN` set, it never fires.
+</Note>
 
 These are sent only where the orchestrator can identify its own image, which in practice means Fly.io — running locally is silent. The first deploy after enabling this is silent too, by design: the outgoing process is still running the older build and has no shutdown handler, while the incoming one has no previous version to compare against. Restart the app once afterwards to see the full pair.
 

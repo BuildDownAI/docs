@@ -136,13 +136,13 @@ This guide walks you through running AI-Implement for the first time. By the end
   </Step>
 
   <Step title="Review and merge the workflow pull request">
-    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, `comment-trigger.yml`, and a starter `WORKFLOW.md`.
+    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, and a starter `WORKFLOW.md`.
 
     Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
 
-    <Warning>
-      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
-    </Warning>
+    <Note>
+      The workflow opens PRs using the GitHub App you installed, not the repository's default `github-actions[bot]` actor, so you don't need to enable the target repo's "Allow GitHub Actions to create and approve pull requests" setting. See [Create a GitHub App](/latest/setup/github-app) for the permissions the App needs.
+    </Note>
   </Step>
 
   <Step title="Create the trigger in your ticketing system">
@@ -183,7 +183,7 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
 
-    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has a gap analysis comment comparing the diff to your original ticket.
+    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has an automated review comment saying whether it's ready to merge or still has blocking issues.
 
     <Tip>
       If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, incorrect ticketing credentials (`LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.
@@ -197,6 +197,6 @@ This guide walks you through running AI-Implement for the first time. By the end
 Now that you have a working end-to-end flow, you can:
 
 - Edit `WORKFLOW.md` in the target repo to give Claude repo-specific instructions and set the model.
-- Enable the planning phase to have Claude post an architecture analysis and test plan to your ticketing system before implementation starts.
+- Enable the planning phase to have Claude post an implementation map and acceptance bar to your ticketing system before implementation starts.
 - Add more mappings in the admin UI to connect additional projects to repos.
 - Deploy the orchestrator to Fly.io for a persistent, production setup.

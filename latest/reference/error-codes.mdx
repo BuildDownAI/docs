@@ -383,12 +383,12 @@ These report how a run finished:
 
 The orchestrator checks for eligible issues on a schedule. When it skips one, the Blockers view in the admin UI shows why.
 
-Most reasons clear on their own once the condition changes — a slot frees up, or the dedup window passes — but `no-mapping` needs you to add a project mapping.
+Most reasons clear on their own once the condition changes — a slot frees up, or the dispatch entry clears — but `no-mapping` needs you to add a project mapping.
 
 | Reason | Message shown | When |
 |---|---|---|
 | `concurrency` | {team} at concurrency cap ({current}/{max}). Waiting for a slot. | The team is at its maximum number of in-progress issues |
-| `dedup` | Already dispatched recently. Waiting for the in-flight job. | The issue was dispatched within the last 24 hours |
+| `dedup` | Already dispatched recently. Waiting for the in-flight job. | The issue already has a dispatch entry that hasn't cleared. There is no time-based expiry: it clears when the run fails or times out, when the reconcile loop reaches a terminal state for the issue, or through a manual delete in the admin UI. |
 | `no-mapping` | No mapping for team {team}. Add one in Projects. | The issue's team has no project mapping |
 
 <Note>
