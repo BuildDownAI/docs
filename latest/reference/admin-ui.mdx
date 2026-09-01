@@ -10,9 +10,9 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
-- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
-- **Platform** — Runners, Sessions, Reaper, Secrets, Settings
+- **Platform** — Runners, Sessions, Deployments, Reaper, Access, Secrets, Settings
 - **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
 
 <Note>
@@ -105,6 +105,15 @@ Per-issue rows include:
 - Detail (further context on the blocking reason)
 - Direct link back to the ticket
 
+### Reports
+
+Fleet-wide outcome metrics over a selectable window (7, 30, or 90 days).
+
+- **Fleet by repo** — per-repo job and issue counts, completed/failed/merged totals, average review passes, and cost in USD.
+- **Outcomes** — one-shot approval rate (approved on the first dispatch), eventual approval rate (approved across all dispatches on an issue), and escape rate (human edits made after merge).
+- **Planning A/B** — the same job/pass/cost/merge metrics split by whether the issue went through the planning phase, so you can see what planning buys you.
+- **Runaways** — issues with three or more dispatches, or three or more consecutive failures.
+
 ## Configure
 
 ### Projects (team/repo mappings)
@@ -116,9 +125,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 </Note>
 
 <Info>
-  **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
-  - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
+  **New in latest:** the **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
 </Info>
 
 #### Create a new project mapping
@@ -139,15 +146,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
-
-    | Field | Default if blank | Purpose |
-    |---|---|---|
-    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
-    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
-    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
-
-    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
+    The **Capacity** step sets `maxInProgressAiIssues` — how many issues this mapping can run at once. The per-run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) aren't in the stepper; set them afterwards from the project's **Edit** dialog. See [Project mappings](/latest/configuration/team-repo-mappings#capacity) for the full field reference and defaults.
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
@@ -206,7 +205,13 @@ The table lists each project's:
 
 ### Runners
 
-High-level runner-infrastructure dashboard.
+High-level runner-infrastructure dashboard, and home of the **runner mode toggle** — the global failover control, offering four options: `default`, `gha`, `fly`, and `shadow`.
+
+`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
+
+<Note>
+  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active. Changing the mode via the UI or API while the env var is set persists the new value to the database, but it has no effect until the env var is removed and the orchestrator is restarted.
+</Note>
 
 KPI cards show:
 - Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
@@ -220,6 +225,8 @@ A per-project table shows each mapping's:
 - Configured execution mode
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
+
+A **parked issues** card lists issues the dispatch circuit breaker has given up on after repeated consecutive failed dispatches for the same issue and phase, with an **Unpark** action to let the next poll try again. See [`DISPATCH_BREAKER_THRESHOLD`](/latest/configuration/environment-variables) to change how many consecutive failures trip it.
 
 ### Sessions
 
@@ -240,16 +247,28 @@ You can destroy a stuck session directly from this panel. Destroying a session a
   If a Fly Machine appears stuck and is not progressing, destroying it from the sessions panel is the cleanest recovery path.
 </Tip>
 
+### Deployments
+
+Self-deploy status and controls for this orchestrator, when it's running on a Fly deployment stamped with the `AI_IMPLEMENT_SOURCE_*` build args (see [`AI_IMPLEMENT_SOURCE_COMMIT`](/latest/configuration/environment-variables)).
+
+KPI cards show:
+- **Availability** — whether a newer commit is available on the watched source branch
+- **Last deploy** — outcome, commit, and how long ago it ran
+
+You can trigger a deploy on demand. New dispatches pause immediately and in-flight work drains before the build starts. A policy card lets you turn on automatic deploy when a new commit becomes available, and/or a notification to the configured webhook when one does.
+
+If the orchestrator bundles a knowledge-graph sidecar, a **Knowledge graph** card shows the served graph's snapshot age and lets you trigger a refresh — this re-fetches the KG source repo's committed snapshot and restarts the sidecar without a full deploy or a dispatch pause.
+
+<Note>
+  If `FLY_DEPLOY_TOKEN` is unset, or the running image wasn't built with the source-stamp build args, this panel shows self-deploy as not configured rather than a broken deploy control.
+</Note>
+
 ### Reaper
 
 The reconciliation-sweep dashboard.
 
-The top of the page hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
-
-`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
-
 <Note>
-  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
+  The runner mode toggle lives on the **Runners** panel — see [Runners](#runners) above.
 </Note>
 
 A summary card shows the 24-hour total of machines and jobs the reaper destroyed, broken down by rule:
@@ -269,8 +288,24 @@ A recent-actions table lists the latest destructions with:
 - Age at destruction (in seconds)
 - `dry-run` or `destroyed` badge (indicating whether the action was a no-op or executed)
 
+### Access
+
+The sign-in allowlist and role/page-grant editor — this panel, not `OAUTH_ALLOWED_DOMAINS` / `OAUTH_ALLOWED_EMAILS`, is the durable source of truth once anyone has signed in. See [Set up admin sign-in](/latest/setup/sso) for how the two relate.
+
+The **sign-in allowlist** table lists every entry (domain or individual email), its role, and when it was added. Adding an entry from here:
+- A **domain** admits every address at that domain, signed in as `user`.
+- An **email** can be `admin`, and an email entry overrides the domain's role for that one person.
+
+A **manage user page access** editor sets which admin pages the `user` role can open, beyond the MCP server it always reaches. The same set of granted pages applies to every `user`; some pages (anything that reads runner environment values or controls infrastructure) can never be granted, and the editor states why for each.
+
+A **recent access changes** table records who changed the allowlist, when, and what changed.
+
+<Warning>
+  If the allowlist can't be read — a database fault, for example — this panel shows everything as read-only and sign-in is denied for everyone until it recovers. Nothing you had unsaved is lost.
+</Warning>
+
 <Note>
-  If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
+  Signed in with the shared access code rather than SSO, this panel is read-only: an access-code session can't be attributed to a person, so it can't be the one to make an attributed change. Sign in with SSO to edit the allowlist.
 </Note>
 
 ### Secrets
@@ -315,16 +350,16 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 
 ### Audit log
 
-Shows the dispatch-deduplication ledger for the last 24 hours.
+Shows the dispatch-deduplication ledger.
 
 Each row includes:
 - Issue identifier and title
 - When the issue was dispatched
 - A delete button to remove it from the dedup window
 
-Issues are deduplicated for 24 hours after dispatch to prevent the orchestrator from picking up the same issue repeatedly. The dedup panel shows every issue currently in the dedup window.
+An issue enters the dedup window on dispatch and stays there to prevent the orchestrator from picking it up again. There is no time-based expiry — an entry clears only when a run fails or times out, when the reconcile loop reaches a terminal state for the issue, or when you remove it manually here.
 
-You can manually remove an issue from the dedup window if you want the orchestrator to re-dispatch it before the 24-hour window expires.
+You can manually remove an issue from the dedup window if you want the orchestrator to re-dispatch it.
 
 <Note>
   The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup window.
@@ -352,7 +387,9 @@ The table shows each file's:
 
 ## Admin API reference
 
-All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours.
+Most `/api/*` endpoints require a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours.
+
+A handful of endpoints intentionally bypass this: the callback and status routes runner sessions call directly (`/api/token`, `/api/runner/dependency-token`, `/api/runner/publication-token`, `/api/status`, `/api/step-report`) authenticate with their own per-run tokens instead, and `/api/github/webhook` authenticates with an HMAC signature. See [Runner callback endpoints](#runner-callback-endpoints) and [Webhook and trigger endpoints](#webhook-and-trigger-endpoints) below.
 
 ### Authentication
 
@@ -390,7 +427,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
 
 <Note>
-  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+  `/api/auth` is the only *admin panel* endpoint that does not require a bearer token. Runner-callback and webhook routes use their own separate authentication instead — see the note above. Every other `/api/*` route returns `401 Unauthorized` if the bearer token is missing or expired.
 </Note>
 
 #### Project mappings
@@ -430,7 +467,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the associated issue |
 | `GET` | `/api/reaper/summary` | 24-hour reaper destruction summary, broken down by rule |
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
-| `GET` | `/api/dedup` | List issues in the 24-hour dedup window |
+| `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
 
 #### Runner mode and settings
@@ -441,6 +478,19 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/runner-mode` | Set runner mode |
 | `GET` | `/api/settings` | Get orchestrator settings |
 | `POST` | `/api/settings` | Update orchestrator settings |
+
+#### Deployments, access, and reports
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/deploy` | Trigger a self-deploy: pause dispatch, drain in-flight work, then build and release |
+| `GET` | `/api/deployment-status` | Get availability (is a newer commit ready to deploy) and the last deploy outcome |
+| `POST` | `/api/deploy-policy` | Set auto-deploy and deploy-notification policy |
+| `GET` | `/api/access` | Get the sign-in allowlist and recent access-change history |
+| `POST` | `/api/access` | Update the sign-in allowlist |
+| `GET` | `/api/access-grants` | Get which admin pages the `user` role can open |
+| `POST` | `/api/access-grants` | Update which admin pages the `user` role can open |
+| `GET` | `/api/report` | Fleet outcome metrics for a window (`?days=7\|30\|90`) — per-repo counts, one-shot/eventual/escape rates, planning A/B, runaways |
 
 #### Secrets
 

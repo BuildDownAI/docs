@@ -86,9 +86,13 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
-    <Warning>
-      Unlike Linear, Jira has no built-in blocking semantics here. To stop an issue from being picked up, either gate it through your JQL or move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
-    </Warning>
+    <Note>
+      Jira gates on blocking links the same way Linear does: an issue linked with a `Blocks` relation to another issue that isn't in a Done-category status is skipped until that link clears.
+
+      The match is on Jira's default `Blocks` link type name — an instance that has renamed it will fail open, dispatching the issue as though it weren't blocked.
+
+      You can also keep an issue out of the poll by narrowing your JQL, or by moving it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+    </Note>
 
     ### Planning / Plan Approved
 
@@ -135,5 +139,11 @@ Anything you write after the trigger is passed to Claude as an instruction for t
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
+  A repo synced with the current workflow templates doesn't carry `comment-trigger.yml` — the orchestrator's own webhook picks up the `/ai-implement` comment directly instead.
+
+  This requires [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) to be configured and the GitHub App's webhook events set up; see [Create a GitHub App](/latest/setup/github-app).
 </Tip>
+
+<Note>
+  A repo that hasn't synced since this changed still carries `comment-trigger.yml`, which handles the trigger on its own instead. Use the **Sync workflows** action on its project row in the admin UI to remove the old file and move the repo onto the webhook path.
+</Note>

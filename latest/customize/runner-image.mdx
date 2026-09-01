@@ -17,7 +17,15 @@ Create a file at `.ai-implement/image.yml` in the default branch of your target 
 image: ghcr.io/your-org/your-runner:v1
 ```
 
-The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+In Fly Machines and local Docker mode, the image must be publicly pullable. AI-Implement does not manage credentials for private registries there.
+
+GitHub Actions mode is different: the workflow job pulls using its own token, so a private image in the same GitHub organization works without extra setup, while a private image in a different organization needs a credential you supply.
+
+If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+
+<Warning>
+  GitHub Actions mode also validates the resolved image against a trusted-prefix allowlist and hard-fails the run if it doesn't match. See the allowlist note under [Resolution order](#alternative-github-actions-variable) below.
+</Warning>
 
 <Warning>
   The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
@@ -101,6 +109,8 @@ AI_IMPLEMENT_RUNNER_IMAGE: ghcr.io/your-org/your-runner:v1
 1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `SESSION_IMAGE`) is forwarded as the workflow's `runner_image` input, if either is set
 2. Otherwise the workflow falls back to `AI_IMPLEMENT_RUNNER_IMAGE` if that variable is set
 3. Otherwise the built-in default (`ghcr.io/builddownai/ai-implement-runner:latest`) is used
+
+Whichever image is resolved, the workflow only accepts it if it falls under `ghcr.io/builddownai/`, your own `ghcr.io/<owner>/` namespace, or a prefix you've added to [`AI_IMPLEMENT_ALLOWED_RUNNER_IMAGE_PREFIXES`](/latest/configuration/environment-variables#param-ai-implement-allowed-runner-image-prefixes). An image outside every allowed prefix fails validation before any work starts. Set that variable if you host runner images elsewhere.
 
 <Tip>
   Most repos use `.ai-implement/image.yml` because it gives you one mechanism for both execution modes. Reach for `AI_IMPLEMENT_RUNNER_IMAGE` when you want an org-level default that applies across all your repos without committing a file to each one.

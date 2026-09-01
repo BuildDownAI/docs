@@ -177,6 +177,14 @@ The `deploy-clients.yml` workflow in the orchestrator repo deploys every client 
   This is **not the same token as `FLY_SESSIONS_TOKEN`**. `FLY_API_TOKEN` is a CI secret used only to run `flyctl deploy`. `FLY_SESSIONS_TOKEN` is a runtime environment variable the orchestrator reads to spawn Fly Machine session machines.
 </Note>
 
+### Self-deploy
+
+The orchestrator can redeploy itself when the branch it tracks moves ahead of the commit it's currently running, triggered from the admin UI's **Deployments** panel instead of a manual `fly deploy`.
+
+This needs an image built with three build-time stamps (`AI_IMPLEMENT_SOURCE_COMMIT`, `AI_IMPLEMENT_SOURCE_REPO`, `AI_IMPLEMENT_SOURCE_BRANCH`) plus `FLY_DEPLOY_TOKEN` set on the running app — see [Self-deploy](/latest/configuration/environment-variables#self-deploy-advanced) for each variable.
+
+Without `FLY_DEPLOY_TOKEN`, self-deploy is simply unavailable. A hand-run `fly deploy` that skips the build-arg stamps has the same effect, since the orchestrator then can't tell whether it's up to date.
+
 ### Fly.io infrastructure details
 
 Each Fly app uses:

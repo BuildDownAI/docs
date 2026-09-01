@@ -80,9 +80,10 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
 
     - `claude-implement.yml` — the main implementation workflow
     - `claude-plan.yml` — the planning workflow
-    - `comment-trigger.yml` — the `/ai-implement` comment trigger
     - `WORKFLOW.md` — the Claude implementation prompt template
     - `PLANNING.md` — the Claude planning prompt template
+
+    If the repo still carries `comment-trigger.yml` from an older sync, this pull request removes it. The orchestrator's own webhook now handles `/ai-implement` PR comments directly for repos on the current templates — see [Create a GitHub App](/latest/setup/github-app) for how to configure webhook delivery.
 
     <Note>
       `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.

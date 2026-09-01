@@ -1,6 +1,6 @@
 ---
 title: "AI planning phase: architecture analysis"
-description: "How the AI planning phase works, what structured architecture, test plan, work units, and cross-story comments it posts to your ticketing system, and how to enable, disable, or configure it per project mapping."
+description: "How the AI planning phase works, what structured planning comments (Implementation Map, Acceptance Bar, and Risks & Open Questions) it posts to your ticketing system, and how to enable, disable, or configure it per project mapping."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
@@ -21,16 +21,11 @@ When `planningEnabled=true` (the default), AI-Implement runs a planning pass bef
   </Step>
 
   <Step title="Claude posts structured planning comments">
-    Claude posts up to four comments on the issue, each with a fixed header that the implementation workflow can locate later:
+    Claude posts exactly three comments on the issue, each with a fixed header that the implementation workflow can locate later:
 
-    - **Architecture Analysis** (`## 🏗️ AI Planning: Architecture Analysis`) — approach, specific files to create or modify, key architectural decisions, and risks or open questions.
-    - **Test Plan** (`## 🧪 AI Planning: Test Plan`) — unit tests, integration tests, and a manual verification checklist.
-    - **Work Units** (`## 🔧 AI Planning: Work Units`) — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must follow. Skipped when the issue is too small or too tightly coupled to decompose.
-    - **Cross-Story Context** (`## 🔗 AI Planning: Cross-Story Context`) — posted only when the issue has dependencies or sibling stories with meaningful coordination needs, covering upstream dependencies, downstream impact, and coordination notes.
-
-    <Info>
-      When eligible for **Work Units**, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time.
-    </Info>
+    - **Implementation Map** (`## 🗺 AI Planning: Implementation Map`) — approach, a Create/Modify/Test/Delete file list, and constraints or hazards the implementer must not break. Cross-story coordination notes fold in here when the issue has dependencies or sibling stories, rather than getting a separate comment.
+    - **Acceptance Bar** (`## ✅ AI Planning: Acceptance Bar`) — a numbered list of falsifiable, diff-checkable claims the reviewer can verify.
+    - **Risks & Open Questions** (`## ⚠️ AI Planning: Risks & Open Questions`) — edge cases, unknowns, and potential problems found while exploring the codebase.
   </Step>
 
   <Step title="Issue marker is updated">

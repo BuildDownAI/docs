@@ -58,8 +58,8 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 
     Two deduplication checks prevent duplicate dispatches:
 
-    - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
-    - **Recent** — even after a job finishes, the same issue won't be re-dispatched within a 24-hour window of its previous dispatch.
+    - **In-flight** — if a job is already actively running for this issue, no new dispatch happens.
+    - **Already dispatched** — once an issue has been dispatched, it stays out of consideration indefinitely, not for a fixed window. Only a failed or timed-out run, the merge-reconciliation loop reaching a terminal issue, or clearing it by hand in the admin UI's Audit log makes it eligible again.
 
     Either condition is enough to skip dispatch.
   </Step>
@@ -67,16 +67,11 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   <Step title="Planning phase (if enabled)">
     If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
 
-    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to four structured comments to the issue:
+    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts exactly three structured comments to the issue:
 
-    - **Architecture Analysis** — how the codebase is structured and what changes are needed
-    - **Test Plan** — what tests should be written or updated
-    - **Work Units** — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must come after.
-    - **Cross-Story Context** — relevant context from related issues (if available)
-
-    <Note>
-      When the **Work Units** section is present, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time instead of one after another. Skipped when the issue is too small or too tightly coupled to decompose, in which case implementation runs as a single pass.
-    </Note>
+    - **Implementation Map** — approach, a Create/Modify/Test/Delete file list, and constraints or hazards the implementer must not break. Cross-story coordination notes fold in here when the issue has dependencies or sibling stories.
+    - **Acceptance Bar** — a numbered list of falsifiable, diff-checkable claims the reviewer can check off.
+    - **Risks & Open Questions** — edge cases, unknowns, and potential problems found while exploring the codebase.
 
     When the planning workflow finishes successfully, these comments appear on the issue and its marker is updated:
     
@@ -135,14 +130,12 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     </Tip>
   </Step>
 
-  <Step title="Gap analysis is posted to the PR">
-    After the PR is opened, a second Claude pass runs automatically. This is the gap analysis: Claude reads the PR diff and the original ticket, then posts a structured comment to the PR with three sections:
+  <Step title="Automated review runs on the PR">
+    After the PR is opened, an automated review pass runs against the diff. If it finds no blocking issues, it posts "✅ Approved" and stops.
 
-    - **Implemented** — requirements from the ticket that are fully addressed in the diff
-    - **Gaps / Partial Implementation** — requirements that are missing or only partially done
-    - **Manual Steps Required** — human actions needed, such as setting environment variables, running migrations, or configuring external services
+    If it finds blocking issues, it posts "⚠️ Reviewer found issues — starting fix pass", then Claude fixes them and force-pushes a revision before the review runs again — up to three passes by default. If blockers remain after the cap, the PR is left open with the remaining issues listed for a human.
 
-    The gap analysis uses a lighter model by default (`claude-haiku-4-5-20251001` on the Anthropic provider) to keep costs low. You can override this with the `gap_analysis_model:` field in `WORKFLOW.md`.
+    This pass runs on the same model as implementation by default — the `model:` value in `WORKFLOW.md`, or `claude-sonnet-4-6` when that's unset.
   </Step>
 
   <Step title="Issue is updated to Ready for Review">
@@ -158,13 +151,15 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
 
-    Your team can now review the PR and the gap analysis in GitHub, and see the status change in your ticketing system — no context-switching required.
+    Your team can now review the PR and its review comments in GitHub, and see the status change in your ticketing system — no context-switching required.
   </Step>
 
   <Step title="Gap-fill runs with /ai-implement">
-    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+    After reviewing the PR and its review comments, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment).
 
-    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the gap analysis comment is updated automatically.
+    On a repo synced with the current workflow templates, the orchestrator's own webhook picks up the comment directly — this needs [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) configured. A repo that hasn't synced since this changed still carries the older `comment-trigger.yml` workflow, which picks up the comment instead without needing a webhook.
+
+    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the review comment is updated automatically.
 
     <Info>
       Gap-fill runs do not create new PRs or new branches. All work goes onto the existing PR branch, keeping your review history clean.

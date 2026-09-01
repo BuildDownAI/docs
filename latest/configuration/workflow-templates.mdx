@@ -7,9 +7,11 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+When you sync AI-Implement to a target repo, it installs two GitHub Actions workflow files and two prompt template files into that repo, and removes the legacy `comment-trigger.yml` workflow if an earlier sync left it behind. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
 ## Files installed by sync
+
+`/ai-implement` comments on a pull request are no longer handled by a synced workflow file — the orchestrator's own webhook picks them up directly. See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) to set that up, and [Triggers and status indicators](/latest/reference/labels) for how the trigger itself works.
 
 ### `claude-implement.yml`
 
@@ -26,10 +28,6 @@ The planning workflow, placed at `.github/workflows/claude-plan.yml`. Dispatched
 Claude reads the codebase in read-only mode and produces structured planning comments that get posted to the originating issue. The planning context is then included automatically in the implementation prompt when `claude-implement.yml` runs.
 
 See [AI planning phase](/latest/configuration/planning) for the full flow.
-
-### `comment-trigger.yml`
-
-Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
 
 ### `WORKFLOW.md`
 
@@ -59,6 +57,8 @@ A command-line equivalent is available if you're scripting against a self-hosted
 gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
 ```
 
+Unlike the admin UI's **Sync workflows** action, this command also (re-)installs the legacy `comment-trigger.yml` workflow rather than removing it. Prefer the admin UI action unless you specifically need to script the sync.
+
 ## `WORKFLOW.md` front matter
 
 The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delimiters) is stripped before the file is sent to Claude. Use it to configure model selection and lifecycle hooks.
@@ -68,7 +68,7 @@ The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delim
 </ParamField>
 
 <ParamField body="gap_analysis_model" type="string">
-  **Reserved — not currently read.** The seeded `WORKFLOW.md` ships this key commented out, and the front matter parser accepts it, but no step consumes it.
+  **Reserved — not currently read.** The seeded `WORKFLOW.md` ships this key commented out, and the front matter parser ignores it — it is not one of the recognized keys.
 
   Gap analysis runs on the same model as the rest of the run — the `model` value above, or `claude-sonnet-4-6` when that is unset.
 

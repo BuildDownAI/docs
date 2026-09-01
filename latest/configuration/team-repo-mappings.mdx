@@ -108,6 +108,18 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   </Warning>
 </ParamField>
 
+<ParamField body="dependencyTokenScope" type="string" default="off">
+  When set to `installation`, the run fetches a short-lived, read-only GitHub credential before dependency install so package managers can pull from private sibling repositories the same GitHub App installation can see. Leave unset and dependency installation only reaches what the target repo's own token can read.
+
+  <Warning>
+    The scope is all-or-nothing — it reads every repository the GitHub App installation covers, not a chosen subset. It also needs a publicly reachable orchestrator, since the token is fetched over the runner callback; a run dispatched without a progress token skips the fetch and proceeds without private-dependency access rather than failing.
+  </Warning>
+
+  <Note>
+    On Fly Machines deployments, the primary GitHub token only reads the target repository — it no longer covers the whole installation. If your deployment relied on that broader access to reach private sibling repos, set this field to `installation` to restore it.
+  </Note>
+</ParamField>
+
 ## Runner
 
 <ParamField body="executionMode" type="string" default="github-actions">
@@ -207,11 +219,10 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <Tip>
-  These three caps also exist as repo variables for `/ai-implement` comment-triggered gap-fill runs.:
-  - `AI_IMPLEMENT_MAX_TURNS`
-  - `AI_IMPLEMENT_MAX_ITERATIONS`
-  - `AI_IMPLEMENT_MAX_JOB_MINUTES`
-  
+  These three caps also exist as repo variables — `AI_IMPLEMENT_MAX_TURNS`, `AI_IMPLEMENT_MAX_ITERATIONS`, `AI_IMPLEMENT_MAX_JOB_MINUTES` — but only for a target repo still carrying the legacy `comment-trigger.yml` workflow.
+
+  On a repo synced with the current workflow templates, these mapping fields already apply to `/ai-implement` comment-triggered runs, and the repo variables are read nowhere in that path.
+
   See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
 </Tip>
 

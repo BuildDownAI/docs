@@ -45,6 +45,12 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
+  <Accordion title="dependency-auth">
+    Mints a short-lived, read-only cross-repo GitHub token for projects with **Dependency Token Scope** enabled, so the install step can reach private sibling repos. Skipped automatically when the project doesn't have this enabled — see [`dependencyTokenScope`](/latest/configuration/team-repo-mappings#param-dependency-token-scope).
+
+    Override to change how or which credential is minted for dependency access.
+  </Accordion>
+
   <Accordion title="install">
     Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
     
@@ -88,7 +94,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
 
     It runs up to three review passes by default, which force-push at most two revised versions: on the third pass the step reports that it reached the review cap rather than force-pushing again.
 
-    The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
+    Two settings you can change without code, both in `.ai-implement/config.yml`: which external reviewers to wait for, via `reviewProviders`, and which CI check-run names count as that external reviewer, via `reviewCheckNames`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
 </AccordionGroup>
 
@@ -149,6 +155,7 @@ The `type:` field accepts exactly eight values — anything else fails to load:
   - `setup`
   - `feedback-loop`
   - `install-skills`
+  - `dependency-auth`
   - `verify`
   - `post-push-review`
 
@@ -185,7 +192,7 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `dependency-auth`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
   
   Your YAML only needs to declare `id`, `type`, and optional `moduleId`.
 </Tip>
@@ -237,6 +244,12 @@ reviewProviders:
   - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting checks named `claude-review` or `claude code review`.
   - **Empty list** — the step skips the external wait entirely and runs only its own review.
   - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
+</ParamField>
+
+<ParamField body="reviewCheckNames" type="string[]" default="review, code-review-plugin, claude-review, claude code review, claude-code-review">
+  Overrides which CI check-run names the `post-push-review` step treats as the external review gate. A check is also matched by default if its name contains both `claude` and `review`, regardless of this list.
+
+  Set this if your repo has an unrelated CI job that happens to match one of the default names — for example a job literally called `review` — so it doesn't get mistaken for the review gate.
 </ParamField>
 
 <Tip>
