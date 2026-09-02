@@ -3,8 +3,16 @@ name: Audit job (reusable)
 on:
     workflow_call:
         inputs:
-            target_branch:
-                description: 'Source branch to audit against (AI-Implement and skills)'
+            ai_implement_ref:
+                description: 'AI-Implement ref to audit against (branch or tag)'
+                required: true
+                type: string
+            skills_ref:
+                description: 'skills ref to audit against (branch or tag)'
+                required: true
+                type: string
+            docs_scope:
+                description: 'Which docs tree may be edited: stable or latest'
                 required: true
                 type: string
             docs_branch:
@@ -47,19 +55,19 @@ jobs:
                 ref: ${{ inputs.docs_branch }}
                 token: ${{ steps.app-token.outputs.token }}
 
-            - name: Checkout target branch of AI-Implement
+            - name: Checkout AI-Implement at its audit ref
               uses: actions/checkout@v6
               with:
                 repository: BuildDownAI/AI-Implement
-                ref: ${{ inputs.target_branch }}
+                ref: ${{ inputs.ai_implement_ref }}
                 path: ai-implement
                 token: ${{ steps.app-token.outputs.token }}
 
-            - name: Checkout target branch of skills
+            - name: Checkout skills at its audit ref
               uses: actions/checkout@v6
               with:
                 repository: BuildDownAI/skills
-                ref: ${{ inputs.target_branch }}
+                ref: ${{ inputs.skills_ref }}
                 path: skills-source
                 token: ${{ steps.app-token.outputs.token }}
 
@@ -69,11 +77,19 @@ jobs:
                 npm install -g @anthropic-ai/claude-code
                 claude --version
 
-            # the agent is a separate process — workflow inputs reach it only via the filesystem
-            - name: Record audit target for the prompt
+            # the agent is a separate process — workflow inputs reach it only via the filesystem.
+            # scope decides which files may be edited; refs are what the sources are pinned at.
+            - name: Record audit scope and refs for the prompt
               env:
-                TARGET_BRANCH: ${{ inputs.target_branch }}
-              run: echo "$TARGET_BRANCH" > .audit-target-branch
+                DOCS_SCOPE: ${{ inputs.docs_scope }}
+                AI_IMPLEMENT_REF: ${{ inputs.ai_implement_ref }}
+                SKILLS_REF: ${{ inputs.skills_ref }}
+              run: |
+                echo "$DOCS_SCOPE" > .audit-scope
+                {
+                  echo "ai-implement=$AI_IMPLEMENT_REF"
+                  echo "skills=$SKILLS_REF"
+                } > .audit-refs
 
             - name: Run audit
               timeout-minutes: 45
@@ -92,7 +108,9 @@ jobs:
               shell: bash
               env:
                 MAX_TURNS: ${{ inputs.max_turns }}
-                TARGET_BRANCH: ${{ inputs.target_branch }}
+                DOCS_SCOPE: ${{ inputs.docs_scope }}
+                AI_IMPLEMENT_REF: ${{ inputs.ai_implement_ref }}
+                SKILLS_REF: ${{ inputs.skills_ref }}
               run: |
                 if [ ! -s claude-stream.jsonl ]; then
                   echo "### Audit run — no telemetry stream produced" >> "$GITHUB_STEP_SUMMARY"
@@ -108,7 +126,7 @@ jobs:
                 turns=$(jq -r '.num_turns // "unknown"' claude-envelope.json)
                 outcome=$(jq -r '.subtype // "unknown"' claude-envelope.json)
                 {
-                  echo "### Audit run — ${TARGET_BRANCH}"
+                  echo "### Audit run — ${DOCS_SCOPE} (AI-Implement ${AI_IMPLEMENT_REF}, skills ${SKILLS_REF})"
                   echo ""
                   echo "| Metric | Value |"
                   echo "|---|---|"

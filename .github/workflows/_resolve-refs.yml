@@ -1,0 +1,67 @@
+name: Resolve audit refs (reusable)
+
+on:
+    workflow_call:
+        inputs:
+            scope:
+                description: 'Which docs version is being audited: stable or latest'
+                required: true
+                type: string
+            ai_implement_ref:
+                description: 'Override; blank resolves from scope'
+                required: false
+                type: string
+                default: ''
+            skills_ref:
+                description: 'Override; blank resolves from scope'
+                required: false
+                type: string
+                default: ''
+        outputs:
+            ai_implement_ref:
+                description: 'Resolved AI-Implement ref'
+                value: ${{ jobs.resolve.outputs.ai_implement_ref }}
+            skills_ref:
+                description: 'Resolved skills ref'
+                value: ${{ jobs.resolve.outputs.skills_ref }}
+
+# resolution reads public release metadata and nothing else
+permissions: {}
+
+jobs:
+    resolve:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        outputs:
+            ai_implement_ref: ${{ steps.resolve.outputs.ai_implement_ref }}
+            skills_ref: ${{ steps.resolve.outputs.skills_ref }}
+        steps:
+            - id: resolve
+              env:
+                SCOPE: ${{ inputs.scope }}
+                AI_OVERRIDE: ${{ inputs.ai_implement_ref }}
+                SKILLS_OVERRIDE: ${{ inputs.skills_ref }}
+                GH_TOKEN: ${{ github.token }}
+              run: |
+                set -euo pipefail
+                # stable pins to each product's latest release, so an unrelated commit on
+                # main can never enter the comparison; latest follows the dev branch.
+                resolve() {
+                  if [ "$SCOPE" = "latest" ]; then echo "testing"; return; fi
+                  gh api "repos/BuildDownAI/$1/releases/latest" --jq .tag_name
+                }
+                ai="${AI_OVERRIDE:-$(resolve AI-Implement)}"
+                sk="${SKILLS_OVERRIDE:-$(resolve skills)}"
+
+                for pair in "AI-Implement:$ai" "skills:$sk"; do
+                  name="${pair%%:*}"; ref="${pair#*:}"
+                  if [ -z "$ref" ] || [ "$ref" = "null" ]; then
+                    echo "::error::No ref resolved for $name at scope=$SCOPE — does it have a published release?" >&2
+                    exit 1
+                  fi
+                done
+
+                echo "ai_implement_ref=$ai" >> "$GITHUB_OUTPUT"
+                echo "skills_ref=$sk" >> "$GITHUB_OUTPUT"
+                echo "scope=$SCOPE  AI-Implement=$ai  skills=$sk"

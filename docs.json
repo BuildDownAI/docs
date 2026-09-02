@@ -28,14 +28,14 @@
     ]
   },
   "navigation": {
-    "versions": [
+    "products": [
       {
-        "version": "stable",
-        "default": true,
-        "tag": "v1.0.0",
-        "tabs": [
+        "product": "AI-Implement",
+        "versions": [
           {
-            "tab": "AI-Implement",
+            "version": "stable",
+            "default": true,
+            "tag": "v1.0.0",
             "groups": [
               {
                 "group": "Get Started",
@@ -96,22 +96,8 @@
             ]
           },
           {
-            "tab": "Skills",
-            "pages": [
-              "skills/introduction",
-              "skills/installation",
-              "skills/project-setup",
-              "skills/releases"
-            ]
-          }
-        ]
-      },
-      {
-        "version": "latest",
-        "tag": "v1.x",
-        "tabs": [
-          {
-            "tab": "AI-Implement",
+            "version": "latest",
+            "tag": "v1.x",
             "groups": [
               {
                 "group": "Get Started",
@@ -171,9 +157,26 @@
                 ]
               }
             ]
+          }
+        ]
+      },
+      {
+        "product": "Skills",
+        "versions": [
+          {
+            "version": "stable",
+            "default": true,
+            "tag": "v1.0.0",
+            "pages": [
+              "skills/introduction",
+              "skills/installation",
+              "skills/project-setup",
+              "skills/releases"
+            ]
           },
           {
-            "tab": "Skills",
+            "version": "latest",
+            "tag": "v1.x",
             "pages": [
               "latest/skills/introduction",
               "latest/skills/installation",

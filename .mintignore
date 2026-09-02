@@ -13,6 +13,10 @@ custom/
 .github/
 .ai-implement/
 
+# Source checkouts. Never publishable content.
+ai-implement/
+skills-source/
+
 # Agent steering files (read by Claude Code / the AI-Implement runner / BuildDown skills).
 # Mintlify currently 404s these as routes, but that handling is undocumented — pin them
 # explicitly so a future Mintlify change can't silently publish them.

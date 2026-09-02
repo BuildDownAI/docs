@@ -60,7 +60,7 @@ ${PLANNING_CONTEXT}
 
 Create or update **only** the documentation this issue describes. This is a targeted edit, **not a broad audit** — do not reword text that already reads correctly, reformat or reorganize sections, or "fix drift" in pages the issue doesn't mention.
 
-Creating a new page is in scope when the issue asks for one. Give it `title` and `description` frontmatter and add it to `docs.json` under the version and product tab it belongs to. A new page is unreachable without that navigation entry, which is the one case where editing `docs.json` is expected rather than out of bounds.
+Creating a new page is in scope when the issue asks for one. Give it `title` and `description` frontmatter and add it to `docs.json` under the product and version it belongs to. A new page is unreachable without that navigation entry, which is the one case where editing `docs.json` is expected rather than out of bounds.
 
 If you notice an unrelated problem while working, **don't fix it** — add a short "Noticed (out of scope)" note to `ai-output/comments/01-summary.md` so a human can triage it.
 
