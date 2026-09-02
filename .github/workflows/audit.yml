@@ -3,20 +3,25 @@ name: Audit docs vs source
 on:
     workflow_dispatch:
         inputs:
-            branch:
-                description: 'Source branch to audit against (AI-Implement and skills)'
+            scope:
+                description: 'Which docs version to audit'
                 type: choice
                 options:
-                    - main
-                    - testing
-                default: main
-            max_turns:
-                description: 'Override max-turns (blank = 140)'
+                    - stable
+                    - latest
+                default: stable
+            ai_implement_ref:
+                description: 'Override the AI-Implement ref (blank = latest release, or testing for scope=latest)'
                 type: string
                 required: false
                 default: ''
-            docs_branch:
-                description: 'Docs branch/ref to audit (blank = the dispatch ref, typically main)'
+            skills_ref:
+                description: 'Override the skills ref (blank = latest release, or testing for scope=latest)'
+                type: string
+                required: false
+                default: ''
+            max_turns:
+                description: 'Override max-turns (blank = 140)'
                 type: string
                 required: false
                 default: ''
@@ -25,25 +30,33 @@ on:
 permissions: {}
 
 jobs:
+    resolve-refs:
+        uses: ./.github/workflows/_resolve-refs.yml
+        with:
+            scope: ${{ github.event.inputs.scope }}
+            ai_implement_ref: ${{ github.event.inputs.ai_implement_ref }}
+            skills_ref: ${{ github.event.inputs.skills_ref }}
+
     audit:
+        needs: resolve-refs
         uses: ./.github/workflows/_audit-job.yml
         with:
-            target_branch: ${{ github.event.inputs.branch || 'testing' }}
-            docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
+            ai_implement_ref: ${{ needs.resolve-refs.outputs.ai_implement_ref }}
+            skills_ref: ${{ needs.resolve-refs.outputs.skills_ref }}
+            docs_scope: ${{ github.event.inputs.scope }}
+            docs_branch: ${{ github.ref_name }}
             max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || '140' }}
             artifact_name: audit-output
-        secrets:
-            app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
-            app_private_key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
-            claude_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     
     open-pr:
-        needs: audit
+        needs: [audit, resolve-refs]
         if: always()
         runs-on: ubuntu-latest
 
         env:
-            TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
+            DOCS_SCOPE: ${{ github.event.inputs.scope }}
+            AI_IMPLEMENT_REF: ${{ needs.resolve-refs.outputs.ai_implement_ref }}
+            SKILLS_REF: ${{ needs.resolve-refs.outputs.skills_ref }}
 
         steps:
             - name: Mint GitHub App installation token (for PR creation)
@@ -58,7 +71,7 @@ jobs:
             - name: Checkout docs repo
               uses: actions/checkout@v6
               with:
-                ref: ${{ github.event.inputs.docs_branch || github.ref_name }}
+                ref: ${{ github.ref_name }}
                 token: ${{ steps.app-token.outputs.token }}
 
             - name: Download audit artifact
@@ -71,8 +84,8 @@ jobs:
               with:
                 token: ${{ steps.app-token.outputs.token }}
                 branch: audit/${{ github.run_id }}
-                base: ${{ github.event.inputs.docs_branch || github.ref_name }}
-                title: "Docs audit: sources on ${{ env.TARGET_BRANCH }}"
+                base: ${{ github.ref_name }}
+                title: "Docs audit (${{ env.DOCS_SCOPE }}): AI-Implement ${{ env.AI_IMPLEMENT_REF }}, skills ${{ env.SKILLS_REF }}"
                 body-path: audit-report.md
                 draft: true
                 labels: docs-audit

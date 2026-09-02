@@ -1,19 +1,18 @@
 ---
 title: "Set up your project"
-description: "Run bd-project-setup once to point the BuildDown skills at your tracker and repository — it connects the tracker, authorizes it, and records the bindings every other skill reads."
+description: "Run bd-project-setup once to point the BuildDown skills at your ticketing system and repository — it creates the connection, authorizes it, and records the bindings every other skill reads."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
-
-`bd-project-setup` wires one project to its tools. It creates the connection to your issue tracker, authorizes it against your workspace, and writes down the bindings that every other `bd-` skill relies on to know where your issues and repository live.
+`bd-project-setup` wires one project to its tools. It creates the connection to your ticketing system, authorizes it against your workspace, and writes down the bindings that every other `bd-` skill relies on to know where your issues and repository live.
 
 You run it yourself, inside your Claude Code session, as a one-time step per project.
 
 ## When to run it
 
-Run `bd-project-setup` **once per project**, right after you've installed the skills and restarted Claude Code. Until it's done, the other `bd-` skills have nothing pointing them at your tracker.
+Run `bd-project-setup` **once per project**, right after you've installed the skills and reloaded your session. Until it's done, the other `bd-` skills have nothing pointing them at your issues.
 
 <Info>
   This assumes the skills are already installed and your session reloaded. If not, [start with installation](/latest/skills/installation) first.
@@ -29,7 +28,7 @@ Run `bd-project-setup` **once per project**, right after you've installed the sk
     /builddown:bd-project-setup
     ```
 
-    Answer its prompts about which tracker you use and which workspace to bind. The skill handles the rest.
+    Answer its prompts about which ticketing system you use and which workspace to bind. The skill handles the rest.
   </Step>
 
   <Step title="Let it detect what's already there">
@@ -41,7 +40,7 @@ Run `bd-project-setup` **once per project**, right after you've installed the sk
   </Step>
 
   <Step title="Authorize your workspace">
-    The skill starts the sign-in for your tracker from within the session. When the grant screen appears, **you pick the workspace** you want this project bound to.
+    The skill starts the sign-in from within the session. When the grant screen appears, **you pick the workspace** you want this project bound to.
 
     <Warning>
       The workspace you choose in the grant is the one this project will file and read issues in. Pick deliberately — if you have more than one, make sure it's the right one.
@@ -49,10 +48,10 @@ Run `bd-project-setup` **once per project**, right after you've installed the sk
   </Step>
 
   <Step title="Confirm it finished">
-    When the skill is done, your project has a tracker connection, it's pre-approved so the other skills can use it without prompting each time, and the bindings are recorded for the rest of the suite to read.
+    When the skill is done, your project has a connection, it's pre-approved so the other skills can use it without prompting each time, and the bindings are recorded for the rest of the suite to read.
 
     <Check>
-      Setup is complete. The other `bd-` skills can now find your tracker and repository.
+      Setup is complete. The other `bd-` skills can now find your issues and repository.
     </Check>
   </Step>
 </Steps>
@@ -61,20 +60,64 @@ Run `bd-project-setup` **once per project**, right after you've installed the sk
 
 Running the skill leaves your project with three things in place:
 
-- **A tracker connection** — the link between this project and your issue tracker.
-- **A standing pre-approval** — so the other skills can reach the tracker without asking for permission on every run.
-- **Recorded bindings** — a small record of your tracker, workspace, and repository that every `bd-` skill reads to orient itself.
+- **A connection to your ticketing system** — the link between this project and Linear or Jira.
+- **A standing pre-approval** — so the other skills can reach it without asking for permission on every run.
+- **Recorded bindings** — a small record of your ticketing system, workspace, and repository that every `bd-` skill reads to orient itself.
+
+## Knowledge graph (optional)
+
+The skill has a second pass that binds this project to a **knowledge graph** — the shared project memory `bd-kg-search` queries, and that the planning and landing skills consult before they act.
+
+It never runs as part of the setup above. You invoke it deliberately, and it follows the same detect-then-confirm discipline: it reports what it finds and asks before changing anything.
+
+<Note>
+  Skipping this is a valid end state, not an unfinished setup. Without a bound graph the knowledge-graph skills simply do nothing, and every other skill carries on unaffected.
+</Note>
+
+<Steps>
+  <Step title="Point it at an orchestrator">
+    The graph is served by an orchestrator, so the skill asks which one and checks that it answers.
+
+    If your project doesn't have a graph yet, the skill can hand off to `bd-kg-create` to build one, then come back and finish the binding. Declining outright is also recorded, so it stops asking.
+  </Step>
+
+  <Step title="Register the sign-in callback URLs">
+    Signing in to the graph uses its own callback URLs, separate from the ones your orchestrator's admin sign-in uses. The skill checks them before asking anyone to sign in, and prints the exact URL to add.
+
+    <Warning>
+      Admin sign-in working does not mean these are registered — they are a different set of URLs on the same provider application. If they are missing, the next step fails in your browser with a redirect-mismatch error.
+    </Warning>
+
+    Add that URL verbatim under **Authorized redirect URIs** — in Google Cloud Console under APIs & Services → Credentials, or in Microsoft Entra under App registrations → Authentication.
+  </Step>
+
+  <Step title="Sign in">
+    Approve the sign-in in your browser. This is per person rather than per project, and your identity has to be one the orchestrator allows.
+
+    Access lasts about an hour. When it expires you sign in again — the binding itself stays intact.
+  </Step>
+
+  <Step title="Restart and verify">
+    Restart Claude Code so the new connection loads, then run a real search against the graph rather than checking only that it connects.
+
+    <Check>
+      A search for a term from your project comes back with results. Empty results mean the graph is reachable but isn't serving your project's content.
+    </Check>
+  </Step>
+</Steps>
+
+Keeping the graph's contents current isn't part of setup — that's `bd-kg-refresh`, run when the graph goes stale rather than when a project binds.
 
 ## Key rules
 
-- **One tracker per project.** A project is bound to Linear **or** Jira, never both at once. Choose the tracker that owns this project's issues.
+- **One ticketing system per project.** A project is bound to Linear **or** Jira, never both at once. Choose the one that owns this project's issues.
 
   <Note>
-    Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [tracker support](/latest/skills/introduction#available-skills) for which.
+    Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [ticketing support](/latest/skills/introduction#ticketing-support) for which.
   </Note>
 
 - **Give each connection a distinct name.** Claude Code stores one login per connection name,
-  and a login points at a single workspace. The name is only a label: a connection can reach the whole workspace you authorize it against, and the team it files into is a separate binding within `CLAUDE.md`.
+  and a login points at a single workspace. The name is only a label: a connection can reach the whole workspace you authorize it against, and the team it files into is a separate binding. The same holds for an orchestrator connection bound in the knowledge-graph pass.
 
   <Warning>
     If two projects share a name, they share a login under that name — so authorizing the connection for one project's workspace silently switches the other project onto it too.

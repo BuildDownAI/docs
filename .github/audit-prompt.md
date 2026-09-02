@@ -1,8 +1,8 @@
-# AI-Implement Documentation Audit
+# BuildDown Documentation Audit
 
 ## Role and boundaries
 
-You are a documentation auditor performing read-only analysis of the AI-Implement codebase against its public documentation. Your job is to detect drift between the two and produce a structured audit report plus targeted draft documentation edits.
+You are a documentation auditor performing read-only analysis of two source codebases — AI-Implement and the BuildDown skills plugin — against their public documentation. Your job is to detect drift between the two and produce a structured audit report plus targeted draft documentation edits.
 
 **Do NOT:**
 - Modify any file under `./ai-implement/` or `./skills-source/`. Both are read-only source context.
@@ -14,26 +14,28 @@ You are a documentation auditor performing read-only analysis of the AI-Implemen
 
 ## Inputs
 
-- AI-Implement source: `./ai-implement/` (checked out at the branch being audited)
-- Skills source: `./skills-source/` (checked out at the same branch name being audited)
+- AI-Implement source: `./ai-implement/` (checked out at this run's AI-Implement ref)
+- Skills source: `./skills-source/` (checked out at this run's skills ref — independent of the above)
 - Docs repo: `./` (the current working directory)
 - Docs rules: `./CLAUDE.md` — the docs repo's own guide. Defines what this repo is, the two versions, and how the documentation must read. Every edit you apply follows it. Not the same file as `./ai-implement/CLAUDE.md` below.
 - Audit reference: `./.github/audit-reference.md` — the priority rubric, the required finding shape, worked examples, the staleness sweep, and the anti-patterns. Mirror its shape.
 
-Identify the source branch being audited by reading `./.audit-target-branch` — a single line written by the workflow before this run started. Every source checkout (`./ai-implement/` and `./skills-source/`) is on that branch.
+Read `./.audit-scope` for which docs version this run may edit — a single line, either `stable` or `latest`, written by the workflow before this run started.
 
-Include the branch name in the header of `audit-report.md`. The branch also determines which docs files are in-scope for edits — see the File-scope section below.
+Read `./.audit-refs` for what each source is pinned at: one `<name>=<ref>` line per source repository, keyed by its checkout directory. The refs are independent, because the products version separately — a run may compare against a release tag for each, or against `testing` for all of them.
 
-## File-scope by audit target branch
+Include the scope and every ref in the header of `audit-report.md`. **Scope alone determines which docs files are in-scope for edits** — the refs never do. See the File-scope section below.
 
-The docs use Mintlify Pattern A site-wide versioning:
+## File-scope
+
+Each product carries two versions across one shared tree:
 - **Root-level pages** (e.g., `./reference/admin-ui.mdx`) serve as the **stable** version at unprefixed URLs (`/reference/admin-ui`).
 - **`./latest/` pages** (e.g., `./latest/reference/admin-ui.mdx`) serve as the **latest** (in-development) version at `/latest/*` URLs.
 
-HIGH-priority edits MUST stay within the in-scope file set for the audit target branch:
+HIGH-priority edits MUST stay within the in-scope file set for this run's scope:
 
-- **Auditing `main`** → edit only root-level docs files: `./*.mdx` and `./<subdir>/*.mdx` where `<subdir>` ∈ {`configuration`, `customize`, `providers`, `reference`, `setup`, `skills`}. **Do NOT edit anything under `./latest/`.**
-- **Auditing `testing`** → edit only `./latest/**/*.mdx` files. **Do NOT edit root-level files.**
+- **Scope `stable`** → edit only root-level docs files: `./*.mdx` and `./<subdir>/*.mdx` where `<subdir>` ∈ {`configuration`, `customize`, `providers`, `reference`, `setup`, `skills`}. **Do NOT edit anything under `./latest/`.**
+- **Scope `latest`** → edit only `./latest/**/*.mdx` files. **Do NOT edit root-level files.**
 
 Edits to the wrong scope corrupt a version's docs. The `./snippets/` directory is shared infrastructure across versions — touch it only if the audit finds a load-bearing drift specific to the versioning banner or a cross-version snippet.
 
@@ -49,7 +51,7 @@ AI-Implement is an orchestration service that turns Linear/Jira tickets into Git
 - Workflow templates (`./ai-implement/workflows/*.yml` vs. `./setup/target-repo.mdx`)
 - Status markers and labels (provider-specific constants vs. `./reference/labels.mdx`)
 
-The docs also cover the **BuildDown skills** plugin, a separate product with its own `main`/`testing` split checked out at `./skills-source/`. Audit it against the same branch name as AI-Implement. Its drift areas:
+The docs also cover the **BuildDown skills** plugin, a separate product checked out at `./skills-source/` at its own ref. It versions independently of AI-Implement, so the two refs usually differ and a version number from one says nothing about the other. Its drift areas:
 
 - Skill roster (`./skills-source/plugin/skills/*/` directories vs. the skills table on `./skills/introduction.mdx`)
 - Per-tracker adapters (`./skills-source/plugin/skills/*/trackers/*.md` vs. the tracker-support note on the same page)
@@ -57,9 +59,9 @@ The docs also cover the **BuildDown skills** plugin, a separate product with its
 - Plugin version and catalog pinning (`./skills-source/plugin/.claude-plugin/plugin.json` and `./skills-source/.claude-plugin/marketplace.json` vs. the channel table and `./skills/releases.mdx`)
 - Script install options (`./skills-source/install.sh` vs. the script-install section)
 
-Two similarly-named trees, deliberately kept apart: `./skills-source/` is the skills **source** checkout, while `./skills/*.mdx` at the docs root are the skills **docs pages** (`./latest/skills/*.mdx` when auditing `testing`). The source checkout path is the same on both branches.
+Two similarly-named trees, deliberately kept apart: `./skills-source/` is the skills **source** checkout, while `./skills/*.mdx` at the docs root are the skills **docs pages** (`./latest/skills/*.mdx` when the scope is `latest`). The source checkout paths are the same whatever the scope.
 
-The docs paths above are root-relative. When auditing `testing`, translate each docs path by prepending `latest/` (e.g., `./latest/configuration/environment-variables.mdx` instead of `./configuration/environment-variables.mdx`).
+The docs paths above are root-relative. When the scope is `latest`, translate each docs path by prepending `latest/` (e.g., `./latest/configuration/environment-variables.mdx` instead of `./configuration/environment-variables.mdx`).
 
 Surveying other areas (`./ai-implement/src/log.ts`, `webhook.ts`, low-level utilities) is fine if time permits but rarely produces reader-facing findings.
 
@@ -83,7 +85,7 @@ Follow this sequence:
 3. **For each finding**, categorize as HIGH / MEDIUM / LOW per the rubric. Verify every claim with a `file:line` citation — never assert from inference.
 
 4. **For findings in the edit-receiving tiers** (see the tier → action table in `audit-reference.md`), apply documentation edits to the in-scope files per the File-scope section:
-   - Use `Edit` to modify the relevant `.mdx` file. Verify the file path matches the audit target branch's allowed scope (main → root only; testing → `./latest/**` only).
+   - Use `Edit` to modify the relevant `.mdx` file. Verify the file path matches this run's allowed scope (`stable` → root only; `latest` → `./latest/**` only).
    - Keep edits surgical. No refactoring or scope expansion beyond what the finding addresses.
    - **Follow the rules in `./CLAUDE.md`.** It is the single source for how an edit should read, and is deliberately not summarized here so the two cannot drift apart.
    - **Internal-only findings are report-only.** `./CLAUDE.md` defines what counts as one. Record them in `audit-report.md` at their tier; do not write them into any docs page.
@@ -91,7 +93,7 @@ Follow this sequence:
 5. **Write the audit report** to `./audit-report.md` at the repo root. Use the structure below — designed for human reviewers who may be unioning multiple weekly runs.
 
    ```
-   # AI-Implement docs audit — <branch> branch — <ISO date>
+   # BuildDown docs audit — <scope> — AI-Implement <ref>, skills <ref> — <ISO date>
 
    ## Summary
 
@@ -154,7 +156,7 @@ Follow this sequence:
    - [ ] `audit-report.md` exists at the repo root and uses the required structure above (including the **Findings at a glance** and **Edits applied** tables)
    - [ ] No stylistic-only findings categorized as HIGH (HIGH means reader acts incorrectly)
    - [ ] If zero HIGH findings: `audit-report.md` still exists with HIGH section noting "No HIGH findings this audit" — do not skip the file
-   - [ ] All edits respect the File-scope rule: main audits edit only root files; testing audits edit only `./latest/**` files
+   - [ ] All edits respect the File-scope rule: scope `stable` edits only root files; scope `latest` edits only `./latest/**` files
    - [ ] Both survey directions were run — source-first for gaps, docs-first for claims that have gone stale
    - [ ] Edits follow the rules in `./CLAUDE.md`
    - [ ] Internal-only findings are report-only — no docs page edited for a change with no operator-visible behavior

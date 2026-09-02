@@ -1,18 +1,60 @@
 ---
-title: "Skills releases"
+title: "Releases"
 description: "Release history for the BuildDown skills plugin — what shipped in each version and what it means for your installation."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
+<Note>
+  Version numbers skip. The plugin's version changes on every skill change so the development channel has something to deliver, but only some of those versions are released. Numbers missing below were never published, and no stable-channel install ever ran them.
+</Note>
+
+<Update label="v1.4.0" description="Released 26 August 2026" tags={["Release"]}>
+  Five new skills, a rebuilt planning core, and a second install host.
+
+  **New skills**
+
+  - **`bd-high-plan`** settles the shape of a capability before any decomposition — a few discrete, separately testable steps, filed as one planning issue for `bd-build-up` to break down later.
+  - **`bd-kg-create`, `bd-kg-refresh`, and `bd-kg-search`** introduce a project knowledge graph: shared memory of past issues, pull requests, and decisions you can query directly. See [Set up your project](/latest/skills/project-setup) for binding one.
+  - **`bd-system-questions`** answers questions about the orchestrator itself — why a ticket isn't running, what's in flight, how the system is configured.
+
+  **How planning skills write**
+
+  - Ticket titles and their opening paragraph are now written in **Simplified Technical English**, with the rest of the body shaped for an agent reading it cold. The questions the skills ask *you* follow the same style.
+  - **Story points are gone.** Sizing is now a judgment about shape — wide and shallow versus deep and targeted — because that predicts whether a ticket lands in one pass and an abstract estimate did not.
+
+  **`bd-mega-build-up` changed shape**
+
+  - It no longer produces a design and implementation-plan document pair. The pressure-testing now runs in rounds, finds its own facts rather than asking you for anything it can look up, and **writes decision records and glossary entries into your repository** as decisions settle.
+  - Approval gates dropped from three to two.
+
+  **`bd-build-up`**
+
+  - Gained dedicated Jira handling, joining `bd-mega-build-up` and `bd-build-down`. Behavior specific to Linear or Jira now lives in adapters shared between skills.
+  - Can extract every step of a planning issue in one pass, including nested breakdowns and children that belong to a different repository.
+
+  **Landing and verification**
+
+  - `bd-build-down` waits for a pull request to be ready before commenting, and records what was learned on each issue as it merges.
+  - `bd-smoke-jumper` builds and runs the real artifact when a pull request delivers one, rather than inspecting the source.
+
+  **Knowledge graph**
+
+  - Every planning and landing skill consults a bound graph before acting, and skips silently on projects without one.
+  - The graph can ingest published documentation sites, so answers cite the section they came from.
+
+  **Installation**
+
+  - The install script installs for **Codex** as well as Claude Code, with `--codex`. See [Install BuildDown skills](/latest/skills/installation#script-options).
+</Update>
 
 <Update label="v1.0.0" description="Released 29 July 2026" tags={["Release"]}>
   The first stable release. The suite reached a versioned, installable state — see [BuildDown skills](/latest/skills/introduction) for what it does.
 
   - **Versioned installation.** A stable channel and a development channel now exist, so you can choose between released versions and ongoing work. [Versions and channels](/latest/skills/installation#versions-and-channels) covers both.
   - **The default branch is installable for the first time.** Before this release the plugin catalog existed only on the development branch, so an install without a branch specified never resolved. That is why earlier instructions told you to specify one.
-  - **`bd-build-down` no longer hardcodes one tracker.** Tracker-specific behavior moved into per-tracker adapters, so the skill delegates rather than assuming Linear's state names.
+  - **`bd-build-down` no longer hardcodes one ticketing system.** Behavior specific to Linear or Jira moved into per-system adapters, so the skill delegates rather than assuming Linear's state names.
   - **Client-specific references removed** throughout the skills and their documentation.
 
   <Note>

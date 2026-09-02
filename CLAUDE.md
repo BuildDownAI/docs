@@ -15,20 +15,22 @@ Each lane file covers only its own mechanics — issue handling and gap-fill on 
 
 - A Mintlify site. Navigation, versions, and theme live in `docs.json`; pages are `.mdx`.
 - **No build, no `package.json`, no test suite.** Changes here are edits to documentation pages, nothing more.
-- Two products, navigated separately. Each version pill contains an **AI-Implement** tab and a **Skills** tab, and each tab renders its own sidebar.
+- **Two products, versioned independently.** `docs.json` nests versions inside products, so **AI-Implement** and **Skills** each carry their own version selector and their own sidebar.
 
 ## Versioning
 
-The site uses Mintlify site-wide versioning, so two versions share one tree:
+Versions are nested inside products, so each product carries its own two versions across one shared tree:
 
-- **stable** — the root-level pages: `introduction.mdx`, `quickstart.mdx`, `how-it-works.mdx`, `releases.mdx`, and the `setup/`, `configuration/`, `providers/`, `customize/`, `reference/`, and `skills/` directories. This is the default version and what most readers see.
-- **latest** — the same tree mirrored under `latest/`.
+- **stable** — the root-level pages. AI-Implement's are `introduction.mdx`, `quickstart.mdx`, `how-it-works.mdx`, `releases.mdx`, and the `setup/`, `configuration/`, `providers/`, `customize/`, and `reference/` directories; the Skills product's are `skills/`. This is each product's default version and what most readers see.
+- **latest** — the same trees mirrored under `latest/`.
 
-Both products track the same split in their source repos: **`main` → stable**, **`testing` → latest**. This holds for AI-Implement and for skills alike.
+Both products track the same branch split in their source repos: **`main` → stable**, **`testing` → latest**. This holds for AI-Implement and for skills alike.
+
+**The two products' version numbers are not comparable.** AI-Implement's track release cadence; the skills plugin's track delivery, since a plugin change reaches nobody without a version bump. Never write prose implying one product is ahead of, behind, or in step with the other.
 
 `snippets/` is shared across both versions. Touch it only for a change that is genuinely cross-version.
 
-**Which version a given change lands in is decided differently by each lane, and each lane file states its own rule** — the audit lane's scope is fixed by the branch it was dispatched against, while the AI-Implement lane derives it from the issue. Follow your own lane's rule; don't assume the other's applies.
+**Which version a given change lands in is decided differently by each lane, and each lane file states its own rule** — the audit lane is told its scope by its dispatch, while the AI-Implement lane derives it from the issue. Follow your own lane's rule; don't assume the other's applies.
 
 ## Out of bounds
 

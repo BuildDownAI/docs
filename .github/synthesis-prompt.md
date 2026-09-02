@@ -1,4 +1,4 @@
-# AI-Implement Documentation Audit — Synthesis
+# BuildDown Documentation Audit — Synthesis
 
 ## Role and boundaries
 
@@ -20,6 +20,8 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
 - **Expected-runs count** at `./audit-runs/.expected-runs` — the value of the workflow's `runs` input. The number of ACTUAL `run-N/` directories may be less if some matrix jobs failed (incompleteness handling — see Task step a).
 - **Fresh docs checkout** at `./` — no audit edits applied. This is where final edits land.
 - **Source checkouts** at `./ai-implement/` and `./skills-source/` — read-only, for spot-checking source citations.
+- **Run scope** at `./.audit-scope` — a single line, `stable` or `latest`. The authority on which docs tree edits may land in.
+- **Source refs** at `./.audit-refs` — one `<name>=<ref>` line per source repository, naming what each checkout is pinned at.
 
 ## Read these files FIRST (CI context priming)
 
@@ -33,11 +35,13 @@ Local Claude Code auto-loads CLAUDE.md/AGENTS.md from added directories. CI runs
 
 ## Repo context
 
-The docs repo uses Mintlify site-wide versioning:
+Each product carries two versions across one shared tree:
 - Root-level pages (e.g., `./reference/admin-ui.mdx`) serve as the **stable** version
 - `./latest/` pages serve as the **latest** (in-development) version
 
-The source audit's file-scope rule (in `audit-prompt.md`) constrains which scope edits land in based on which AI-Implement branch was audited. **Synthesis preserves that scope without re-evaluating it.** If the per-run audit-report.md headers say "main branch," edits in run-N/`<root-paths>` are the only legal scope; do not touch `latest/*`. Conversely for "testing branch."
+The source audit's file-scope rule (in `audit-prompt.md`) confines edits to one of those trees, and **synthesis preserves that scope without re-evaluating it.**
+
+Read `./.audit-scope` and obey it: `stable` means edits land only in root-level paths and nothing under `latest/` may be touched; `latest` means the reverse. Do not infer the scope from the per-run reports — the file is the authority, and a reworded report header must never be able to change which version gets edited.
 
 ## Task
 
@@ -96,14 +100,14 @@ Write `./audit-report.md` at the repo root per the shape below. The shape mirror
 
 If complete (K == N planned), the title line is:
 
-    # AI-Implement docs audit (multi-run synthesis, N=<runs>) — <branch> branch — <ISO date>
+    # BuildDown docs audit (multi-run synthesis, N=<runs>) — <scope> — AI-Implement <ref>, skills <ref> — <ISO date>
 
     Synthesized from <N> independent audit runs against the same source+docs state.
     Recurrence column shows how many runs flagged each finding.
 
 If incomplete (K < N planned), the title line is:
 
-    # AI-Implement docs audit (multi-run synthesis, K of N planned) — <branch> branch — <ISO date>
+    # BuildDown docs audit (multi-run synthesis, K of N planned) — <scope> — AI-Implement <ref>, skills <ref> — <ISO date>
 
     ⚠️ **Incomplete synthesis** — synthesized from K of N planned runs (missing: run-X, run-Y).
     Recurrence counts in the table below reflect K actual runs, not N planned.

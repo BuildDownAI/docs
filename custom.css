@@ -91,3 +91,57 @@ aside h3 {
 
 /* Wordmark .ai accent — for when you render builddown.ai in HTML */
 .bd-tld { color: var(--bd-cyan-400); }
+
+/* Wordmark + product read as one identity, "BuildDown//AI-Implement", while
+   staying two independently clickable controls. */
+[data-component-part="products-selector-trigger"] {
+  order: 1;
+  margin-left: -0.5rem;
+  position: relative;
+  top: 3px;
+}
+
+[data-component-part="products-selector-trigger"]::before {
+  content: "//";
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: var(--bd-cyan-500);
+  margin-right: 0.375rem;
+}
+
+[data-component-part="products-selector-trigger"] > span {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--bd-cyan-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  max-width: 18rem;
+}
+
+/* Version is the third term of the same line — "BuildDown//AI-Implement · STABLE". */
+div:has(> [data-component-part="version-select-trigger"]) {
+  order: 2;
+  margin-left: -0.5rem;
+  position: relative;
+  top: 3px;
+}
+
+[data-component-part="version-select-trigger"]::before {
+  content: "·";
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 1.125rem;
+  color: var(--bd-cyan-500);
+  margin-right: 0.5rem;
+}
+
+[data-component-part="version-select-trigger"] > span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.6;
+}

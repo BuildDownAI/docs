@@ -2,8 +2,9 @@ name: Audit docs vs source (multi-run synthesis)
 
 on:
     schedule:
-        # Bi-weekly: 1st and 15th of each month at 15:00 UTC.
-        - cron: '0 15 1,15 * *'
+        # Weekly, Mondays 15:00 UTC. A scheduled run audits the stable version
+        # against each product's latest release tag.
+        - cron: '0 15 * * 1'
     workflow_dispatch:
         inputs:
             runs:
@@ -16,13 +17,23 @@ on:
                     - '4'
                     - '5'
                 default: '3'
-            branch:
-                description: 'Source branch to audit against (AI-Implement and skills)'
+            scope:
+                description: 'Which docs version to audit'
                 type: choice
                 options:
-                    - main
-                    - testing
-                default: main
+                    - stable
+                    - latest
+                default: stable
+            ai_implement_ref:
+                description: 'Override the AI-Implement ref (blank = latest release, or testing for scope=latest)'
+                type: string
+                required: false
+                default: ''
+            skills_ref:
+                description: 'Override the skills ref (blank = latest release, or testing for scope=latest)'
+                type: string
+                required: false
+                default: ''
             max_turns:
                 description: 'Override max-turns (blank = 140)'
                 type: string
@@ -30,11 +41,6 @@ on:
                 default: ''
             synthesis_max_turns:
                 description: 'Override synthesis max-turns (blank = 200)'
-                type: string
-                required: false
-                default: ''
-            docs_branch:
-                description: 'Docs branch/ref to audit (blank = the dispatch ref, typically main)'
                 type: string
                 required: false
                 default: ''
@@ -60,15 +66,24 @@ jobs:
                 echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
                 echo "Generated matrix for N=$N: $MATRIX_JSON"
     
+    resolve-refs:
+        uses: ./.github/workflows/_resolve-refs.yml
+        with:
+            scope: ${{ github.event.inputs.scope || 'stable' }}
+            ai_implement_ref: ${{ github.event.inputs.ai_implement_ref }}
+            skills_ref: ${{ github.event.inputs.skills_ref }}
+
     audit-runs:
-        needs: generate-matrix
+        needs: [generate-matrix, resolve-refs]
         strategy:
             matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
             fail-fast: false
         uses: ./.github/workflows/_audit-job.yml
         with:
-            target_branch: ${{ github.event.inputs.branch || 'testing' }}
-            docs_branch: ${{ github.event.inputs.docs_branch || github.ref_name }}
+            ai_implement_ref: ${{ needs.resolve-refs.outputs.ai_implement_ref }}
+            skills_ref: ${{ needs.resolve-refs.outputs.skills_ref }}
+            docs_scope: ${{ github.event.inputs.scope || 'stable' }}
+            docs_branch: ${{ github.ref_name }}
             max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || '140' }}
             artifact_name: audit-run-${{ matrix.run_id }}
         secrets:
@@ -77,12 +92,14 @@ jobs:
             claude_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
     synthesis:
-        needs: audit-runs
+        needs: [audit-runs, resolve-refs]
         if: always() # run even if some matrix jobs failed to handle partial inputs
         runs-on: ubuntu-latest
 
         env:
-            TARGET_BRANCH: ${{ github.event.inputs.branch || 'testing' }}
+            DOCS_SCOPE: ${{ github.event.inputs.scope || 'stable' }}
+            AI_IMPLEMENT_REF: ${{ needs.resolve-refs.outputs.ai_implement_ref }}
+            SKILLS_REF: ${{ needs.resolve-refs.outputs.skills_ref }}
             EXPECTED_RUNS: ${{ github.event.inputs.runs || '3' }}
             SYNTHESIS_MAX_TURNS: ${{ github.event.inputs.synthesis_max_turns != '' && github.event.inputs.synthesis_max_turns || '200' }}
 
@@ -99,22 +116,22 @@ jobs:
             - name: Checkout docs repo (fresh working tree — no audit edits applied)
               uses: actions/checkout@v6
               with:
-                ref: ${{ github.event.inputs.docs_branch || github.ref_name }}
+                ref: ${{ github.ref_name }}
                 token: ${{ steps.app-token.outputs.token }}
 
-            - name: Checkout target branch of AI-Implement
+            - name: Checkout AI-Implement at its audit ref
               uses: actions/checkout@v6
               with:
                 repository: BuildDownAI/AI-Implement
-                ref: ${{ env.TARGET_BRANCH }}
+                ref: ${{ env.AI_IMPLEMENT_REF }}
                 path: ai-implement
                 token: ${{ steps.app-token.outputs.token }}
 
-            - name: Checkout target branch of skills
+            - name: Checkout skills at its audit ref
               uses: actions/checkout@v6
               with:
                 repository: BuildDownAI/skills
-                ref: ${{ env.TARGET_BRANCH }}
+                ref: ${{ env.SKILLS_REF }}
                 path: skills-source
                 token: ${{ steps.app-token.outputs.token }}
 
@@ -137,6 +154,14 @@ jobs:
               run: |
                 mkdir -p audit-runs
                 echo "$EXPECTED_RUNS" > audit-runs/.expected-runs
+
+            - name: Record audit scope and refs for the prompt
+              run: |
+                echo "$DOCS_SCOPE" > .audit-scope
+                {
+                  echo "ai-implement=$AI_IMPLEMENT_REF"
+                  echo "skills=$SKILLS_REF"
+                } > .audit-refs
 
             - name: Install Claude Code CLI
               timeout-minutes: 3
@@ -178,7 +203,7 @@ jobs:
                 turns=$(jq -r '.num_turns // "unknown"' claude-envelope.json)
                 outcome=$(jq -r '.subtype // "unknown"' claude-envelope.json)
                 {
-                  echo "### Synthesis — ${TARGET_BRANCH}"
+                  echo "### Synthesis — ${DOCS_SCOPE} (AI-Implement ${AI_IMPLEMENT_REF}, skills ${SKILLS_REF})"
                   echo ""
                   echo "| Metric | Value |"
                   echo "|---|---|"
@@ -217,8 +242,8 @@ jobs:
               with:
                 token: ${{ steps.app-token.outputs.token }}
                 branch: audit-multi/${{ github.run_id }}
-                base: ${{ github.event.inputs.docs_branch || github.ref_name }}
-                title: "Docs audit (multi-run synthesis): sources on ${{ env.TARGET_BRANCH }}"
+                base: ${{ github.ref_name }}
+                title: "Docs audit (${{ env.DOCS_SCOPE }}): AI-Implement ${{ env.AI_IMPLEMENT_REF }}, skills ${{ env.SKILLS_REF }}"
                 body-path: audit-report.md
                 draft: true
                 labels: docs-audit,docs-audit-multi

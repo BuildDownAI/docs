@@ -1,6 +1,6 @@
-# AI-Implement Documentation Audit — Reference
+# BuildDown Documentation Audit — Reference
 
-This file grounds the audit by example. It defines the priority rubric, shows what well-formed findings look like across different drift shapes, and lists the anti-patterns to avoid. Distilled from manual audits performed in Block 2 (against AI-Implement `main`) and Block 3 (against `testing`).
+This file grounds the audit by example. It defines the priority rubric, shows what well-formed findings look like across different drift shapes, and lists the anti-patterns to avoid. Distilled from manual audits of both products, run against a released version and against the development branch.
 
 ## Priority rubric
 
@@ -25,7 +25,7 @@ Apply these criteria when categorizing drift between source and the docs:
 ## Required shape for every finding
 
 - One-line title
-- `file:line` citation pointing to source-code evidence in AI-Implement
+- `file:line` citation pointing to source-code evidence in one of the source checkouts
 - What the docs currently say (with the docs path)
 - What the code actually shows
 - Priority tier
@@ -192,7 +192,7 @@ These are the source areas where drift typically appears first. Start the audit 
 
 Other source areas (`src/log.ts`, `src/webhook.ts`, low-level utilities) often have changes with little reader-facing impact — survey them only if time permits.
 
-Findings with no operator-visible behavior are report-only on both branches — see *What never becomes a page edit* in `./CLAUDE.md`.
+Findings with no operator-visible behavior are report-only whatever the scope — see *What never becomes a page edit* in `./CLAUDE.md`.
 
 ## Note on file:line citations
 
