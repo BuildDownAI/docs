@@ -1,32 +1,36 @@
 ---
 title: "BuildDown skills"
-description: "A suite of Claude Code skills for planning, sequencing, landing, and verifying work driven through an AI coding agent."
+description: "A suite of Claude Code skills for planning, sequencing, landing, and verifying work driven through an AI coding agent — plus the project memory and diagnostics that support it."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
+Running a ticket-to-pull-request pipeline surfaces a handful of recurring questions. Each has a skill that answers it:
 
-Running a ticket-to-pull-request pipeline surfaces four recurring questions. Each has a skill that answers it:
-
-- I have a design or an objective — how do I turn it into well-scoped tickets the agent can finish in one pass? **→** **`bd-build-up`** or **`bd-mega-build-up`** when the design should be pressure-tested first
+- The shape of the work isn't settled yet — what are the big pieces, and in what order? **→** **`bd-high-plan`**
+- I have a design or an objective — how do I turn it into well-scoped tickets the agent can finish in one pass? **→** **`bd-build-up`**, or **`bd-mega-build-up`** when the design should be pressure-tested first
 - I have a stack of planned tickets — what order should they go out in, and which will fail without more context? **→** **`bd-summit-push`**
-- I have a pile of open pull requests from the agent — which merge, which need another pass, and which are blocked? **→** **`bd-build-down`** or **`bd-super-build-down`** for many at once
+- I have a pile of open pull requests from the agent — which merge, which need another pass, and which are blocked? **→** **`bd-build-down`**, or **`bd-super-build-down`** for many at once
 - Did the preview actually work, or did the agent just make the diff look right? **→** **`bd-smoke-jumper`**
-
-These skills run inside your own Claude Code session while you plan and review. They're separate from the AI-Implement orchestrator, which is what later picks up a marked issue and opens the pull request.
+- Has this already been decided, tried, or filed before? **→** **`bd-kg-search`**
+- Why isn't my ticket running? **→** **`bd-system-questions`**
 
 <Note>
-    The remaining two skills sit outside that sequence:
-    - `bd-project-setup` runs once to wire a project to its tools
-    - `bd-belay-on` formalizes handing a question to a different tool at any point along the way
+  A few sit outside that sequence:
+  - `bd-project-setup` runs once to wire a project to its tools
+  - `bd-kg-create` and `bd-kg-refresh` stand up and update the project memory that `bd-kg-search` reads
+  - `bd-belay-on` formalizes handing a question to a different tool at any point along the way
 </Note>
 
 ## How the skills fit together
 
+### Issue lifecycle
+
 ```mermaid
 graph TD
     setup(["bd-project-setup<br/>run once per project"])
+    high["bd-high-plan<br/>settle the shape"]
     up["bd-build-up<br/>plan the work"]
     mega["bd-mega-build-up<br/>plan, grilled harder"]
     push["bd-summit-push<br/>sequence and harden"]
@@ -35,8 +39,9 @@ graph TD
     sdown["bd-super-build-down<br/>drive to merge, at volume"]
     smoke["bd-smoke-jumper<br/>verify the preview"]
 
-    setup --> up
-    setup --> mega
+    setup --> high
+    high --> up
+    high --> mega
     up --> push
     mega --> push
     push ==> agent
@@ -49,36 +54,87 @@ graph TD
     class agent,setup external
 ```
 
-## What ties them together
+### Knowledge graph
+
+```mermaid
+graph TD
+    create["bd-kg-create<br/>stand it up, once"]
+    refresh["bd-kg-refresh<br/>rebuild it after work lands"]
+    kg(["the project's<br/>knowledge graph"])
+    search["bd-kg-search<br/>ask it a question"]
+    skills(["planning and landing skills<br/>consult it automatically"])
+
+    create --> kg
+    refresh --> kg
+    kg --> search
+    kg --> skills
+
+    classDef external stroke-width:3px
+    class kg,skills external
+```
+
+## What they have in common
 
 The skills share one autonomy model, so a skill either acts or asks for the same reasons throughout.
 
 They also read the same recorded project bindings rather than each asking you where your issues live — which is what `bd-project-setup` exists to write.
 
-They assume a common setup: a connected issue tracker, a connected GitHub account, browser automation for preview testing, and a coding agent that responds to pull request comments.
+They assume a common setup: a connected ticketing system, a connected GitHub account, browser automation for preview testing, and a coding agent that responds to pull request comments.
 
-Six of the eight understand feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
+Most run entirely inside your own Claude Code session, separate from the AI-Implement orchestrator that later picks up a marked issue and opens the pull request. `bd-system-questions` is the one that needs the orchestrator outright — it asks the orchestrator about itself, and does nothing without one.
+
+A bound knowledge graph changes the picture more softly. Every planning and landing skill consults it before acting, as does `bd-belay-on`, and all of them skip silently on a project that has none.
+
+### Ticketing support
+
+**Ticketing provider support varies by skill.** `bd-build-up`, `bd-mega-build-up`, and `bd-build-down` carry dedicated Jira handling alongside Linear.
+
+`bd-summit-push` and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
+
+<Note>
+  `bd-project-setup` binds either ticketing system. `bd-smoke-jumper` needs one too — to read issue context and file the failures it finds — but treats Linear and Jira identically rather than branching its behavior. `bd-belay-on` is the only skill with no ticketing dependency at all.
+</Note>
+
+### Feature-branch grouping
+
+Every planning and landing skill understands feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
+
+`bd-project-setup` knows about it too, for a different reason — it re-syncs a target repo's workflow so grouped runs are accepted in the first place.
 
 ## Available skills
 
+### Plan the work
+
 | Skill | What it does |
 | --- | --- |
-| `bd-project-setup` | Wires a project to its tools once — creates the tracker connection, authorizes it, and **records the settings every other skill reads**. |
-| `bd-build-up` | Turns an objective or design into a **sequenced, dependency-aware set of tracker issues**, shown for your review before anything is filed. |
+| `bd-high-plan` | Settles the **shape** of a new capability before any decomposition — a few discrete, separately testable steps, decided one question at a time and filed as a single planning issue. |
+| `bd-build-up` | Turns an objective or design into a **sequenced, dependency-aware set of issues**, shown for your review before anything is filed. |
 | `bd-mega-build-up` | A deeper `bd-build-up` for larger work — pressure-tests the design first, then files issues alongside attached design and plan documents. |
 | `bd-summit-push` | Optimizes a set of planned issues — their order, dependencies, and wording — for the best chance of one-shot success through the pipeline. |
+
+### Land the work
+
+| Skill | What it does |
+| --- | --- |
 | `bd-build-down` | Drives open pull requests to merge: reviews each against its gap analysis, resolves what's missing, and lands the ones that are ready. |
 | `bd-super-build-down` | A faster, hands-off `bd-build-down` for many pull requests at once or unattended runs. |
 | `bd-smoke-jumper` | Smoke-tests a pull request's preview deploy, posts a verdict, and files issues for anything that fails. |
+
+### Project knowledge
+
+| Skill | What it does |
+| --- | --- |
+| `bd-kg-create` | Stands up a project's knowledge graph for the first time, then hands off to the skills that build and bind it. |
+| `bd-kg-refresh` | Rebuilds the project's knowledge graph so searches reflect current code and issue state. |
+| `bd-kg-search` | Asks the project's knowledge graph what past issues, pull requests, and decisions already cover a question. |
+
+### Setup and support
+
+| Skill | What it does |
+| --- | --- |
+| `bd-project-setup` | Wires a project to its tools once — creates the ticketing connection, authorizes it, and **records the settings every other skill reads**. |
+| `bd-system-questions` | Asks the orchestrator why a ticket isn't running, what's in flight, and how the system is configured. |
 | `bd-belay-on` | Coordinates handing a task off to another tool and folding the results back in cleanly. |
-
-**Tracker support varies by skill.** `bd-build-down` and `bd-mega-build-up` carry dedicated Jira handling alongside Linear.
-
-`bd-build-up`, `bd-summit-push`, and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
-
-<Note>
-  `bd-project-setup` binds either tracker, and the remaining skills don't depend on one.
-</Note>
 
 ## Next step
 

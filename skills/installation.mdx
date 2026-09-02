@@ -1,12 +1,12 @@
 ---
 title: "Install BuildDown skills"
-description: "Install the BuildDown plugin for Claude Code — a suite of planning-time skills that help you shape issues before AI-Implement turns them into pull requests."
+description: "Add the BuildDown skills to Claude Code or Codex, and choose between the stable and development release channels."
 ---
 
-Both the marketplace and the plugin are named `builddown`. Installing gives you all eight `bd-` skills — see [BuildDown skills](/skills/introduction) for what each one does.
+Both the marketplace and the plugin are named `builddown`. Installing gives you every `bd-` skill — see [BuildDown skills](/skills/introduction) for what each one does.
 
 <Note>
-  You need [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Everything below runs through its plugin manager.
+  The plugin manager needs [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Installing for Codex uses the script instead — skip to [installing without the plugin system](#install-without-the-plugin-system).
 </Note>
 
 ## Installation
@@ -57,9 +57,9 @@ Which version you get depends on how you added the marketplace:
 
 | How you added it | Channel | What you get |
 |---|---|---|
-| `BuildDownAI/skills` (no ref) | **Stable** | the most recent released version — currently `1.0.0` |
+| `BuildDownAI/skills` (no ref) | **Stable** | the most recent released version — see [Releases](/skills/releases) |
 | `BuildDownAI/skills@testing` | **Development** | whatever has landed on the `testing` branch, released or not |
-| `./install.sh --from-git <url>@v1.0.0` | pinned | exactly that tag, without using the plugin system |
+| `./install.sh --from-git <url>@v1.4.0` | pinned | exactly that tag, without using the plugin system |
 | `./install.sh` from a local checkout | unversioned | whatever that checkout happens to contain |
 
 Stable changes only when a new version ships. Development follows `testing` and can change at any time, including in ways that haven't been through a release.
@@ -98,7 +98,6 @@ Append `@testing` to the middle command to go the other way.
   Removing a marketplace uninstalls every plugin installed from it. The third command is not optional — without it you are left with no skills installed.
 </Warning>
 
-
 ## Updating
 
 Refresh the marketplace, update the plugin, then reload:
@@ -128,33 +127,56 @@ cd builddown-skills
 
 By default this **symlinks** the skills into `~/.claude/skills/`, so a later `git pull` updates them immediately.
 
+The script installs for Claude Code unless you say otherwise. It can install for the Codex app and CLI instead, which changes where the skills land and how you reload them.
+
 To pin a specific release instead of tracking a checkout:
 
 ```bash
-./install.sh --from-git https://github.com/BuildDownAI/skills.git@v1.0.0
+./install.sh --from-git https://github.com/BuildDownAI/skills.git@v1.4.0
 ```
 
 ### Script options
 
-The two commands above cover the common paths. Run `./install.sh --help` for the authoritative list; the options that change what you can do are:
+<Tip>
+  Run `./install.sh --help` for the authoritative list.
+</Tip>
 
-- **`--project <path>`** — install into `<path>/.claude/skills` instead of your home directory, scoping the skills to a single repository rather than your user account.
-- **`--uninstall`** — remove the installed skills, backing out either kind of install.
-- **`--copy`** — copy the skills instead of symlinking them, so a later `git pull` in the checkout leaves your installed copy untouched. This is the alternative to the default symlink behavior described above.
-- **`--update`** — fetch and reset the managed clone to a newer ref before installing, which is how you move a pinned `--from-git` install onto a later release.
+#### Where the skills are installed
 
-The rest round out the surface:
+| Option | Effect |
+|---|---|
+| `--claude` | Install for Claude Code. The default. |
+| `--codex` | Install for the Codex app and CLI instead — skills land under `~/.agents/skills/`, and you restart Codex rather than running `/skills`. |
+| `--user` | Install at user scope, into your home directory. The default. |
+| `--project <path>` | Install into `<path>` instead, scoping the skills to a single repository rather than your user account. |
 
-- **`--user`** — install into `~/.claude/skills`, the default when `--project` is not given.
-- **`--force`** — overwrite skills already installed at the target.
-- **`--prune`** — clear installed skills that were renamed or removed upstream, worth adding when upgrading across versions.
-- **`--ref <ref>`** — the branch, tag, or SHA to install when using `--from-git`, as an alternative to appending `@<ref>` to the URL.
-- **`--dry-run`** — report what the script would do without changing anything.
+#### How the files are placed
+
+| Option | Effect |
+|---|---|
+| `--copy` | Copy the skills instead of symlinking them, so a later `git pull` in the checkout leaves your installed copy untouched. |
+| `--force` | Overwrite skills already installed at the target. |
+| `--prune` | Remove installed skills that were renamed or removed upstream — worth adding when upgrading across versions. |
+
+#### Installing from a clone
+
+| Option | Effect |
+|---|---|
+| `--from-git <url>` | Install from a managed clone rather than the current directory. Accepts `<url>@<ref>` to pin a branch, tag, or SHA. |
+| `--ref <ref>` | The branch, tag, or SHA to install with `--from-git`, as an alternative to appending `@<ref>` to the URL. |
+| `--update` | Fetch and reset the managed clone to `<ref>` before installing — how you move a pinned install onto a later release. |
+
+#### Backing out
+
+| Option | Effect |
+|---|---|
+| `--uninstall` | Remove this repository's skills from the target, backing out either kind of install. |
+| `--dry-run` | Report what the script would do without changing anything. |
 
 ## Next step
 
 With the skills installed, set up your project so the `bd-` skills know where your issues and repo live.
 
 <Card title="Project setup" icon="folder-gear" href="/skills/project-setup">
-  Point the BuildDown skills at your tracker and repository.
+  Point the BuildDown skills at your ticketing system and repository.
 </Card>

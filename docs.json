@@ -166,7 +166,7 @@
           {
             "version": "stable",
             "default": true,
-            "tag": "v1.0.0",
+            "tag": "v1.4.0",
             "pages": [
               "skills/introduction",
               "skills/installation",
