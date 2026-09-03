@@ -52,6 +52,7 @@
                   "setup/github-app",
                   "setup/linear-app",
                   "setup/deploy",
+                  "setup/sso",
                   "setup/target-repo"
                 ]
               },
