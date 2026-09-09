@@ -184,6 +184,34 @@ Each variable is described in [Environment variables](/latest/configuration/envi
     Adding an orchestrator is then two edits: register its two callback URIs on the existing client, and give it its own allowlist.
 </Tip>
 
+## Add the orchestrator as a project connector
+
+The `/mcp` endpoint can be added to [claude.ai](https://claude.ai) as a project connector, which needs one secret beyond the sign-in setup above. Without it, the connection fails at **dynamic client registration** with `invalid_redirect_uri`, before any sign-in screen appears.
+
+The registration endpoint accepts loopback callbacks by default, so **Claude Code needs no equivalent configuration**. A browser-based client such as claude.ai calls back over HTTPS, and that origin has to be allowlisted explicitly.
+
+<Steps>
+    <Step title="Allowlist the claude.ai origins">
+        Set `MCP_ALLOWED_REDIRECT_ORIGINS` as a secret with the origins claude.ai registers from:
+
+        ```bash
+        fly secrets set MCP_ALLOWED_REDIRECT_ORIGINS=https://claude.ai,https://claude.com --app <your-app>
+        ```
+
+        The callback claude.ai registers is `https://claude.ai/api/mcp/auth_callback`. Allowlisting the origin is enough — you register no callback path yourself.
+    </Step>
+
+    <Step title="Add the connector in claude.ai">
+        In claude.ai, add the orchestrator's `/mcp` URL as a project connector and complete the sign-in. Registration now succeeds, and the flow continues to your configured Google or Microsoft sign-in.
+    </Step>
+</Steps>
+
+Only the origins you list are accepted. Arbitrary HTTPS origins stay **denied by design**, so the allowlist is exactly the origins above unless you connect from somewhere else.
+
+<Tip>
+    A connector survives access-token expiry on its own. The server issues refresh tokens, so a connected client refreshes silently in the background rather than sending you back through sign-in when its hourly access token expires.
+</Tip>
+
 ## The shared access code
 
 `ADMIN_ACCESS_CODE` still works and is the right choice for local development, but it is **deprecated** for deployed orchestrators — it identifies nobody and cannot be revoked for one person.
