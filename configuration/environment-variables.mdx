@@ -202,11 +202,17 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <AccordionGroup>
-      <Accordion title="Runner callbacks (advanced)">
-        These configure how Fly Machine and local-Docker runners authenticate their callbacks to the orchestrator. Defaults are correct for most setups.
+      <Accordion title="Runner callbacks">
+        All three execution modes report their results back to the orchestrator through these — Fly Machines, local Docker, and GitHub Actions alike.
+
+        The GitHub Actions path receives these values as workflow inputs rather than environment variables, so you set them on the orchestrator whichever mode your mappings use.
+
+        Leaving them unset disables the callback path entirely.
+
+        The most visible symptom is a planning run that never reports completion, leaving the issue stalled mid-planning.
 
         <ParamField body="RUNNER_CALLBACK_BASE_URL" type="string">
-          Public base URL the runner uses to call back to the orchestrator (e.g. `https://your-orchestrator.fly.dev`). Required for Fly Machines and local Docker runner modes.
+          Public base URL the runner uses to call back to the orchestrator, e.g. `https://your-orchestrator.fly.dev`.
         </ParamField>
 
         <ParamField body="RUNNER_TOKEN_SECRET" type="string">
@@ -393,9 +399,11 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
-      Verbosity of runner logs. Set to `stream` to get full streaming output, including verbose git tracing on the push step.
+      Set to `stream` to enable verbose git tracing on the push step — the object counts and per-region timings that help diagnose a slow push.
 
-      Any other value, including leaving it unset, gives the condensed summary.
+      This is the only thing the value changes; there is no full-streaming verbosity mode.
+
+      Any other value, including leaving it unset, runs the push step without the extra tracing.
     </ParamField>
   </Tab>
 </Tabs>
