@@ -519,9 +519,11 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
-      Set to `stream` to enable verbose git tracing on the push step — the object counts and per-region timings that help diagnose a slow push.
+      Set to `stream` to enable verbose git tracing on the push step.
 
-      This is the only thing the value changes; there is no full-streaming verbosity mode.
+      This is the only thing the value changes.
+
+      There is no full-streaming verbosity mode.
 
       Any other value, including leaving it unset, runs the push step without the extra tracing.
     </ParamField>
