@@ -147,6 +147,7 @@
                 "group": "Reference",
                 "pages": [
                   "latest/reference/admin-ui",
+                  "latest/reference/mcp-tools",
                   "latest/reference/labels",
                   "latest/reference/gap-analysis",
                   "latest/reference/feature-branch-grouping",
