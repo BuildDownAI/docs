@@ -125,7 +125,8 @@ Every planning and landing skill understands feature-branch grouping. When a par
 | Skill | What it does |
 | --- | --- |
 | `bd-kg-create` | Stands up a project's knowledge graph for the first time, then hands off to the skills that build and bind it. |
-| `bd-kg-refresh` | Rebuilds the project's knowledge graph so searches reflect current code and issue state. |
+| `bd-kg-refresh` | Rebuilds the project's knowledge graph so searches reflect current code and issue state. Admin-only: needs an allowlist entry with role admin on the orchestrator; see [MCP tools](/latest/reference/mcp-tools). |
+| `bd-mega-kg-refresh` | A local, interactive `bd-kg-refresh` — interrogates the served graph, tests ingest changes with you, opens a PR on the knowledge-graph repo, then hands off to the rail. Admin-only: needs an allowlist entry with role admin on the orchestrator; see [MCP tools](/latest/reference/mcp-tools). |
 | `bd-kg-search` | Asks the project's knowledge graph what past issues, pull requests, and decisions already cover a question. |
 
 ### Setup and support

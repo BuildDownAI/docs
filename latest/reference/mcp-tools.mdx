@@ -1,0 +1,96 @@
+---
+title: "MCP tools reference for AI-Implement"
+description: "The orchestrator's /mcp endpoint — how a session connects, the read tools open to every allowlisted user, the admin-role write tools, what a refused write looks like, and the admin-only skills."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+`/mcp` is the orchestrator's Model Context Protocol endpoint. It lets a Claude session — and every BuildDown skill that runs in one — ask the orchestrator about itself and, for a declared few actions, act on it.
+
+The tools come from two places, merged into one list:
+
+- **Orchestrator-native tools**, served by the orchestrator process directly. They need no knowledge-graph sidecar, so they answer even on an image built without one.
+- **Knowledge-graph tools** (`kg_*`), forwarded to the bound knowledge graph. Without a bound graph, a `kg_*` call returns an error naming the fix.
+
+## How a session connects
+
+A session authenticates with a bearer token from the MCP sign-in flow. An admin-UI session or the shared access code is never accepted at `/mcp`.
+
+The token resolves to an identity — email, provider, and role. Every request re-checks that identity against the same allowlist the admin UI uses, so removing someone ends their access on their next call rather than when the token expires.
+
+<Info>
+  Who may sign in, and whether their allowlist entry carries the `user` or `admin` role, is set on the allowlist. See [Single sign-on](/latest/setup/sso#how-access-is-decided).
+</Info>
+
+## Reads are open; writes are declared
+
+Every allowlisted identity — `user` or `admin` — can see and call every read tool, including ones added later. There is no per-tool sign-up for reads.
+
+A write exists only if it is on a declared list, and each entry names the role it requires. That list is the entire write surface: every other mutation — allowlist edits, secrets, deploys, page grants — stays on the admin API and its UI.
+
+A caller's role satisfies a write when it matches the entry's role or is `admin`.
+
+## Read tools
+
+Open to every allowlisted user. Served by the orchestrator:
+
+| Tool | Returns |
+|---|---|
+| `get_session_identity` | The caller's email, provider, and role (`user`, `admin`, or none for an identity with no allowlist entry), as the allowlist resolves them now. Admin-only skills call this first. |
+| `get_tenant_health` | Runner mode, in-flight job count, pending gap-fill count, project count, the knowledge-graph degraded flag, and the KG-refresh credential preflight rows. |
+| `get_kg_status` | Knowledge-graph refresh state: stage, served stamp, materialize path, and the last refresh's outcome and gate. |
+| `get_runner_mode` | The global runner mode and where it came from. |
+| `list_projects` | Every project mapping with its settings. Runner environment values are never included. |
+| `list_in_flight_jobs` | Dispatching or running jobs, each with elapsed time since dispatch. |
+| `get_issue_dispatch_status` | In-flight and dedup state plus recent dispatches for one issue. |
+| `get_issue_report_card` | Per-pass telemetry, totals, and approval and merge state for one issue. |
+| `get_fleet_report` | Per-repo outcomes over a look-back window. |
+| `get_deploy_posture` | Autodeploy state, deploy hold, running-versus-head commit, and runner-channel state. |
+
+The bound knowledge graph adds its own read tools, open to every allowlisted user in the same way:
+
+- `kg_hybrid_search`
+- `kg_search`
+- `kg_semantic_search`
+- `kg_neighbors`
+- `kg_path`
+- `kg_provenance`
+
+A given graph may expose more — the set is whatever the bound provider lists.
+
+## Write tools
+
+Each requires the role shown. Served by the orchestrator:
+
+| Tool | Role | Does |
+|---|---|---|
+| `trigger_kg_refresh` | admin | Runs the preflight, then dispatches the knowledge-graph refresh. Answers accepted, already-running, or a named preflight refusal. |
+| `set_runner_mode` | admin | Forces or restores the global execution path. |
+| `pause_project` | admin | Pauses or resumes one project mapping. |
+| `add_project` | admin | Creates or updates a project mapping — the same upsert as the admin UI's New project stepper. |
+| `trigger_workflow_sync` | admin | Re-syncs the workflow templates for one project. |
+| `clear_dispatch_dedup` | admin | Clears an issue's dedup entry so the orchestrator can re-dispatch it. |
+
+## When a write is refused
+
+A caller whose role does not satisfy a write gets a tool result marked as an error, reading:
+
+```
+forbidden: <tool> requires the admin role
+```
+
+The refusal is decided on the server, so it holds even though `tools/list` already hides the tools a caller's role cannot use. Every write call, allowed or refused, is logged with the actor's email, the tool, the role, and the result.
+
+To gain the access, ask an orchestrator admin to change your [allowlist](/latest/setup/sso#how-access-is-decided) entry to the `admin` role.
+
+## Admin-only skills
+
+Two BuildDown skills perform a declared write, so both are admin-only:
+
+- `bd-kg-refresh` — rebuilds the project's knowledge graph through the refresh rail.
+- `bd-mega-kg-refresh` — the local, interactive variant that iterates on the ingest before handing off to the rail.
+
+Each calls `get_session_identity` first and stops before doing anything when the role is not `admin`. What an operator without the role sees is the skill's own stop — it needs an admin account — and, if a write is attempted directly, the orchestrator's `forbidden: <tool> requires the admin role`.
+
+The fix is the same as for any refused write: an admin changes the allowlist entry to the `admin` role.
