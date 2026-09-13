@@ -123,13 +123,14 @@ This page covers the most common issues you may encounter when running AI-Implem
     A dedup entry is written when an issue is dispatched and **stays until something clears it**:
     - The issue reaching a terminal state (completed or cancelled), which the orchestrator notices on its next poll — this is what clears the entry once its pull request merges and the issue closes
     - The issue no longer being found in the tracker — deleted, or no longer returned by any provider
-    - A failed or timed-out run clearing its own entry
-    - A session being destroyed, whether from the sessions panel or by the reaper sweep
+    - A failed or timed-out run clearing its own entry, but only while the issue is still within its retry budget. Once the budget is exhausted, the entry is kept and the issue is parked for a human instead of retried.
+    - A session being destroyed from the sessions panel
+    - The reaper tearing down a session because it ran past the maximum session age, or because its issue had already reached a terminal state
     - An operator clearing it by hand
 
     Nothing ages out on a timer, so an entry can persist indefinitely. If the same issue keeps being dispatched, check the dedup entries:
     - Open the admin UI and go to the Deduplication panel, or call `GET /api/dedup`.
-    - If the issue is not in the dedup window, it means the dedup entry was cleared (manually or by a session-destroy action) and the orchestrator is treating the issue as new.
+    - If the issue is not in the dedup window, one of the causes above cleared its entry and the orchestrator is treating the issue as new.
     - If the issue should not be redispatched, clear its trigger — remove the `AI-Implement` label on Linear, or move `AI-Implement Status` away from `Ready` on Jira. Adding an issue back into the dedup window by hand is not supported through the UI, so clearing the trigger is the simpler path.
   </Accordion>
 
