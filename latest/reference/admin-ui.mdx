@@ -315,16 +315,18 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 
 ### Audit log
 
-Shows the dispatch-deduplication ledger for the last 24 hours.
+Shows the dispatch-deduplication ledger — every issue currently in the dedup window.
 
 Each row includes:
 - Issue identifier and title
 - When the issue was dispatched
 - A delete button to remove it from the dedup window
 
-Issues are deduplicated for 24 hours after dispatch to prevent the orchestrator from picking up the same issue repeatedly. The dedup panel shows every issue currently in the dedup window.
+An issue enters the dedup window when it's dispatched, which stops the orchestrator from picking up the same issue repeatedly.
 
-You can manually remove an issue from the dedup window if you want the orchestrator to re-dispatch it before the 24-hour window expires.
+The entry stays until something clears it, rather than expiring on a timer.
+
+You can manually remove an issue from the dedup window to make the orchestrator re-dispatch it on the next poll.
 
 <Note>
   The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup window.
@@ -430,7 +432,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the associated issue |
 | `GET` | `/api/reaper/summary` | 24-hour reaper destruction summary, broken down by rule |
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
-| `GET` | `/api/dedup` | List issues in the 24-hour dedup window |
+| `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
 
 #### Runner mode and settings

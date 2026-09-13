@@ -125,9 +125,11 @@ This page covers the most common issues you may encounter when running AI-Implem
 
   <Accordion title="The same issue is being picked up repeatedly">
     A dedup entry is written when an issue is dispatched and **stays until something clears it**:
+    - The issue reaching a terminal state (completed or cancelled), which the orchestrator notices on its next poll — this is what clears the entry once its pull request merges and the issue closes
+    - The issue no longer being found in the tracker — deleted, or no longer returned by any provider
     - A failed or timed-out run clearing its own entry
-    - A session being destroyed
-    - An operator clearing it
+    - A session being destroyed, whether from the sessions panel or by the reaper sweep
+    - An operator clearing it by hand
 
     Nothing ages out on a timer, so an entry can persist indefinitely. If the same issue keeps being dispatched, check the dedup entries:
     - Open the admin UI and go to the Deduplication panel, or call `GET /api/dedup`.
