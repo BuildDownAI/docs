@@ -47,7 +47,7 @@ Working locally is the other case: `mint dev`, `mint validate`, and `mint broken
 
 ## Search locates, reading verifies
 
-**`Grep` and `Glob` locate; `Read` verifies.** A match from either tool, or from a shell `grep`, is a candidate, never a confirmation.
+**Search locates; `Read` verifies.** A match from a search — `grep`, `rg`, `find`, or a dedicated search tool where the run has one — is a candidate, never a confirmation.
 
 This holds for everything you check: a source file, an existing docs page, a link target, an anchor.
 

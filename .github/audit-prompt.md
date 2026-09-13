@@ -59,9 +59,14 @@ Follow this sequence:
 
 2. **Survey in both directions.** The two find different things and you need both.
    - **Source-first** — for each subsystem *Repo context* points you to, compare what the source exposes against what the docs document. This finds features that are undocumented.
-   - **Docs-first** — `Grep` the in-scope docs for the claim shapes listed under "Sweep for claims that age" in `audit-reference.md`, then verify each hit against current source. This finds documentation that is *wrong* rather than missing. A source-first pass structurally cannot surface it: a claim that is documented incorrectly still answers "yes, it's documented." On an actively-developed codebase this is the larger share of drift.
-   - **Batch independent tool calls.** When you have multiple `Read`, `Grep`, or `Glob` operations for one subsystem (typical — it often means reading 2–4 source files AND the corresponding docs page in parallel), issue them as **parallel tool calls in a single message** rather than sequentially. This significantly reduces turn count. Only sequence when one call's input genuinely depends on another's output.
-   - **Use the `Grep`, `Glob`, and `Read` tools rather than their shell equivalents.** A Bash command containing `|`, `()`, a `cd`, or a `for` loop cannot be statically bounded by the permission layer and is declined, costing a turn each time. Search with `Grep`, not `grep`/`rg`; to sample many files, issue parallel `Read` calls rather than looping `sed`/`cat` over a file list.
+   - **Docs-first** — `grep` the in-scope docs for the claim shapes listed under "Sweep for claims that age" in `audit-reference.md`, then verify each hit against current source. This finds documentation that is *wrong* rather than missing. A source-first pass structurally cannot surface it: a claim that is documented incorrectly still answers "yes, it's documented." On an actively-developed codebase this is the larger share of drift.
+   - **Batch independent tool calls.** When you have multiple reads or searches for one subsystem (typical — it often means reading 2–4 source files AND the corresponding docs page in parallel), issue them as **parallel tool calls in a single message** rather than sequentially. This significantly reduces turn count. Only sequence when one call's input genuinely depends on another's output.
+   - **Search with plain shell commands, and read with `Read`.** This run has `Read` and `Bash` but no dedicated search tool. `grep`, `rg`, `find`, `ls`, and `git` in the docs repo all run, whether alone, piped, or chained with `&&`. The permission layer declines these, costing a turn each time:
+     - variable expansion such as `$f` or `$?`, which rules out `for` loops
+     - command substitution `$(…)` and subshells `( … )`
+     - `git` aimed at another directory, by `git -C` or by `cd` first — `.audit-refs` already names each checkout's ref
+
+     Never `cd`: the working directory persists into later commands and breaks their relative paths. To look at many files, issue parallel `Read` calls.
 
 3. **For each finding**, categorize as HIGH / MEDIUM / LOW per the rubric. Verify every claim with a `file:line` citation — never assert from inference.
 
