@@ -2,7 +2,7 @@
 
 The Mintlify documentation site for **BuildDown**, covering two products: **AI-Implement** (the orchestration service that turns tracker issues into pull requests) and the **BuildDown skills** plugin.
 
-**This file is the shared single source of truth for documentation work** — what the repo is, which version to edit, how the docs should read, and what is out of bounds. Two lanes write MDX to these pages, and both read this file:
+**This file is the shared single source of truth for documentation work** — what the repo is, which version to edit, how to verify a claim against source, how the docs should read, and what is out of bounds. Two lanes write MDX to these pages, and both read this file:
 
 | Lane | Trigger | Lane file |
 |---|---|---|
@@ -24,7 +24,12 @@ Versions are nested inside products, so each product carries its own two version
 - **stable** — the root-level pages. AI-Implement's are `introduction.mdx`, `quickstart.mdx`, `how-it-works.mdx`, `releases.mdx`, and the `setup/`, `configuration/`, `providers/`, `customize/`, and `reference/` directories; the Skills product's are `skills/`. This is each product's default version and what most readers see.
 - **latest** — the same trees mirrored under `latest/`.
 
-Both products track the same branch split in their source repos: **`main` → stable**, **`testing` → latest**. This holds for AI-Implement and for skills alike.
+Each version describes a different state of both source repos:
+
+- **stable** describes each product's current release — its latest release tag, not the tip of `main`, which can carry commits no release has shipped.
+- **latest** describes the source repos' `testing` branches.
+
+A version pill in the navigation shows what that version's pages have been brought up to, and it can trail the release while corrections are pending. Never read the pill as the version to write for.
 
 **The two products' version numbers are not comparable.** AI-Implement's track release cadence; the skills plugin's track delivery, since a plugin change reaches nobody without a version bump. Never write prose implying one product is ahead of, behind, or in step with the other.
 
@@ -39,6 +44,61 @@ Do not edit: `.github/` (the audit lane is a separate system), `WORKFLOW.md`, `P
 Neither automated lane has `mint` installed, and neither needs it — verify a link or an anchor by reading the target page and confirming the heading exists, not by running a command. Don't install it.
 
 Working locally is the other case: `mint dev`, `mint validate`, and `mint broken-links` are available there and are the right check to run before a change ships.
+
+## Search locates, reading verifies
+
+**Search locates; `Read` verifies.** A match from a search — `grep`, `rg`, `find`, or a dedicated search tool where the run has one — is a candidate, never a confirmation.
+
+This holds for everything you check: a source file, an existing docs page, a link target, an anchor.
+
+Before stating anything about what a search found, `Read` the whole enclosing function, section, or block — or the whole file, when it is short.
+
+Three search results pass for verification and are not:
+
+- a match count standing in for the lines it counted
+- no match, from a search narrower than the claim — a file `Read` only in part, a truncated result, or a filter that excluded more than intended
+- a match on wording you chose, which shows your phrasing appears, not that the claim is true
+
+## Verifying against source
+
+Both lanes run with the source repositories checked out beside the docs. Each repository has two fixed paths, one for each docs version:
+
+| Source | Confirms stable (current release) | Confirms latest (`testing`) |
+|---|---|---|
+| AI-Implement | `./ai-implement/` | `./ai-implement-testing/` |
+| BuildDown skills | `./skills-source/` | `./skills-source-testing/` |
+
+All four are read-only reference material. Never edit them.
+
+**Confirm a claim only against the checkout for the version you are writing.** A stable claim confirmed against a `-testing` checkout can describe behavior no release has shipped, and a latest claim confirmed against a release checkout can miss what `testing` has changed.
+
+**A run does not always carry every checkout.** When the one for your version is absent, you cannot confirm that version's claims — say so rather than confirm against the other.
+
+**Each checkout carries its own `CLAUDE.md`, and it enters your context the first time you read a file there.** Those files describe their own codebases, which helps in finding where a behavior lives.
+
+They also bind their own repos' issue-tracker teams, labels, and handoffs. None of that applies to documentation work in this repo — this file governs.
+
+### How to check a claim
+
+**Diff environment-variable docs against their canonical sources, in both directions.** Two machine-readable sources are maintained alongside the code and usually run ahead of the docs: `.env.example` for orchestrator variables, and the `# Optional repository or organization variables:` header block at the top of each synced workflow for target-repo variables. Compare the documented set against both:
+
+- In a source but not the page → an undocumented variable
+- On the page but not in a source → a removed or renamed variable
+- In both, but the source comment says more than the page → the page is stale on semantics
+
+The third direction is the most valuable and the easiest to skip. Asking whether a variable appears in source finds a stale reference and confirms it, while a set difference cannot be satisfied by one confirming hit.
+
+**A key being accepted is not the same as a key being used.** Before documenting a configuration value, check separately that a parser accepts it and that something outside the parser reads it. A key can sit on an interface and in an accepted-key list while nothing consumes it, round-tripping silently. A documented default that appears only in test fixtures is strong evidence the consumer is gone.
+
+**Read the guard clauses, not just the happy path.** An early return above the logic you are reading may fire routinely rather than rarely. Ask which path is typical, and whether an external mechanism races the one you are describing.
+
+**In troubleshooting content, the cause may be inferred but the remediation must be verified.** A remediation names something the reader operates, so check:
+
+- the exact label the reader sees, not the internal field name
+- which surface exposes it — the creation flow, the edit dialog, a config file, or an environment variable
+- whether it is configurable at all
+
+The surfaces diverge, and readers usually reach the docs during the creation flow, so check that flow first.
 
 ## How the docs should read
 
@@ -101,7 +161,7 @@ On a `latest/…` page, every cross-link to another docs page must carry the `/l
 
 **Internal-only changes.** A change with no operator-visible behavior — an internal refactor, a database column, an auth-plumbing shift, a telemetry foundation — is not a per-page edit on either version. Release notes are written when a version ships, from the whole set of changes in it.
 
-**Claims you haven't verified.** Every claim must be true of the product. Confirm the behavior at its source before writing it down — don't infer a feature from a configuration key, a name, or what an adjacent page implies.
+**Claims you haven't verified.** Every claim must be true of the product. Confirm the behavior at its source before writing it down, as *Verifying against source* describes — don't infer a feature from a configuration key, a name, or what an adjacent page implies.
 
 This bites hardest on numbers. When a correction appears to contradict a figure already on the page, the usual cause is two mechanisms rather than one error — a retention ceiling and a page size, a summary window and a lookup guard. Establish what each figure measures before replacing either.
 
