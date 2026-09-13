@@ -102,6 +102,8 @@ jobs:
             DOCS_SCOPE: ${{ github.event.inputs.scope || 'stable' }}
             AI_IMPLEMENT_REF: ${{ needs.resolve-refs.outputs.ai_implement_ref }}
             SKILLS_REF: ${{ needs.resolve-refs.outputs.skills_ref }}
+            AI_IMPLEMENT_DIR: ${{ needs.resolve-refs.outputs.ai_implement_ref == 'testing' && 'ai-implement-testing' || 'ai-implement' }}
+            SKILLS_DIR: ${{ needs.resolve-refs.outputs.skills_ref == 'testing' && 'skills-source-testing' || 'skills-source' }}
             EXPECTED_RUNS: ${{ github.event.inputs.runs || '3' }}
             SYNTHESIS_MAX_TURNS: ${{ github.event.inputs.synthesis_max_turns != '' && github.event.inputs.synthesis_max_turns || '200' }}
 
@@ -126,7 +128,7 @@ jobs:
               with:
                 repository: BuildDownAI/AI-Implement
                 ref: ${{ env.AI_IMPLEMENT_REF }}
-                path: ai-implement
+                path: ${{ env.AI_IMPLEMENT_DIR }}
                 token: ${{ steps.app-token.outputs.token }}
 
             - name: Checkout skills at its audit ref
@@ -134,7 +136,7 @@ jobs:
               with:
                 repository: BuildDownAI/skills
                 ref: ${{ env.SKILLS_REF }}
-                path: skills-source
+                path: ${{ env.SKILLS_DIR }}
                 token: ${{ steps.app-token.outputs.token }}
 
             - name: Download all audit-run artifacts
@@ -161,8 +163,8 @@ jobs:
               run: |
                 echo "$DOCS_SCOPE" > .audit-scope
                 {
-                  echo "ai-implement=$AI_IMPLEMENT_REF"
-                  echo "skills=$SKILLS_REF"
+                  echo "$AI_IMPLEMENT_DIR=$AI_IMPLEMENT_REF"
+                  echo "$SKILLS_DIR=$SKILLS_REF"
                 } > .audit-refs
 
             - name: Install Claude Code CLI
@@ -259,6 +261,8 @@ jobs:
                     :!audit-runs/**
                     :!ai-implement/**
                     :!skills-source/**
+                    :!ai-implement-testing/**
+                    :!skills-source-testing/**
 
             # without this a failed synthesis leaves nothing to diagnose — the stream is the only
             # record of where the turns went, and the runner is torn down with it

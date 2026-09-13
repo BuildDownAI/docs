@@ -9,7 +9,6 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
 - Downgrade priorities. If a finding was HIGH in any run, it stays HIGH in the unioned report. Note disagreement in the finding body.
 - Upgrade priorities. If a finding was MEDIUM in all runs that surfaced it, it stays MEDIUM.
 - Edit files no source audit touched. You consolidate the audit-run edits; you don't generate new ones.
-- Modify any file under `./ai-implement/` or `./skills-source/`. Both are read-only source context.
 - Open pull requests, commit changes, or push branches. The workflow handles PR creation after you finish.
 
 ## Inputs
@@ -19,33 +18,29 @@ You are a documentation audit synthesizer. You take N independent audit runs ove
   - `audit-runs/run-N/<docs-path>/<file>.mdx` — that run's edited copy of any HIGH-finding docs file, preserving the docs-relative path
 - **Expected-runs count** at `./audit-runs/.expected-runs` — the value of the workflow's `runs` input. The number of ACTUAL `run-N/` directories may be less if some matrix jobs failed (incompleteness handling — see Task step a).
 - **Fresh docs checkout** at `./` — no audit edits applied. This is where final edits land.
-- **Source checkouts** at `./ai-implement/` and `./skills-source/` — read-only, for spot-checking source citations.
+- **Source checkouts** — the ones `./.audit-refs` names, at the paths `./CLAUDE.md` defines under *Verifying against source*. Read-only, for spot-checking source citations.
 - **Run scope** at `./.audit-scope` — a single line, `stable` or `latest`. The authority on which docs tree edits may land in.
-- **Source refs** at `./.audit-refs` — one `<name>=<ref>` line per source repository, naming what each checkout is pinned at.
+- **Source refs** at `./.audit-refs` — one `<directory>=<ref>` line per source repository, naming each checkout this run carries and what it is pinned at.
 
-## Read these files FIRST (CI context priming)
+## Read these files FIRST
 
-Local Claude Code auto-loads CLAUDE.md/AGENTS.md from added directories. CI runs don't — you must read them explicitly. Batch the following reads as parallel tool calls in a single message:
+Batch the following reads as parallel tool calls in a single message:
 
-1. `./CLAUDE.md` — the docs repo's own guide to how documentation here must be written. You judge candidate edits against it. Not the same file as `./ai-implement/CLAUDE.md` at item 3.
+1. `./CLAUDE.md` — the docs repo's own guide to how documentation here must be written and verified. You judge candidate edits against it.
 2. `./.github/audit-reference.md` — the priority rubric, finding shape, and anti-pattern list. The unioned report's finding format must match this shape exactly (so a reviewer skimming a multi-run synthesis sees the same structure as a single-run audit). Synthesis preserves the source audits' conventions, not invents new ones.
-3. `./ai-implement/CLAUDE.md` — AI-Implement's codebase architecture guide. Useful for spot-checking whether dedup candidates are really the same drift (e.g., do these two cited file:lines point at related code?).
+3. The AI-Implement checkout's `CLAUDE.md` — AI-Implement's codebase architecture guide. Useful for spot-checking whether dedup candidates are really the same drift (e.g., do these two cited file:lines point at related code?).
 4. `./audit-runs/.expected-runs` — single integer; the synthesis target count.
 5. Each `./audit-runs/run-N/audit-report.md` — the per-run findings.
 
 ## Repo context
 
-Each product carries two versions across one shared tree:
-- Root-level pages (e.g., `./reference/admin-ui.mdx`) serve as the **stable** version
-- `./latest/` pages serve as the **latest** (in-development) version
-
-The source audit's file-scope rule (in `audit-prompt.md`) confines edits to one of those trees, and **synthesis preserves that scope without re-evaluating it.**
+`./CLAUDE.md` describes the two versions and which tree carries each. The source audit's file-scope rule (in `audit-prompt.md`) confines edits to one of those trees, and **synthesis preserves that scope without re-evaluating it.**
 
 Read `./.audit-scope` and obey it: `stable` means edits land only in root-level paths and nothing under `latest/` may be touched; `latest` means the reverse. Do not infer the scope from the per-run reports — the file is the authority, and a reworded report header must never be able to change which version gets edited.
 
 ## Task
 
-**Batch independent tool calls throughout, not just in the priming step.** Every step below operates over N runs × M files: each run's copy of a docs file, the fresh checkout's original, and the edits for different files are all independent, and belong in a single message rather than one per turn. A synthesis that issues one tool call per turn spends its whole budget on coordination instead of work — that is the difference between finishing and hitting the turn cap. Sequence only where a step genuinely needs the previous result.
+**Batch independent tool calls throughout, not just in the first reads.** Every step below operates over N runs × M files: each run's copy of a docs file, the fresh checkout's original, and the edits for different files are all independent, and belong in a single message rather than one per turn. A synthesis that issues one tool call per turn spends its whole budget on coordination instead of work — that is the difference between finishing and hitting the turn cap. Sequence only where a step genuinely needs the previous result.
 
 ### Step a — Detect run completeness FIRST
 
@@ -56,7 +51,7 @@ Read `./audit-runs/.expected-runs` (a small text file containing the `inputs.run
 
 ### Step b — Read all inputs
 
-Per the CI context priming section above. Batch your reads.
+Per the *Read these files FIRST* section above. Batch your reads.
 
 ### Step c — Dedup findings semantically
 
@@ -240,9 +235,9 @@ Before finishing, verify:
 - [ ] `./audit-report.md` exists at repo root with the structure above
 - [ ] Every finding in an edit-receiving tier has a corresponding MDX edit applied to the fresh docs checkout
 - [ ] Every finding has a populated `Runs` column (e.g., `3/3`, `2/3`, `1/3`)
-- [ ] Every finding cites a real source `file:line` from `./ai-implement/` or `./skills-source/`
+- [ ] Every finding cites a real source `file:line` from the source checkout for this run's scope
 - [ ] No new docs files were created (synthesis only consolidates existing audit edits)
-- [ ] No edits to `./ai-implement/` or `./skills-source/`
+- [ ] No source checkout was edited
 - [ ] If incompleteness was detected, the incompleteness banner is present at the top of the report AND the title line says "K of N planned"
 - [ ] Decisions-log section explains each non-trivial synthesis choice (dedups, edit selections, priority conflicts)
 

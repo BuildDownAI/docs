@@ -38,6 +38,10 @@ on:
 jobs:
     audit:
         runs-on: ubuntu-latest
+        # a testing checkout lands at its own path, so a path always names the docs version it confirms
+        env:
+            AI_IMPLEMENT_DIR: ${{ inputs.ai_implement_ref == 'testing' && 'ai-implement-testing' || 'ai-implement' }}
+            SKILLS_DIR: ${{ inputs.skills_ref == 'testing' && 'skills-source-testing' || 'skills-source' }}
 
         steps:
             - name: Mint GitHub App installation token
@@ -60,7 +64,7 @@ jobs:
               with:
                 repository: BuildDownAI/AI-Implement
                 ref: ${{ inputs.ai_implement_ref }}
-                path: ai-implement
+                path: ${{ env.AI_IMPLEMENT_DIR }}
                 token: ${{ steps.app-token.outputs.token }}
 
             - name: Checkout skills at its audit ref
@@ -68,7 +72,7 @@ jobs:
               with:
                 repository: BuildDownAI/skills
                 ref: ${{ inputs.skills_ref }}
-                path: skills-source
+                path: ${{ env.SKILLS_DIR }}
                 token: ${{ steps.app-token.outputs.token }}
 
             - name: Install Claude Code CLI
@@ -87,8 +91,8 @@ jobs:
               run: |
                 echo "$DOCS_SCOPE" > .audit-scope
                 {
-                  echo "ai-implement=$AI_IMPLEMENT_REF"
-                  echo "skills=$SKILLS_REF"
+                  echo "$AI_IMPLEMENT_DIR=$AI_IMPLEMENT_REF"
+                  echo "$SKILLS_DIR=$SKILLS_REF"
                 } > .audit-refs
 
             - name: Run audit
@@ -152,7 +156,7 @@ jobs:
                 # MDX edits are in tracked files; capture only what the audit actually changed
                 git diff --name-only HEAD -- '*.mdx' | while read -r f; do
                     case "$f" in
-                        ai-implement/*|skills-source/*) continue ;;
+                        ai-implement/*|ai-implement-testing/*|skills-source/*|skills-source-testing/*) continue ;;
                     esac
                     [ -f "$f" ] && cp --parents "$f" artifact-staging/
                 done

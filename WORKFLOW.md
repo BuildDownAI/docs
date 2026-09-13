@@ -2,18 +2,24 @@
 # Claude model used for implementation. Passed through verbatim to
 # `claude-code --model`, so any ID your configured provider accepts is fine.
 # Examples:
-#   Anthropic API / OAuth: claude-sonnet-4-6, claude-opus-4-8, claude-haiku-4-5-20251001
+#   Anthropic API / OAuth: claude-sonnet-5, claude-opus-4-8, claude-haiku-4-5-20251001
 #   AWS Bedrock:           anthropic.claude-sonnet-4-6-20250805-v1:0
 #                          or an inference-profile ARN (arn:aws:bedrock:...)
 # The default below works for the Anthropic provider. If this repo's mapping
 # is switched to provider=bedrock in the orchestrator admin UI, replace this
-# with a Bedrock model ID — nothing validates the value, so an Anthropic ID
-# passes straight through and the run fails at invocation. Bedrock IDs are
-# account and region specific, so there is no safe default to fall back on.
+# with a Bedrock model ID: nothing validates the pairing, so an Anthropic-style
+# ID reaches Bedrock verbatim and fails at invocation time rather than early.
+# Bedrock IDs are account and region specific, so there is no safe default to
+# fall back on.
 model: claude-opus-4-8
+
+# To run a cheaper model for the automated review pass than for implementation,
+# set models.implement / models.review in .ai-implement/config.yml. Those take
+# precedence over the model: above, and are the only supported way to split the
+# two — there is no per-phase model key in this front matter.
 ---
 
-**Read `CLAUDE.md` first, and follow it.** It is the shared source of truth for what this repo is, which version to edit, and how the documentation should read. Those rules are not repeated here — this file covers only what is specific to implementing a tracker issue.
+**Read `CLAUDE.md` first, and follow it.** It is the shared source of truth for documentation work in this repo. Its rules are not repeated here — this file covers only what is specific to implementing a tracker issue.
 
 ---
 
@@ -27,9 +33,9 @@ After making the changes, write a brief implementation summary to `ai-output/com
 
 ## Gap-fill instructions _(only when PR_NUMBER is set)_
 
-You are adding missing work to existing PR #${PR_NUMBER}. **Do NOT create a new branch or PR.** Commit your changes to the current branch and push. Review the gap analysis comment on the PR to understand what is still missing.
+You are adding missing work to existing PR #${PR_NUMBER}. **Do NOT create a new branch or PR. Do NOT run `git push`.** Review the gap analysis comment on the PR to understand what is still missing. Local commits — including a merge commit when resolving conflicts with the base branch — are fine; the pipeline pushes when the agent is done. Leave any remaining file changes unstaged and uncommitted — the AI-Implement pipeline will commit and push them to the existing PR branch after review passes.
 
-After your changes are pushed, write a short note about what you addressed to `ai-output/comments/01-gap-fill-summary.md`. The orchestrator reads this file and posts it back to the ticketing issue.
+After making the changes, write a short note about what you addressed to `ai-output/comments/01-gap-fill-summary.md`. The orchestrator reads this file and posts it back to the ticketing issue.
 
 External review tools should communicate findings through native GitHub review surfaces: submit `CHANGES_REQUESTED` for blocking feedback, use inline PR review comments for file-specific issues, or post a structured PR review summary comment. Do not ask Copilot or another bot to fix the PR in comments; AI-Implement ingests GitHub review events and dispatches its own gap-fill run.
 
@@ -42,15 +48,13 @@ External review tools should communicate findings through native GitHub review s
 **Description:**
 ${ISSUE_DESCRIPTION}
 
-${PLANNING_CONTEXT}
-
 ---
 
 ## Choosing which version to edit
 
-`CLAUDE.md` describes the two versions and the source branch each one tracks. Pick between them in this order:
+`CLAUDE.md` describes the two versions and what each one describes. Pick between them in this order:
 
-1. **The issue says so** — it names a version, links or names a page path (a `latest/…` path means latest, a root path like `reference/…` means stable), or cites a source branch.
+1. **The issue says so** — it names a version, or links or names a page path (a `latest/…` path means latest, a root path like `reference/…` means stable).
 2. **The content decides** — find the affected page or section in the repo. Present only under `latest/` → edit latest. Present only at root → edit stable. Present in **both** trees, and the change is true of both (a correction or a clarification) → edit **both**, so the versions don't drift apart.
 3. **Last resort** — if it is still ambiguous, edit **stable**, since that is what most readers see, and state the assumption in `ai-output/comments/01-summary.md` so the reviewer can redirect it.
 
@@ -72,6 +76,7 @@ Before finishing, verify:
 
 - [ ] Edits limited to what the issue asked — no unrelated pages, no rewording of text that is already correct
 - [ ] Correct version target, per the rule above
+- [ ] Claims about the product were confirmed against the source checkout for the version edited, per `CLAUDE.md`
 - [ ] The shared rules in `CLAUDE.md` were followed
 - [ ] Any new page has `title` and `description` frontmatter and a `docs.json` navigation entry
 - [ ] Summary written to `ai-output/comments/01-summary.md`
