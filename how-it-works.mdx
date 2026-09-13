@@ -55,7 +55,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     Two deduplication checks prevent duplicate dispatches:
 
     - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
-    - **Recent** — even after a job finishes, the same issue won't be re-dispatched within a 24-hour window of its previous dispatch.
+    - **Recent** — even after a job finishes, the same issue won't be re-dispatched while a dedup entry from its previous dispatch is still on record. That entry has no timer; it stays until something clears it.
 
     Either condition is enough to skip dispatch.
   </Step>
