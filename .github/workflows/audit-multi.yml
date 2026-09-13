@@ -67,6 +67,8 @@ jobs:
                 echo "Generated matrix for N=$N: $MATRIX_JSON"
     
     resolve-refs:
+        permissions:
+            contents: read
         uses: ./.github/workflows/_resolve-refs.yml
         with:
             scope: ${{ github.event.inputs.scope || 'stable' }}
