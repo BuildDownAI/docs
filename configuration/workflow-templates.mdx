@@ -62,14 +62,6 @@ The YAML front matter block at the top of `WORKFLOW.md` (between the `---` delim
   Model ID passed verbatim to `claude-code --model` for implementation runs. Required when `provider=bedrock`; optional for `anthropic` (default: `claude-sonnet-4-6`). For Bedrock, use a model ID such as `anthropic.claude-sonnet-4-6-20250805-v1:0` or an inference-profile ARN. The workflow passes this value through without validation — typos fail fast at Claude invocation time with a clear error.
 </ParamField>
 
-<ParamField body="gap_analysis_model" type="string">
-  **Reserved — not currently read.** The seeded `WORKFLOW.md` ships this key commented out, and the front matter parser accepts it, but no step consumes it.
-
-  Gap analysis runs on the same model as the rest of the run — the `model` value above, or `claude-sonnet-4-6` when that is unset.
-
-  Setting it has no effect, so it cannot be used to shift gap analysis onto a cheaper model.
-</ParamField>
-
 <ParamField body="setup" type="string">
   Path to a shell script (relative to the repo root) run before Claude starts. Use this to install dependencies, set up test databases, or do any other environment preparation.
 </ParamField>

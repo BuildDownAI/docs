@@ -31,21 +31,6 @@ The gap analysis is posted as a PR comment with the following structure:
 
 The gap analysis is based only on the PR diff and PR body — Claude does not explore the broader codebase during this pass.
 
-## Model and cost
-
-The gap analysis uses a faster, cheaper model by default. For the Anthropic provider, this is `claude-haiku-4-5-20251001`. For the Bedrock provider, the gap analysis falls back to the same model specified in your `WORKFLOW.md` front matter, since there is no safe default Bedrock model ID.
-
-You can override the gap analysis model by adding `gap_analysis_model:` to the front matter of your repo's `WORKFLOW.md`:
-
-```yaml
----
-model: claude-sonnet-4-6
-gap_analysis_model: claude-haiku-4-5-20251001
----
-```
-
-Model IDs are passed through verbatim. Any valid Anthropic model ID or Bedrock model ID (including inference-profile ARNs) is accepted.
-
 ## Updating an existing gap analysis
 
 If a gap analysis comment already exists on the PR when the workflow runs, it is updated in place rather than duplicated. The comment is identified by its opening line (`## 🔍 AI Implementation Gap Analysis`).
