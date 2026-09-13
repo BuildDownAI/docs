@@ -49,6 +49,10 @@ jobs:
             docs_branch: ${{ github.ref_name }}
             max_turns: ${{ github.event.inputs.max_turns != '' && github.event.inputs.max_turns || '140' }}
             artifact_name: audit-output
+        secrets:
+            app_client_id: ${{ secrets.DOCS_AUDIT_APP_CLIENT_ID }}
+            app_private_key: ${{ secrets.DOCS_AUDIT_APP_PRIVATE_KEY }}
+            claude_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     
     open-pr:
         needs: [audit, resolve-refs]
