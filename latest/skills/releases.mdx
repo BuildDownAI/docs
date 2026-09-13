@@ -7,7 +7,13 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 <Note>
-  Version numbers skip. The plugin's version changes on every skill change so the development channel has something to deliver, but only some of those versions are released. Numbers missing below were never published, and no stable-channel install ever ran them.
+  After each release, the first change to the development channel sets the next release number.
+
+  Every later change that ships plugin content adds a patch increment, so the development channel runs ahead of what has been released.
+
+  A release ships whatever number the development channel carries at that moment, so a release can be tagged 1.5.2 without 1.5.0 or 1.5.1 ever reaching the stable channel.
+
+  Before v1.5.0 every skill change bumped the version, so the gaps between the releases listed below are wider than they will be from now on.
 </Note>
 
 <Update label="v1.4.0" description="Released 26 August 2026" tags={["Release"]}>
