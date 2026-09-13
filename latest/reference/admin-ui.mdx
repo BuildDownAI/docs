@@ -322,11 +322,20 @@ Each row includes:
 - When the issue was dispatched
 - A delete button to remove it from the dedup window
 
-An issue enters the dedup window when it's dispatched, which stops the orchestrator from picking up the same issue repeatedly.
+An issue gets an entry when it's dispatched, which stops the orchestrator from picking up the same issue again.
 
-The entry stays until something clears it, rather than expiring on a timer.
+Entries don't expire on a timer. They're cleared under any of these conditions:
+- The issue is completed or cancelled. The orchestrator notices on its next poll, which is how an entry normally clears once the issue's pull request merges and the issue closes.
+- No configured tracker returns the issue anymore, because it was deleted or moved out of scope.
+- The dispatch attempt fails before a run starts.
+- A run fails or times out while the issue is within its retry budget. Once the budget is used up, the entry stays and the issue is left for a person to investigate.
+- A session is destroyed from the Sessions panel.
+- The reaper ends a session that ran past the maximum session age, or whose issue was already completed or cancelled.
+- An operator removes the entry with its delete button, or with the `clear_dispatch_dedup` MCP tool.
 
-You can manually remove an issue from the dedup window, so the orchestrator can pick it up again on the next poll.
+If none of these happens, the entry stays. The usual case is a successful run on an issue that is never completed or cancelled.
+
+Remove an entry with its delete button so the orchestrator can pick the issue up again on the next poll.
 
 <Note>
   The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup window.
