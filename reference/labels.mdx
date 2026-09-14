@@ -131,5 +131,5 @@ Anything you write after the trigger is passed to Claude as an instruction for t
 The gap-fill run checks out the existing PR branch, reviews the gap analysis comment, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
 
 <Tip>
-  The trigger requires `comment-trigger.yml` in the target repo. If the repo predates this trigger, use the **Sync workflows** action on its project row in the admin UI.
+  The trigger runs through the orchestrator's GitHub webhook rather than a workflow file in the target repo, so it needs `GITHUB_WEBHOOK_SECRET` configured — see [Configure webhook delivery](/setup/github-app). If the repo still carries the older `comment-trigger.yml` file, use the **Sync workflows** action on its project row in the admin UI to move it onto the webhook-based trigger.
 </Tip>

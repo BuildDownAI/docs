@@ -34,16 +34,6 @@ description: "How to customize WORKFLOW.md: set the model, repo context, quality
     For the Anthropic provider, `claude-sonnet-4-6` is the intended default and omitting the key is safe.
   </Accordion>
 
-  <Accordion title="gap_analysis_model">
-    The model used for the post-PR gap analysis step. Optional.
-
-    ```yaml
-    gap_analysis_model: claude-haiku-4-5-20251001
-    ```
-
-    When omitted, the Anthropic provider defaults to `claude-haiku-4-5-20251001` (a cheaper model suited to analysis). The Bedrock provider falls back to the same value as `model` because there is no generic Bedrock haiku ID to default to.
-  </Accordion>
-
   <Accordion title="setup">
     Path to a shell script to run **before** Claude starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
 

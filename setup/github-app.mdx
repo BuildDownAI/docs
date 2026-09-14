@@ -43,17 +43,21 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
   </Step>
 
   <Step title="Configure webhook delivery">
-    Webhook delivery is **optional**. AI-Implement's run loop is poll-driven and works without it.
+    Webhook delivery adds two capabilities on top of AI-Implement's poll-driven run loop: automatic follow-up on review feedback, and the `/ai-implement` comment trigger.
 
-    It adds **automatic follow-up runs on review feedback** — when a reviewer leaves blocking comments on a pull request, AI-Implement picks them up and sends Claude back in **without** anyone commenting `/ai-implement`. An active webhook is the only automated route to it; there's no polling fallback.
+    **Automatic follow-up on review feedback** — when a reviewer leaves blocking comments on a pull request, AI-Implement picks them up and sends Claude back in **without** anyone commenting `/ai-implement`. An active webhook is the only route to it; there's no polling fallback.
 
-    Everything else works either way. Issues get picked up, runs dispatch, pull requests open, and merging one marks the issue done. `/ai-implement` gap-fill runs are handled by the `comment-trigger.yml` workflow in your target repo and never involve the orchestrator.
+    **The `/ai-implement` comment trigger** — once a repo is synced with the current workflow templates, it no longer carries its own `comment-trigger.yml`; the orchestrator's webhook picks up the comment instead. Without an active webhook, `/ai-implement` comments on that repo are never picked up.
+
+    Issue pickup, run dispatch, and marking issues done on merge all stay on the poll loop and need no webhook.
 
     <Tabs>
       <Tab title="Without webhooks">
         Uncheck **Webhook active**. The event list disappears and there's nothing else to set here.
 
-        Comment `/ai-implement` when you want another pass over a pull request.
+        <Warning>
+          Without a webhook, neither automatic follow-up on review feedback nor the `/ai-implement` comment trigger works. Address PR gaps by pushing follow-up commits yourself.
+        </Warning>
       </Tab>
 
       <Tab title="With webhooks">
@@ -117,15 +121,11 @@ Each secret below notes its counterpart on the orchestrator where the names diff
   `CLAUDE_CODE_OAUTH_TOKEN` takes precedence over `ANTHROPIC_API_KEY` when both secrets are set. You only need one Claude authentication method, but having both configured gives you a fallback.
 </Note>
 
-## Enable pull request creation in target repos
+## About "Allow GitHub Actions to create and approve pull requests"
 
-Each target repo must allow GitHub Actions to create and approve pull requests. Without this setting, the workflow will fail when it tries to open the PR.
-
-In each target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
-
-<Warning>
-  This setting must be enabled in every repo you connect to AI-Implement. It is not inherited from organization-level settings.
-</Warning>
+<Tip>
+  You do not need to enable this repository setting for AI-Implement. Every synced workflow opens its pull request with the GitHub App's own installation token, not the workflow's default `GITHUB_TOKEN` that this setting restricts, so the toggle can stay at its default in every target repo.
+</Tip>
 
 ## What's next
 

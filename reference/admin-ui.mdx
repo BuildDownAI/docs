@@ -6,9 +6,9 @@ description: "What the AI-Implement admin dashboard lets you manage — every pa
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into four groups:
-- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
-- **Platform** — Runners, Sessions, Reaper, Secrets, Settings
+- **Platform** — Runners, Sessions, Deployments, Reaper, Secrets, Settings
 - **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
 
 <Note>
@@ -101,6 +101,18 @@ Per-issue rows include:
 - Detail (further context on the blocking reason)
 - Direct link back to the ticket
 
+### Reports
+
+Fleet-wide delivery metrics across every project mapping, for a selectable trailing window (7, 30, or 90 days).
+
+A per-repo table shows job and issue counts, completions, failures, merges, average review passes, and cost in USD.
+
+Three outcome rates summarize the whole fleet: **one-shot** (approved on the first dispatch), **eventual** (approved across all dispatches, however many it took), and **escape rate** (the share of merged PRs a human had to edit afterward).
+
+A planning A/B table compares planned issues against unplanned ones on the same metrics, so you can see whether the planning phase is paying for itself.
+
+A runaways table lists issues with three or more dispatches, or three or more consecutive failures — the ones worth a manual look before they keep burning turns.
+
 ## Configure
 
 ### Projects (team/repo mappings)
@@ -110,12 +122,6 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 <Note>
   See [Configure project mappings](/configuration/team-repo-mappings) for the full field reference and defaults.
 </Note>
-
-<Info>
-  **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
-  - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
-</Info>
 
 #### Create a new project mapping
 
@@ -217,6 +223,16 @@ A per-project table shows each mapping's:
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
 
+#### Parked issues
+
+After enough consecutive dispatch failures for the same issue and phase, the orchestrator stops retrying it automatically and parks it — this section lists every parked issue, when it was parked, and its last failure conclusion.
+
+<Note>
+  A parked issue also gets a tracker comment naming the failure count and linking the failed runs, so the notice reaches the ticket even if nobody is watching this panel.
+</Note>
+
+Unpark an issue from its row to let the orchestrator dispatch it again on the next poll. See [`DISPATCH_BREAKER_THRESHOLD`](/configuration/environment-variables#param-dispatch-breaker-threshold) for the failure count that triggers parking.
+
 ### Sessions
 
 Lists every Fly Machine session currently in `started`, `starting`, or `created` state.
@@ -235,6 +251,20 @@ You can destroy a stuck session directly from this panel. Destroying a session a
 <Tip>
   If a Fly Machine appears stuck and is not progressing, destroying it from the sessions panel is the cleanest recovery path.
 </Tip>
+
+### Deployments
+
+Lets this orchestrator redeploy itself on Fly.io when a newer image becomes available, without a manual `fly deploy`.
+
+<Note>
+  Self-deploy needs `FLY_DEPLOY_TOKEN` set and the running image built with its `AI_IMPLEMENT_SOURCE_*` build args stamped in — see [Environment variables](/configuration/environment-variables#param-fly-deploy-token). Without both, this panel shows a "Self-deploy not configured" banner and nothing else on it is actionable.
+</Note>
+
+Two KPI tiles show availability (whether a newer commit exists than the one running) and the outcome of the last self-deploy attempt.
+
+A policy section controls what happens once a new commit is detected: deploy it automatically, or leave it to a manual **Deploy now** button, and optionally announce an available deployment to the notification webhook. Automatic deploying makes one attempt per commit — a failed automatic deploy is not retried.
+
+Triggering a deploy, automatically or by hand, pauses new dispatches immediately and waits for in-flight work to drain before the build starts.
 
 ### Reaper
 
@@ -428,6 +458,7 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `GET` | `/api/blockers` | List issues currently blocked from dispatch, with reason |
 | `GET` | `/api/jobs/:jobId/steps` | Get step-by-step execution status for a specific job |
 | `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
+| `GET` | `/api/report` | Fleet-wide delivery metrics for a trailing window (`?days=`) and optional `?project=` filter |
 
 #### Sessions, reaper, and deduplication
 
@@ -439,6 +470,16 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+| `GET` | `/api/parked` | List issues parked by the dispatch breaker after repeated consecutive failures |
+| `POST` | `/api/parked/unpark` | Unpark an issue so it dispatches again on the next poll |
+
+#### Deployments
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/deployment-status` | Get self-deploy configuration, availability, and last deploy outcome |
+| `POST` | `/api/deploy` | Trigger a self-deploy: pause dispatch, drain in-flight work, then build and release |
+| `POST` | `/api/deploy-policy` | Update the auto-deploy and announce-availability policy flags |
 
 #### Runner mode and settings
 
@@ -472,15 +513,16 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 
 ### Runner callback endpoints
 
-Three endpoints sit outside the `/api/*` namespace and are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
+These endpoints are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/runner/result` | Reports the final outcome of a dispatch — success or failure, PR URL when one was opened, error context when not. The token is **single-use**: once consumed, the dispatch result is locked in and the endpoint rejects further calls for that dispatch. |
 | `POST` | `/runner/progress` | Streams step-by-step progress updates throughout a run (each pipeline step's status, elapsed time, and any structured output). The token is **multi-use** so the runner can post many updates during a single dispatch; consumed independently of the result token. |
 | `GET` | `/runner/planning-context` | Fetches the planning comments recorded on the originating issue, so an implementation run can include the approved plan in its prompt without the runner needing ticketing credentials. |
+| `POST` | `/api/runner/dependency-token` | Mints a short-lived, read-only token scoped to every repository the GitHub App installation can see, for a run whose project mapping has [`dependencyTokenScope`](/configuration/team-repo-mappings#param-dependency-token-scope) set. Authenticated with the same progress token as `/runner/progress`, despite the `/api/*`-shaped path. |
 
-All three endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
+All four endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
 
 <Note>
   Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.

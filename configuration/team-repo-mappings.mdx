@@ -104,6 +104,16 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   </Warning>
 </ParamField>
 
+<ParamField body="dependencyTokenScope" type="string" default="off">
+  Set to `installation` to let this project's dependency-install step read private sibling repositories — for example a private package registry or a monorepo split across repos.
+
+  Leave it off and dependency install only sees this repository; a private sibling dependency fails to resolve.
+
+  <Warning>
+    The scope is all-or-nothing: the token can read every repository the GitHub App installation covers, not just a chosen subset. It also requires a publicly reachable orchestrator, since the token is fetched over the runner callback — a run dispatched without one proceeds without private-dependency access rather than failing.
+  </Warning>
+</ParamField>
+
 ## Runner
 
 <ParamField body="executionMode" type="string" default="github-actions">

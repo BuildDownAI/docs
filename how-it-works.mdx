@@ -138,7 +138,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     - **Gaps / Partial Implementation** — requirements that are missing or only partially done
     - **Manual Steps Required** — human actions needed, such as setting environment variables, running migrations, or configuring external services
 
-    The gap analysis uses a lighter model by default (`claude-haiku-4-5-20251001` on the Anthropic provider) to keep costs low. You can override this with the `gap_analysis_model:` field in `WORKFLOW.md`.
+    Gap analysis runs on the same model as the rest of the run — the `model:` value from `WORKFLOW.md`, or `claude-sonnet-4-6` when that's unset. There is no separate, cheaper default for this step.
   </Step>
 
   <Step title="Issue is updated to Ready for Review">
@@ -158,13 +158,17 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Gap-fill runs with /ai-implement">
-    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+    After reviewing the PR and reading the gap analysis, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the orchestrator's GitHub webhook picks it up and dispatches a gap-fill run.
 
     Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and focuses on the gaps identified in the previous run. It pushes new commits to the same branch, and the gap analysis comment is updated automatically.
 
     <Info>
       Gap-fill runs do not create new PRs or new branches. All work goes onto the existing PR branch, keeping your review history clean.
     </Info>
+
+    <Warning>
+      This needs the same GitHub webhook that late review feedback handling (below) uses. Without one configured, `/ai-implement` comments are never picked up — see [`GITHUB_WEBHOOK_SECRET`](/configuration/environment-variables#param-github-webhook-secret).
+    </Warning>
   </Step>
 
   <Step title="Late review feedback handling">

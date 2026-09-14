@@ -41,6 +41,12 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
+  <Accordion title="dependency-auth">
+    Fetches a short-lived, `contents: read` token scoped to the GitHub App installation and installs it as a git credential helper, so the `install` step can resolve private sibling-repo dependencies. Only runs when the project's [Dependency Token Scope](/configuration/team-repo-mappings#param-dependency-token-scope) is set to `installation`; otherwise skipped.
+
+    Override to change how dependency credentials are vended — for example to add a package-registry-specific credential alongside the git one.
+  </Accordion>
+
   <Accordion title="install">
     Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
     
@@ -230,9 +236,17 @@ reviewProviders:
   Controls whether the `post-push-review` step waits for an external GitHub Actions review check on the same PR and folds its findings into its own review.
 
   This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The three cases each do something different:
-  - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting checks named `claude-review` or `claude code review`.
+  - **Omitted** — the step waits for an external review check and merges its findings in, matching against the default check names below.
   - **Empty list** — the step skips the external wait entirely and runs only its own review.
   - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
+</ParamField>
+
+<ParamField body="reviewCheckNames" type="string[]" default="review, code-review-plugin, claude-review, claude code review, claude-code-review">
+  Overrides which check-run names the `post-push-review` step treats as the external review gate, when `reviewProviders` isn't an empty list.
+
+  Beyond the listed defaults, a check whose name contains both "claude" and "review" also matches. Set this list if your repo runs an unrelated check named `review` or `code-review-plugin` — otherwise that check becomes the review gate by accident.
+
+  Setting this replaces the defaults entirely, including the "claude" + "review" fallback — matching becomes exact against only the names you list.
 </ParamField>
 
 <Tip>
