@@ -133,7 +133,7 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="GITHUB_WEBHOOK_SECRET" type="string">
       HMAC-SHA256 secret used to validate incoming GitHub webhook payloads. Set the same value on the GitHub App's webhook configuration, pointed at `https://<orchestrator-host>/api/github/webhook`.
 
-      Leaving it unset disables one capability: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request. Nothing polls for review feedback, so without a working webhook someone has to comment `/ai-implement` to get another pass.
+      Leaving it unset disables two capabilities: **automatic follow-up runs** when a reviewer leaves blocking feedback on a pull request, and the **`/ai-implement` comment trigger** itself, which now runs through this same webhook rather than a workflow file in the target repo. Nothing polls for either, so without a working webhook neither happens.
 
       <Note>
         The webhook also needs the right event subscriptions to deliver anything; see [Create a GitHub App](/setup/github-app).
@@ -274,7 +274,7 @@ Pick the tab that matches where you're configuring right now.
         <ParamField body="GAP_FILL_TRIGGER_SECRET" type="string">
           Shared bearer secret for the orchestrator's `/trigger/gap-fill` endpoint, which starts a gap-fill run against an existing pull request. Leaving it unset disables the endpoint.
 
-          This is not needed for the `/ai-implement` comment trigger. That path runs entirely inside the `comment-trigger.yml` workflow in your target repo and never calls the orchestrator. Set this only if you drive gap-fill runs from your own automation.
+          This is not needed for the `/ai-implement` comment trigger — that path is handled by the orchestrator's GitHub webhook instead, gated by `GITHUB_WEBHOOK_SECRET`. Set this only if you drive gap-fill runs from your own automation.
         </ParamField>
       </Accordion>
 
@@ -290,6 +290,26 @@ Pick the tab that matches where you're configuring right now.
 
           The count resets on the next pass rather than accumulating over time. Helps catch runaway destruction bugs.
         </ParamField>
+      </Accordion>
+
+      <Accordion title="Dispatch breaker (parked issues)">
+        After enough consecutive dispatch failures for the same issue and phase, the orchestrator stops retrying it automatically. The issue is "parked" until an operator unparks it from the admin UI's [Runners panel](/reference/admin-ui#runners) or the `/api/parked/unpark` endpoint.
+
+        <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="number" default="3">
+          Number of consecutive failed dispatches for the same issue and phase before it is parked.
+        </ParamField>
+      </Accordion>
+
+      <Accordion title="Self-deploy">
+        Lets the orchestrator redeploy itself on Fly.io when a newer image becomes available, surfaced in the admin UI's [Deployments panel](/reference/admin-ui#deployments).
+
+        <ParamField body="FLY_DEPLOY_TOKEN" type="string">
+          Fly API token scoped to this orchestrator's own Fly app, used to trigger the self-deploy. Distinct from `FLY_SESSIONS_TOKEN`, which only authorizes session-machine creation.
+        </ParamField>
+
+        Also requires the running image to have been built with `AI_IMPLEMENT_SOURCE_COMMIT`, `AI_IMPLEMENT_SOURCE_REPO`, and `AI_IMPLEMENT_SOURCE_BRANCH` stamped in as build arguments. These are set by the image build, not by an operator.
+
+        Without all three build args, availability shows as unknown rather than up to date, and self-deploy stays effectively off even with `FLY_DEPLOY_TOKEN` set.
       </Accordion>
 
       <Accordion title="Multi-tenant deploys">
@@ -335,7 +355,7 @@ Pick the tab that matches where you're configuring right now.
   </Tab>
 
   <Tab title="Target-repo workflow secrets">
-    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml`, `claude-plan.yml`, and `comment-trigger.yml` when the workflows run.
+    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml` and `claude-plan.yml` when the workflows run.
     
     Configure under **Settings → Secrets and variables → Actions** on each target repo (or at the organization level so all target repos inherit them).
 

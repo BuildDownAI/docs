@@ -10,16 +10,6 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
     If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
   </Step>
 
-  <Step title="Enable pull request creation in the target repo">
-    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
-
-    Without this setting, the implementation workflow will fail when it attempts to open a PR.
-
-    <Warning>
-      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
-    </Warning>
-  </Step>
-
   <Step title="Set up the trigger in your ticketing system">
     <Tabs>
       <Tab title="Linear">
@@ -76,12 +66,13 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
 
     - `claude-implement.yml` — the main implementation workflow
     - `claude-plan.yml` — the planning workflow
-    - `comment-trigger.yml` — the `/ai-implement` comment trigger
     - `WORKFLOW.md` — the Claude implementation prompt template
     - `PLANNING.md` — the Claude planning prompt template
 
     <Note>
       `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
+
+      The sync also removes `comment-trigger.yml` if an earlier setup left it in the repo. The `/ai-implement` comment trigger now runs through the orchestrator's own GitHub webhook — see [Create a GitHub App](/setup/github-app) for the setup.
     </Note>
 
     Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.

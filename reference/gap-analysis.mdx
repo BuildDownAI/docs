@@ -33,18 +33,7 @@ The gap analysis is based only on the PR diff and PR body — Claude does not ex
 
 ## Model and cost
 
-The gap analysis uses a faster, cheaper model by default. For the Anthropic provider, this is `claude-haiku-4-5-20251001`. For the Bedrock provider, the gap analysis falls back to the same model specified in your `WORKFLOW.md` front matter, since there is no safe default Bedrock model ID.
-
-You can override the gap analysis model by adding `gap_analysis_model:` to the front matter of your repo's `WORKFLOW.md`:
-
-```yaml
----
-model: claude-sonnet-4-6
-gap_analysis_model: claude-haiku-4-5-20251001
----
-```
-
-Model IDs are passed through verbatim. Any valid Anthropic model ID or Bedrock model ID (including inference-profile ARNs) is accepted.
+The gap analysis step runs on the same model as the rest of the run — the `model:` value from your repo's `WORKFLOW.md` front matter, or `claude-sonnet-4-6` when that's unset on the Anthropic provider. There is no separate, cheaper default for this step, and no front-matter key overrides it independently.
 
 ## Updating an existing gap analysis
 
@@ -70,14 +59,14 @@ After reviewing the gap analysis, you can ask Claude to address the remaining it
     ```
   </Step>
   <Step title="Wait for the run">
-    The `comment-trigger.yml` workflow picks up the comment, parses the Linear issue metadata from the PR body, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
+    The orchestrator's GitHub webhook picks up the comment, parses the issue metadata from the PR body, and dispatches a new run of `claude-implement.yml` against the existing branch. Claude checks out the branch, reviews the gap analysis comment, and pushes gap-fill commits directly to the PR.
   </Step>
 </Steps>
 
 The Linear issue link, issue identifier, and issue description are all preserved from the original run — Claude sees the same ticket context it had during the first pass.
 
 <Warning>
-The `/ai-implement` trigger only works on PRs opened by AI-Implement. PRs created by hand do not contain the metadata block that the comment trigger reads, so the trigger will post a warning comment and exit without dispatching.
+The `/ai-implement` trigger only works on PRs opened by AI-Implement. PRs created by hand have no dispatch record for the trigger to match against, so it posts a warning comment and exits without dispatching.
 </Warning>
 
 <Tip>

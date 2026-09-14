@@ -87,11 +87,7 @@ Running locally is the fastest way to test a configuration before committing to 
     </Tabs>
 
     <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
-      so variables in `.env` are ignored unless you load them yourself.
-
-      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
-      first with `set -a; source .env; set +a` before starting the orchestrator.
+      Both scripts load `.env` automatically when it's present, so the file you created in the previous step takes effect with no extra steps.
     </Note>
 
     Either mode starts the polling loop and HTTP server on port 8080.
@@ -177,7 +173,7 @@ The `deploy-clients.yml` workflow in the orchestrator repo deploys every client 
 
 Each Fly app uses:
 
-- **Machine size**: `shared-cpu-1x` with 256 MB of memory — sufficient for the polling loop and admin UI
+- **Machine size**: `shared-cpu-1x` with 512 MB of memory — sufficient for the polling loop and admin UI
 - **Volume**: A `dedup_data` volume mounted at `/data` for SQLite persistence (deduplication, team mappings, and dispatch log)
 - **HTTP service**: Internal port 8080, HTTPS enforced, minimum one machine always running
 

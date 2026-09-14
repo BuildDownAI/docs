@@ -131,13 +131,9 @@ This guide walks you through running AI-Implement for the first time. By the end
   </Step>
 
   <Step title="Review and merge the workflow pull request">
-    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, `comment-trigger.yml`, and a starter `WORKFLOW.md`.
+    Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, a starter `WORKFLOW.md`, and a starter `PLANNING.md`.
 
     Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
-
-    <Warning>
-      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
-    </Warning>
   </Step>
 
   <Step title="Create the trigger in your ticketing system">

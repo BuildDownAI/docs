@@ -98,17 +98,14 @@ model: claude-sonnet-4-6
 **Default behavior:**
 
 - If `model:` is not set in `WORKFLOW.md`, the implementation workflow defaults to `claude-sonnet-4-6`.
-- The gap analysis step defaults to `claude-haiku-4-5-20251001` when no `gap_analysis_model:` is specified.
+- The gap analysis step always runs on that same model — there is no separate, cheaper default for it, and no front-matter key overrides it.
 
 **Example model IDs for the Anthropic provider:**
 
 ```yaml
 ---
-# Use Sonnet for implementation (default)
+# Use Sonnet for implementation and gap analysis (default)
 model: claude-sonnet-4-6
-
-# Optional: use a cheaper model for gap analysis
-gap_analysis_model: claude-haiku-4-5-20251001
 ---
 ```
 
