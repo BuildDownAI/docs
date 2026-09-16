@@ -304,11 +304,20 @@ Global secrets are Fly app secrets that do not belong to any specific project ma
 The settings panel manages orchestrator-level configuration:
 - **`flySessionsApp`** — the Fly.io app name used for Fly Machine sessions.
 - **`flySessionsRegion`** — the default region for new Fly Machine sessions.
+- **Linear Pickup Label** — the label the orchestrator polls Linear for, default `AI-Implement`, stored in the orchestrator database and effective at the next poll with no restart.
 
-Both values can be overridden at the environment level via `FLY_SESSIONS_APP` and `FLY_SESSIONS_REGION`. When an env override is active, the UI shows the runtime value alongside the database value and flags that the env var is winning.
+Both Fly values can be overridden at the environment level via `FLY_SESSIONS_APP` and `FLY_SESSIONS_REGION`. When an env override is active, the UI shows the runtime value alongside the database value and flags that the env var is winning.
+
+`LINEAR_PICKUP_LABEL` seeds the pickup label once at first boot, then goes inert, the same as `KG_BASE_REPO`.
+
+It is not a runtime override the way `FLY_SESSIONS_APP` is, so editing the environment variable after first boot changes nothing.
+
+Change the pickup label only for a planned migration, since issues on the old label stop dispatching at the next poll, as [Triggers and status indicators](/latest/reference/labels#ai-implement) explains.
+
+`GET /api/settings` returns `linearPickupLabel` as `{ value, effective, default }`, and `POST /api/settings` accepts `linearPickupLabel` as a string, or `null` to reset it to the default.
 
 <Note>
-  Changes to settings that differ from the running process take effect after a restart.
+  Changes to settings that differ from the running process take effect after a restart. The pickup label is the exception: it takes effect at the next poll.
 </Note>
 
 ## Developer

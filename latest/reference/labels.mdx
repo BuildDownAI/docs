@@ -15,7 +15,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     | Label | Applied by | When | Removed when |
     |---|---|---|---|
-    | `AI-Implement` | You | When you want a run to start | Not removed automatically |
+    | `AI-Implement` | You | When you want a run to start — the default pickup label | Not removed automatically |
     | `AI-Working` | Orchestrator (auto) | When a run is dispatched and in progress | When the run completes (success or failure) |
     | `AI-Planning` | Orchestrator (auto) | While the planning phase is running | When planning completes |
     | `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
@@ -28,6 +28,16 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     You apply this label manually to any Linear issue you want AI-Implement to implement. The orchestrator polls for issues with this label every 60 seconds and dispatches a run for each one that is eligible.
 
     An issue must be **unblocked** to be picked up. An issue is considered blocked if it has any open blocking issues linked to it in Linear. Blocked issues are skipped on each poll cycle until their blockers are resolved.
+
+    The label name is an orchestrator setting — **Linear Pickup Label** on the [Settings panel](/latest/reference/admin-ui#settings), with a default of `AI-Implement`.
+
+    <Warning>
+      Change the pickup label only for a planned migration, for example when a second orchestrator runs against the same Linear team.
+
+      Issues that carry the old label stop dispatching at the next poll.
+
+      The lifecycle labels (AI-Working, AI-Planning, Plan-Complete, Ready for Review) do not change, and two orchestrators on one team share them.
+    </Warning>
 
     ### AI-Working
 
