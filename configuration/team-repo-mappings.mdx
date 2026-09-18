@@ -86,7 +86,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 <ParamField body="skillsRepo" type="string">
   Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or a full git URL. Cloned into the workspace before implementation begins.
 
-  Leave unset to run without project skills. For `/ai-implement` comment-triggered runs, set the matching repo variable instead — see [`AI_IMPLEMENT_SKILLS_REPO`](/configuration/environment-variables#param-ai-implement-skills-repo).
+  Leave unset to run without project skills. This setting covers `/ai-implement` comment-triggered runs as well.
 </ParamField>
 
 <ParamField body="sensitiveAddPatterns" type="array">
@@ -204,12 +204,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <Tip>
-  These three caps also exist as repo variables for `/ai-implement` comment-triggered gap-fill runs.:
-  - `AI_IMPLEMENT_MAX_TURNS`
-  - `AI_IMPLEMENT_MAX_ITERATIONS`
-  - `AI_IMPLEMENT_MAX_JOB_MINUTES`
-  
-  See the [Run caps variables](/configuration/environment-variables#gap-fill-run-caps) section.
+  These caps cover `/ai-implement` comment-triggered gap-fill runs as well — there is no separate per-repo setting to keep in step with them.
 </Tip>
 
 ## Lifecycle

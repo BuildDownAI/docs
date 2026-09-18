@@ -152,7 +152,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
       
-      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo and set the `AI_IMPLEMENT_PROVIDER` and `AI_IMPLEMENT_AWS_REGION` repo variables so comment-triggered gap-fill runs use the same auth path.
+      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo. Nothing else is needed for `/ai-implement` comment-triggered runs — they use this same mapping.
     </Warning>
   </Step>
 

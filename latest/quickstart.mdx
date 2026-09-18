@@ -183,7 +183,7 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
 
-    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has a gap analysis comment comparing the diff to your original ticket.
+    When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has an automated review comment on its merge readiness.
 
     <Tip>
       If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, incorrect ticketing credentials (`LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.

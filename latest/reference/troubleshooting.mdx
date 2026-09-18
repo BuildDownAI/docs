@@ -48,27 +48,25 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     Hitting either usually means the ticket was over-scoped for one run rather than that anything is broken. Splitting the ticket is the more reliable fix — a narrower issue finishes inside the budget and produces a reviewable diff.
 
-    To raise the job timeout instead, open the project in the admin UI under **Configure → Projects**, choose **Edit**, and set **Job Timeout (min)**. For `/ai-implement` comment-triggered runs, set `AI_IMPLEMENT_MAX_JOB_MINUTES` on the target repository.
-
-    <Note>
-      **Job Timeout (min)** is only in the Edit dialog — the new-project stepper does not offer it. Create the project first, then reopen it to change the default.
-    </Note>
+    To raise the job timeout instead, set **Job Timeout (min)** on the project — on the new-project stepper's **Capacity** step, or afterward under **Configure → Projects → Edit**. That covers `/ai-implement` comment-triggered runs as well.
   </Accordion>
 
   <Accordion title="The automated review flagged the pull request">
     The run finished and opened a pull request, but the post-push review found blocking issues it could not resolve within its iteration budget. The pull request is left as a **draft** so it does not read as ready to merge.
 
-    This is a working outcome, not an error — the review did its job. Read the gap-analysis comment on the pull request: it lists what the review considered unresolved against the original ticket.
+    This is a working outcome, not an error — the review did its job. Read the review comment on the pull request: it lists what the review considered unresolved against the original ticket.
 
     From there you can finish the work yourself, or comment `/ai-implement` with a specific instruction to send Claude back over the same branch. Mark the pull request ready for review once you are satisfied.
   </Accordion>
 
-  <Accordion title="PR opened but gap analysis is missing">
-    The gap analysis step only runs when the implementation step succeeds **and** an open PR is found on the branch after implementation. If the gap analysis is missing:
+  <Accordion title="PR opened but no automated review comment appears">
+    The post-push review is skipped by design in three cases, so check these before treating it as a failure:
 
-    - Confirm that the Claude run succeeded and that a PR was actually opened. Check the GitHub Actions run logs for the `claude-implement.yml` workflow.
-    - If Claude ran but did not open a PR (e.g. it pushed commits to an existing branch without creating a new PR), the gap analysis step is skipped by design.
-    - If the workflow run failed before reaching the gap analysis step, fix the underlying failure first.
+    - **The run's own review never approved the diff.** The pull request still opens, but as a draft — or, on a repo whose plan does not allow drafts, as a normal pull request titled `[NEEDS REVIEW — unapproved]`. Either way no post-push review follows, because the review budget was already spent.
+    - **The run was a gap-fill.** A `/ai-implement` pass updates a pull request that has already been through this, and never starts a second review cycle.
+    - **No pull request was opened.** If Claude pushed commits without opening one, there is nothing for the review to run against.
+
+    If none of those apply, confirm the run actually reached the review step — check the GitHub Actions logs for the `claude-implement.yml` workflow, and fix any earlier failure first.
   </Accordion>
 
   <Accordion title="provider=bedrock but workflow hard-fails with a model error">
@@ -161,7 +159,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     - **What a turn is.** Each run gives Claude a fixed number of *turns*, where one turn is a single step in its work loop — it reads or edits something, runs a command, then decides what to do next. The run stops once it uses up the budget, even if the work is not done. The default budget is 50 turns.
     - **Why it happened.** The task needed more steps than the budget allowed — usually a large issue, or one that touches many files, though a run can also use up turns retrying the same thing.
-    - **How to fix it.** Raise the budget with the **Max Turns** field: open the project under **Configure → Projects**, choose **Edit**, and set it there — the new-project stepper does not expose it. For `/ai-implement` comment-triggered runs, set `AI_IMPLEMENT_MAX_TURNS` on the target repository instead. A higher budget lets one run do more work before it stops.
+    - **How to fix it.** Raise the budget with the **Max Turns** field, on the new-project stepper's **Capacity** step or afterward from the project's **Edit** dialog. The setting covers `/ai-implement` comment-triggered runs as well. A higher budget lets one run do more work before it stops.
 
     <Tip>
       If runs keep hitting the cap after you raise it, the issue is likely too big for a single run — split it into smaller issues. A higher budget also means longer, costlier runs, so raise it deliberately rather than setting it very high by default.
