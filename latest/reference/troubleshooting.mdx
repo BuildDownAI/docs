@@ -98,13 +98,17 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="/ai-implement comment does nothing">
-    If a `/ai-implement` comment on a PR has no effect (no reaction, no new run), check the following:
+    If a `/ai-implement` comment on a PR has no effect (no 👀 reaction, no new run), check the following:
 
-    1. **The orchestrator's webhook is not configured.** The trigger is served by the orchestrator, not by a workflow in your repo, so it needs `GITHUB_WEBHOOK_SECRET` set on the orchestrator and the GitHub App's webhook active and subscribed to issue comments. Nothing polls as a fallback, so an unconfigured webhook means the comment is never seen.
-    2. **The PR was not opened by AI-Implement.** A gap-fill run continues an existing run, so there has to be one on record. On a pull request the orchestrator has no record of, it replies saying so and asks you to start a run from the issue tracker instead.
-    3. **The repo has no project mapping, or its project is paused.** The comment is matched against the configured projects; one that matches nothing, or matches a paused project, is dropped without a reply.
-    4. **The commenter does not have write access.** The comment trigger checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
-    5. **The comment does not start with `/ai-implement`.** The trigger matches comments that *begin* with `/ai-implement`. Anything you write after it is passed to the run as an operator instruction, so `/ai-implement also update the tests` works and is often more useful than the bare command. A comment that merely mentions `/ai-implement` mid-sentence does not trigger.
+    1. **The GitHub App isn't subscribed to PR comments.** The App's webhook settings must include the `issue_comment` event. Without this subscription, GitHub never delivers the comment to the orchestrator in the first place.
+    2. **`GITHUB_WEBHOOK_SECRET` isn't set, or doesn't match.** The orchestrator verifies every delivery's signature against this value; it must be set to the same secret on both the GitHub App's webhook configuration and the orchestrator's environment, or deliveries are rejected. See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret).
+    3. **The orchestrator isn't publicly reachable.** GitHub needs to reach the orchestrator's webhook endpoint over HTTPS. For local development this needs a tunnel.
+    4. **The target repo hasn't synced current workflow templates.** Run **Sync workflows** on the project's row in the admin UI and merge the pull request it opens — repos still on older templates aren't recognized by the orchestrator's webhook.
+    5. **The repo has no project mapping, or its project is paused.** The comment is matched against the configured projects; one that matches nothing, or matches a paused project, is dropped without a reply.
+    6. **The PR wasn't opened by AI-Implement.** The trigger only works against PRs the orchestrator has a dispatch record for. PRs created by hand won't match.
+    7. **Bedrock isn't configured for the mapping.** If the repo uses Bedrock, set **Provider** to `bedrock` and **AWS Region** on the project's mapping in the admin UI — comment-triggered runs use the same mapping as orchestrator-initiated runs.
+    8. **The commenter does not have write access.** The webhook checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
+    9. **The comment does not start with `/ai-implement`.** The trigger matches comments that *begin* with `/ai-implement`. Anything you write after it is passed to the run as an operator instruction, so `/ai-implement also update the tests` works and is often more useful than the bare command. A comment that merely mentions `/ai-implement` mid-sentence does not trigger.
   </Accordion>
 
   <Accordion title="Admin UI returns 401">

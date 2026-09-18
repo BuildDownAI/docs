@@ -161,7 +161,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 
   <Step title="Gap-fill runs with /ai-implement">
     <Warning>
-      This step and the next both need a GitHub webhook pointed at your orchestrator, which serves them and polls for neither. Without one, an `/ai-implement` comment is never seen and review feedback never starts a follow-up run.
+      This step and the next both need a GitHub webhook pointed at your orchestrator, which serves them and polls for neither. On a repo synced to the current workflow templates, nothing else watches for an `/ai-implement` comment, and review feedback never starts a follow-up run without it.
 
       See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) for the setup.
     </Warning>

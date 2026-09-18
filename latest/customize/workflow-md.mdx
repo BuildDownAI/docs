@@ -47,13 +47,13 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
   </Accordion>
 
   <Accordion title="verify">
-    Path to a shell script to run **after Claude succeeds**. Use this to run your test suite or any other validation that must pass before the PR is opened.
+    Path to a shell script to run once the implement/review loop **approves** the change. It runs after the branch is pushed and the pull request is open, so it checks what landed rather than gating whether the pull request appears.
 
     ```yaml
     verify: scripts/ai-verify.sh
     ```
 
-    This script only runs when Claude completes without error.
+    A run that exhausts its review iterations without approval still opens a draft PR — but `verify` is skipped entirely for that PR, since the gate it runs on was never satisfied.
   </Accordion>
 
   <Accordion title="teardown">
