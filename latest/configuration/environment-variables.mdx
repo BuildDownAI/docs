@@ -130,6 +130,16 @@ Pick the tab that matches where you're configuring right now.
       How often the orchestrator polls for new AI-Implement issues, in milliseconds. Lower values increase ticketing-API usage; values below `10000` are not recommended.
     </ParamField>
 
+    <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="string" default="3">
+      How many consecutive failed dispatches for one issue and phase are tolerated before the orchestrator **parks that issue** and stops picking it up.
+
+      Set to `0` to disable the breaker, so a repeatedly failing issue is retried on every poll indefinitely.
+
+      This is the setting behind an issue that silently stops being dispatched.
+
+      A parked issue stays parked until a human clears it, so the default is what keeps a broken issue from looping forever — at the cost of a stall you have to notice and unpark.
+    </ParamField>
+
     <ParamField body="DEDUP_DB_PATH" type="string" default="/data/dedup.sqlite">
       Absolute path to the SQLite file used for deduplication, dispatch logging, and project-mapping storage. Defaults to `/data/dedup.sqlite` in production (the Fly.io volume mount point) and `./dedup.sqlite` when running locally. Change this only if you are mounting the volume at a different path.
     </ParamField>
@@ -200,6 +210,60 @@ Pick the tab that matches where you're configuring right now.
       </Accordion>
     </AccordionGroup>
 
+    ### Knowledge graph and MCP server
+
+    The orchestrator can expose a bundled knowledge graph to MCP clients through an OAuth-authenticated proxy at `/mcp`. These variables configure that endpoint.
+
+    The `/mcp` endpoint also relies on `OAUTH_REDIRECT_BASE_URL` and a sign-in provider from **Admin sign-in** above.
+
+    <ParamField body="KG_SIDECAR_URL" type="string">
+      URL of the local knowledge-graph sidecar that `/mcp` proxies to.
+
+      On a Fly.io deployment it is set automatically once the bundled sidecar passes its startup check, so you do not set it by hand.
+
+      Set it yourself only for local development, pointing at a sidecar you started.
+
+      Leave it unset and `/mcp` cannot serve the knowledge-graph tools: an authenticated request that needs the graph returns `503`, while every other route runs normally.
+    </ParamField>
+
+    <ParamField body="KG_SOURCE_REPO" type="string" default="BuildDownAI/knowledge-graph-ai-implement">
+      GitHub `owner/repo` the bundled graph is built from, for example `Answer9-llc/knowledge-graph-answer9-app`.
+
+      Set it when an orchestrator should carry a project-specific graph.
+
+      Leaving it unset builds and bundles the default knowledge graph.
+    </ParamField>
+
+    <ParamField body="MCP_ALLOWED_REDIRECT_ORIGINS" type="string">
+      Comma-separated allowlist of non-loopback callback origins accepted at dynamic client registration, for example `https://claude.ai,https://claude.com`. Set it as a secret.
+
+      Loopback callbacks are accepted by default, so a local client such as Claude Code needs nothing here.
+
+      Any other HTTPS origin must be listed, and arbitrary origins stay denied.
+
+      Leave it unset and connecting from a browser-based client fails at registration with `invalid_redirect_uri`, before any sign-in screen appears. See [Add the orchestrator as a project connector](/latest/setup/sso#add-the-orchestrator-as-a-project-connector).
+    </ParamField>
+
+    <ParamField body="MCP_ACCESS_TOKEN_TTL" type="string" default="3600">
+      Lifetime of an MCP access token, in seconds. The default is one hour.
+
+      Leaving it unset uses that one-hour default.
+
+      Because the server also issues refresh tokens, a connected client refreshes silently rather than re-authenticating when the access token expires, so this value only changes how often that background refresh happens.
+    </ParamField>
+
+    ### Self-deploy
+
+    <ParamField body="FLY_DEPLOY_TOKEN" type="string">
+      Fly API token the orchestrator uses to build and release its own next version. Scope it to the orchestrator's own app.
+
+      This is a different credential from `FLY_SESSIONS_TOKEN`, which is scoped to the sessions app and cannot deploy the orchestrator.
+
+      Leaving it unset makes self-deploy unavailable — the orchestrator still runs normally and you deploy it by other means.
+
+      It is the only configuration self-deploy needs; nothing else about it is operator-set.
+    </ParamField>
+
     ### Notifications
 
     <ParamField body="NOTIFY_TYPE" type="string" default="slack">
@@ -262,11 +326,17 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <AccordionGroup>
-      <Accordion title="Runner callbacks (advanced)">
-        These configure how Fly Machine and local-Docker runners authenticate their callbacks to the orchestrator. Defaults are correct for most setups.
+      <Accordion title="Runner callbacks">
+        All three execution modes report their results back to the orchestrator through these — Fly Machines, local Docker, and GitHub Actions alike.
+
+        The GitHub Actions path receives these values as workflow inputs rather than environment variables, so you set them on the orchestrator whichever mode your mappings use.
+
+        Leaving them unset disables the callback path entirely.
+
+        The most visible symptom is a planning run that never reports completion, leaving the issue stalled mid-planning.
 
         <ParamField body="RUNNER_CALLBACK_BASE_URL" type="string">
-          Public base URL the runner uses to call back to the orchestrator (e.g. `https://your-orchestrator.fly.dev`). Required for Fly Machines and local Docker runner modes.
+          Public base URL the runner uses to call back to the orchestrator, e.g. `https://your-orchestrator.fly.dev`.
         </ParamField>
 
         <ParamField body="RUNNER_TOKEN_SECRET" type="string">
@@ -449,9 +519,13 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
-      Verbosity of runner logs. Set to `stream` to get full streaming output, including verbose git tracing on the push step.
+      Set to `stream` to enable verbose git tracing on the push step.
 
-      Any other value, including leaving it unset, gives the condensed summary.
+      This is the only thing the value changes.
+
+      There is no full-streaming verbosity mode.
+
+      Any other value, including leaving it unset, runs the push step without the extra tracing.
     </ParamField>
   </Tab>
 </Tabs>
