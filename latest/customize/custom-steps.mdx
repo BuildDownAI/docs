@@ -82,9 +82,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="post-push-review">
-    Runs the **gap analysis** Claude pass after the PR is opened, comparing the diff to the ticket spec and posting the structured gap-analysis comment to the PR.
+    Reviews the pull request after it is opened — reading the diff, posting what it finds, and running fix passes that force-push corrections to the branch.
 
-    Before the analysis runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own analysis are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
+    Before the review runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own findings are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
 
     It runs up to three review passes by default, which force-push at most two revised versions: on the third pass the step reports that it reached the review cap rather than force-pushing again.
 

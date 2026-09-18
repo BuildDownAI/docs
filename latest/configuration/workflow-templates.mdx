@@ -17,7 +17,7 @@ The main implementation workflow, placed at `.github/workflows/claude-implement.
 
 It reads `WORKFLOW.md` from the repo root, substitutes issue variables into it, and passes the result to Claude Code as the implementation prompt.
 
-After Claude creates a PR, the workflow posts a gap analysis comment to the PR. The originating issue's status and any related comments are updated separately by the orchestrator via its provider-callback mechanism.
+After Claude creates a PR, the workflow reviews it and posts what it finds as PR comments. The originating issue's status and any related comments are updated separately by the orchestrator via its provider-callback mechanism.
 
 ### `claude-plan.yml`
 
