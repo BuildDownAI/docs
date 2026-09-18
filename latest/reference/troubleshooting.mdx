@@ -52,11 +52,15 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="The automated review flagged the pull request">
-    The run finished and opened a pull request, but the post-push review found blocking issues it could not resolve within its iteration budget. The pull request is left as a **draft** so it does not read as ready to merge.
+    The run finished and opened a pull request, but the post-push review used up its iteration budget without clearing every blocking issue. The pull request stays open and ordinary — the verdict is in its comments, not in its state.
 
-    This is a working outcome, not an error — the review did its job. Read the review comment on the pull request: it lists what the review considered unresolved against the original ticket.
+    This is a working outcome, not an error — the review did its job. Read the review comments on the pull request: the last one ends with a merge-readiness line and lists what the review still considers unresolved against the original ticket.
 
-    From there you can finish the work yourself, or comment `/ai-implement` with a specific instruction to send Claude back over the same branch. Mark the pull request ready for review once you are satisfied.
+    From there you can finish the work yourself, or comment `/ai-implement` with a specific instruction to send Claude back over the same branch.
+
+    <Note>
+      The failure notice on the ticket may describe the work as "preserved in a draft PR" even when the pull request is not a draft. Trust the pull request over the notice.
+    </Note>
   </Accordion>
 
   <Accordion title="PR opened but no automated review comment appears">
