@@ -86,7 +86,7 @@
                 "pages": [
                   "reference/admin-ui",
                   "reference/labels",
-                  "reference/gap-analysis",
+                  "reference/post-push-review",
                   "reference/feature-branch-grouping",
                   "reference/notifications",
                   "reference/troubleshooting",
@@ -150,7 +150,7 @@
                   "latest/reference/admin-ui",
                   "latest/reference/mcp-tools",
                   "latest/reference/labels",
-                  "latest/reference/gap-analysis",
+                  "latest/reference/post-push-review",
                   "latest/reference/feature-branch-grouping",
                   "latest/reference/notifications",
                   "latest/reference/troubleshooting",
@@ -207,6 +207,14 @@
     {
       "source": "/latest/changelog",
       "destination": "/latest/releases"
+    },
+    {
+      "source": "/reference/gap-analysis",
+      "destination": "/reference/post-push-review"
+    },
+    {
+      "source": "/latest/reference/gap-analysis",
+      "destination": "/latest/reference/post-push-review"
     }
   ]
 }

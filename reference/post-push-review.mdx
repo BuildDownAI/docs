@@ -1,0 +1,97 @@
+---
+title: "Post-push review"
+description: "What AI-Implement does to a pull request after it opens — the review passes it runs, the comments it leaves, how to read merge readiness, and how to send the work back with an /ai-implement comment."
+---
+
+After AI-Implement opens a pull request, it reviews that pull request again. The pass reads the diff as pushed, comments what it finds, and can push fixes to the branch before anyone else looks at it.
+
+This is a second, independent review. The run that wrote the code reviewed its own work before pushing; this pass starts over against the pushed result.
+
+## What you see on the pull request
+
+The review opens with a comment reading `🔍 Running post-implementation review...`, then works through up to three review passes.
+
+Every comment it leaves ends with a **Merge readiness** line, so the newest comment tells you where the pull request stands:
+
+| Merge readiness | What it means |
+|---|---|
+| `Ready to merge.` | A review pass found nothing to fix. |
+| `Awaiting follow-up review.` | A fix pass pushed changes and the next review pass has not run yet. |
+| `Not ready to merge.` | Problems remain — either a fix pass is starting, or the passes ran out. |
+| `Manual review required; automated review did not complete.` | The review could not finish, so nothing was judged. |
+| `Manual review required; external review did not complete.` | The review itself was clean, but a separate review tool never reported. |
+
+**Comments accumulate rather than replace one another.** Only the opening comment is rewritten in place, so a run that takes several passes leaves a readable trail instead of one comment you have to catch mid-edit.
+
+## Fix passes
+
+A review pass that finds problems lists each one in a comment, then hands the list to a fix pass that edits the code.
+
+The fix pass commits its work with a message like `fix: address review feedback (iter 1)` and force-pushes it to the pull request branch. If you have that branch checked out, your local copy has diverged and needs a fresh pull.
+
+Three review passes allow two fix passes, which is why the counter reads `1/2` and then `2/2`.
+
+A fix pass that changes no files stops the loop instead of spending what is left of the budget.
+
+## Approval is a comment, not an approving review
+
+When a pass approves, AI-Implement submits a pull-request review saying so — as a comment, not as a GitHub approval.
+
+GitHub does not let an author approve their own pull request, and here the pull request and the review come from the same app identity, so an approving review is not available to it.
+
+<Warning>
+  Branch protection that requires an approving review is never satisfied by AI-Implement. A person still has to approve the pull request.
+</Warning>
+
+## External review tools
+
+If your repository runs a separate review tool that reports as a check on the pull request, the post-push review waits up to five minutes for that check on the current commit before deciding anything.
+
+What happens then depends on what the check did:
+
+- **No matching check exists** — the review proceeds on its own verdict.
+- **The check is still running when the wait ends** — the review does not approve, and asks for a person instead.
+- **The check finished without reaching a verdict**, because it was cancelled or skipped — treated the same as still running.
+- **The check reported findings** — they block approval.
+
+<Warning>
+  A finding the external tool marks as minor blocks approval exactly as a blocking one does.
+</Warning>
+
+Which check names count, and whether to wait at all, are set per repository — see [Custom pipeline steps](/customize/custom-steps).
+
+## When the post-push review does not run
+
+- **On a gap-fill run.** Those update a pull request that has already been through this.
+- **On a draft pull request.** When a run's own review never approves, it opens the pull request as a draft and skips this review — and nothing later marks that draft ready.
+- **When the run never opened a pull request.**
+
+## Send the work back with `/ai-implement`
+
+Commenting on the pull request starts another round of work on the same branch, without starting over from the issue.
+
+<Steps>
+  <Step title="Open the pull request on GitHub">
+    Go to the pull request AI-Implement opened.
+  </Step>
+  <Step title="Comment with the trigger">
+    Your comment has to begin with `/ai-implement`. Anything after it is passed to the run as an instruction and takes priority over the default behavior of filling in whatever is missing.
+
+    ```
+    /ai-implement also cover the error path with tests
+    ```
+
+    You need write, maintain, or admin permission on the repository.
+  </Step>
+  <Step title="Wait for the commits">
+    AI-Implement adds a reaction to your comment once it accepts the trigger. The run then pushes its commits to the pull request branch.
+  </Step>
+</Steps>
+
+Trigger as many rounds as you need; each one adds commits to the same branch.
+
+<Note>
+  A gap-fill run is quiet on the pull request — no start notice, no summary, and no notice if it fails. What you get is commits on the branch and a note on the issue describing what it addressed.
+</Note>
+
+On a pull request AI-Implement did not open there is nothing to continue from, so the trigger does no work and may reply saying it has no record of it.

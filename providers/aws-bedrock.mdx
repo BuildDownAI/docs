@@ -11,7 +11,7 @@ AI-Implement supports AWS Bedrock as a provider, letting you invoke Claude model
 
 ## How authentication works
 
-The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS key path. On each run, the workflow calls `aws-actions/configure-aws-credentials` to exchange the GitHub OIDC token for a short-lived STS session. This happens twice per run: once before the main implementation step and once before the gap analysis step, so long-running jobs do not hit STS token expiry.
+The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS key path. On each run it calls `aws-actions/configure-aws-credentials` once to exchange the GitHub OIDC token for an STS session, requesting a four-hour session so that a long run does not outlive its credentials.
 
 <Note>
   Only OIDC is supported. Static AWS access keys (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) are not read or used by the workflow.
@@ -107,10 +107,6 @@ For the role's permissions policy, grant `bedrock:InvokeModel` on the inference 
 }
 ```
 
-<Note>
-  The workflow re-runs `aws-actions/configure-aws-credentials` before both the main implementation run and the gap analysis step. This prevents STS token expiry during long implementation runs.
-</Note>
-
 ## Model IDs
 
 Bedrock model IDs follow the pattern `anthropic.<model-name>-<date>-v<version>:0`. You can also use a cross-region inference-profile ARN. Both are passed verbatim to `claude-code --model` — the workflow does not validate the format.
@@ -124,5 +120,3 @@ model: anthropic.claude-sonnet-4-6-20250805-v1:0
 # Cross-region inference-profile ARN
 model: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-6-20250805-v1:0
 ```
-
-For gap analysis on Bedrock, there is no default cheaper model — the workflow uses the same `model:` value for both steps unless you explicitly set `gap_analysis_model:` in `WORKFLOW.md`.

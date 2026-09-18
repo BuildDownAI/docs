@@ -38,16 +38,6 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
     For the Anthropic provider, `claude-sonnet-4-6` is the intended default and omitting the key is safe.
   </Accordion>
 
-  <Accordion title="gap_analysis_model">
-    The model used for the post-PR gap analysis step. Optional.
-
-    ```yaml
-    gap_analysis_model: claude-haiku-4-5-20251001
-    ```
-
-    When omitted, the Anthropic provider defaults to `claude-haiku-4-5-20251001` (a cheaper model suited to analysis). The Bedrock provider falls back to the same value as `model` because there is no generic Bedrock haiku ID to default to.
-  </Accordion>
-
   <Accordion title="setup">
     Path to a shell script to run **before** Claude starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
 
@@ -125,9 +115,9 @@ feature described in the issue below, then open a pull request with:
 ## Gap-fill instructions _(only when PR_NUMBER is set)_
 
 You are adding missing work to existing PR #${PR_NUMBER}.
-**Do NOT create a new branch or PR.** Commit your changes to the current
-branch and push. Review the gap analysis comment on the PR to understand
-what is still missing.
+**Do NOT create a new branch or PR. Do NOT commit or push.** Leave your file
+changes unstaged and uncommitted — the AI-Implement pipeline commits and
+pushes them to the existing PR branch after review passes.
 
 ---
 

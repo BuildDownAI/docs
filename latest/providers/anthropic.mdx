@@ -99,22 +99,7 @@ model: claude-sonnet-4-6
 ---
 ```
 
-**Default behavior:**
-
-- If `model:` is not set in `WORKFLOW.md`, the implementation workflow defaults to `claude-sonnet-4-6`.
-- The gap analysis step defaults to `claude-haiku-4-5-20251001` when no `gap_analysis_model:` is specified.
-
-**Example model IDs for the Anthropic provider:**
-
-```yaml
----
-# Use Sonnet for implementation (default)
-model: claude-sonnet-4-6
-
-# Optional: use a cheaper model for gap analysis
-gap_analysis_model: claude-haiku-4-5-20251001
----
-```
+When `model:` is not set in `WORKFLOW.md`, the implementation workflow defaults to `claude-sonnet-4-6`.
 
 Other valid Anthropic model IDs include `claude-opus-4-7` and `claude-haiku-4-5-20251001`. New Anthropic model releases flow through without requiring a workflow template update — the model ID is not validated by the workflow.
 
