@@ -42,14 +42,15 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
     "jql": "project = ACME",
     "repoFieldValue": "your-org/your-repo",
     "statusFieldOverride": "customfield_10500",
-    "repoFieldOverride": "customfield_10501"
+    "repoFieldOverride": "customfield_10501",
+    "profilesFieldOverride": "customfield_10502"
   }
   ```
 
   The extra configuration fields for Jira are used as follows:
   - `jql` scopes which issues this mapping watches.
   - `repoFieldValue` is the option value of the `AI-Implement Repo` custom field.
-  - The two `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous.
+  - The three `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous — for the status field, the repo field, and the multi-select **AI-Implement Profiles** field respectively. Setting all three skips auto-discovery entirely. Leaving `profilesFieldOverride` unset while the field's name is ambiguous or non-default means profiles silently never populate for issues in this mapping.
   
   <Info>
     See [Jira manual custom-field setup](/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.

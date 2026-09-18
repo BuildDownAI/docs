@@ -100,9 +100,9 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="/ai-implement comment does nothing">
     If a `/ai-implement` comment on a PR has no effect (no reaction, no new run), check the following:
 
-    1. **`comment-trigger.yml` is not installed.** The workflow must exist at `.github/workflows/comment-trigger.yml` in the target repo. It arrives with the workflow sync — use the **Sync workflows** action on the project's row in the admin UI, then merge the pull request it opens.
-    2. **The PR was not opened by AI-Implement.** The comment trigger only works on PRs that contain the `ai-implement-meta` metadata block in the PR body. PRs created by hand do not have this block.
-    3. **Bedrock repo variables are not set.** If the repo uses Bedrock, you must set `AI_IMPLEMENT_PROVIDER=bedrock` and `AI_IMPLEMENT_AWS_REGION=<region>` as **repository variables** (not secrets) at **Settings → Secrets and variables → Actions → Variables**. Without these, comment-triggered runs default to the Anthropic provider, which may fail if the repo is configured for Bedrock.
+    1. **The orchestrator's webhook is not configured.** The trigger is served by the orchestrator, not by a workflow in your repo, so it needs `GITHUB_WEBHOOK_SECRET` set on the orchestrator and the GitHub App's webhook active and subscribed to issue comments. Nothing polls as a fallback, so an unconfigured webhook means the comment is never seen.
+    2. **The PR was not opened by AI-Implement.** A gap-fill run continues an existing run, so there has to be one on record. On a pull request the orchestrator has no record of, it replies saying so and asks you to start a run from the issue tracker instead.
+    3. **The repo has no project mapping, or its project is paused.** The comment is matched against the configured projects; one that matches nothing, or matches a paused project, is dropped without a reply.
     4. **The commenter does not have write access.** The comment trigger checks that the commenter has `write`, `maintain`, or `admin` permission on the repo. Comments from users with lower permissions are silently ignored.
     5. **The comment does not start with `/ai-implement`.** The trigger matches comments that *begin* with `/ai-implement`. Anything you write after it is passed to the run as an operator instruction, so `/ai-implement also update the tests` works and is often more useful than the bare command. A comment that merely mentions `/ai-implement` mid-sentence does not trigger.
   </Accordion>
