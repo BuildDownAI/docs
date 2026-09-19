@@ -3,7 +3,7 @@ title: "Workflow template files and front matter"
 description: "How the workflow files synced to target repos work, the front matter keys they read from WORKFLOW.md and PLANNING.md, and how to run a resync."
 ---
 
-When you sync AI-Implement to a target repo, it installs three GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
+When you sync AI-Implement to a target repo, it installs two GitHub Actions workflow files and two prompt template files into that repo. The workflow files are managed by AI-Implement and should not be edited directly in the target repo. The prompt template files are yours to customize — after the initial sync, AI-Implement never overwrites them.
 
 ## Files installed by sync
 
@@ -23,10 +23,6 @@ Claude reads the codebase in read-only mode and produces structured planning com
 
 See [AI planning phase](/configuration/planning) for the full flow.
 
-### `comment-trigger.yml`
-
-Listens for `/ai-implement` comments on open pull requests. When a team member posts that comment, it dispatches `claude-implement.yml` with the existing PR number so Claude can address remaining gaps without opening a new branch.
-
 ### `WORKFLOW.md`
 
 Your implementation prompt template, placed at the root of the target repo. The sync workflow seeds this file once. After that, it is yours — future syncs will not overwrite it. Customize the "Repo context" and "Quality checklist" sections for your stack and standards.
@@ -34,6 +30,12 @@ Your implementation prompt template, placed at the root of the target repo. The 
 ### `PLANNING.md`
 
 Your planning prompt template, seeded once in the same way as `WORKFLOW.md`. Customize the "Repo context" section to tell Claude which directories and patterns matter most for your codebase.
+
+## Removed by sync
+
+Older repos carry a third workflow, `.github/workflows/comment-trigger.yml`, which handled `/ai-implement` comments inside the repo. Sync deletes it — the orchestrator serves that trigger now, through its GitHub webhook.
+
+The deletion arrives in the same pull request as the workflow updates, so a repo that has not re-synced still has the file and still uses the old path.
 
 ## Security posture
 

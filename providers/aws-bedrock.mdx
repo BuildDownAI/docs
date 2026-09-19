@@ -27,7 +27,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
     - **Provider** → `bedrock`
     - **AWS Region** → the AWS region where your Bedrock inference profile is available (e.g. `us-west-2`)
 
-    Save the mapping. The orchestrator will now pass `provider=bedrock` and your region to the workflow on each dispatch.
+    Save the mapping. The orchestrator will now pass `provider=bedrock` and your region to the workflow on each dispatch, including `/ai-implement` comment-triggered runs.
   </Step>
 
   <Step title="Add the IAM role ARN as a repository secret">
@@ -38,19 +38,6 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
     | `AWS_BEDROCK_ROLE_ARN` | The ARN of the IAM role that trusts the GitHub OIDC provider and grants `bedrock:InvokeModel` on your inference profiles |
 
     The role must be created in the same AWS account as your Bedrock inference profiles.
-  </Step>
-
-  <Step title="Add repository variables for comment-triggered runs">
-    When someone comments `/ai-implement` on a PR, the gap-fill workflow is triggered directly from the repo — not by the orchestrator. To ensure these runs also use Bedrock, add two **repository variables** (not secrets).
-
-    In your target repo, go to **Settings → Secrets and variables → Actions → Variables** and add:
-
-    | Variable | Value |
-    |---|---|
-    | `AI_IMPLEMENT_PROVIDER` | `bedrock` |
-    | `AI_IMPLEMENT_AWS_REGION` | The same region you set in the admin UI mapping |
-
-    Without these variables, comment-triggered gap-fill runs will fall back to the Anthropic provider.
   </Step>
 
   <Step title="Set the model in WORKFLOW.md (and PLANNING.md)">

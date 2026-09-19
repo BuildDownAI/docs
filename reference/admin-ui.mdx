@@ -80,6 +80,10 @@ Lists every bot-opened pull request the orchestrator is tracking, with the follo
 - Time since last dispatch
 - Direct links to GitHub
 
+<Note>
+  The issue link on this panel, and the equivalent links on the Blockers and Sessions panels below, currently always point at `linear.app`. For a Jira-mapped project, that link is wrong — use the issue identifier shown alongside it to find the ticket in Jira instead.
+</Note>
+
 <Tip>
   Useful for spotting PRs that are stalled or failing review without scanning each repo individually.
 </Tip>
@@ -113,7 +117,6 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Info>
   **New in latest:**
-  - The Projects stepper exposes three optional **run-cap** fields — `maxTurns`, `maxIterations`, and `maxJobMinutes` — in the Capacity step. Tune these per project to control cost and reliability.
   - The **Default Branch** field is now required. Use the repository's actual primary branch (commonly `main`, `master`, or `development`).
 </Info>
 
@@ -135,20 +138,12 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   <Step title="Step through the remaining configuration">
     Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
-
-    | Field | Default if blank | Purpose |
-    |---|---|---|
-    | `maxTurns` | 50 | Maximum Claude conversation turns per run |
-    | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
-    | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
-
-    Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
+    The **Capacity** step here only sets the maximum number of issues this mapping can run in parallel. The per-run caps (`maxTurns`, `maxIterations`, `maxJobMinutes`) aren't part of the stepper — set them afterward from the project's **Edit** dialog. See [Project mappings](/configuration/team-repo-mappings#capacity) for those fields and their defaults.
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
       
-      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo and set the `AI_IMPLEMENT_PROVIDER` and `AI_IMPLEMENT_AWS_REGION` repo variables so comment-triggered gap-fill runs use the same auth path.
+      You must also add `AWS_BEDROCK_ROLE_ARN` as a secret in the target repo. Nothing else is needed for `/ai-implement` comment-triggered runs — they use this same mapping.
     </Warning>
   </Step>
 
@@ -359,7 +354,7 @@ The table shows each file's:
 
 ## Admin API reference
 
-All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours.
+Every operator-facing `/api/*` endpoint except `/api/auth` requires a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours. The session-machine routes at the end of this section are the exception — they authenticate by a per-session nonce instead.
 
 ### Authentication
 
@@ -397,8 +392,12 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
 
 <Note>
-  `/api/auth` is the only endpoint that does not require a bearer token. All other `/api/*` routes return `401 Unauthorized` if the token is missing or expired.
+  `/api/auth` is the only *operator-facing* endpoint that does not require a bearer token — every other route documented on this page returns `401 Unauthorized` if the token is missing or expired.
 </Note>
+
+<Warning>
+  Bearer tokens are not a blanket gate on `/api/*`: a separate handful of routes used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
+</Warning>
 
 #### Project mappings
 
@@ -469,6 +468,20 @@ All `/api/*` endpoints except `/api/auth` require a `Bearer` token obtained from
 | `GET` | `/api/admin/github-install-state` | Check whether the GitHub App is installed on the configured target repo |
 | `GET` | `/api/customizations` | List files under `custom/` that override built-ins |
 | `GET` | `/api/pipelines-steps` | List pipeline definitions and step modules with override status |
+
+### Session-machine endpoints
+
+Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/token` | Vends a short-lived GitHub App installation token to the running session. |
+| `POST` | `/api/status` | Receives session status updates (started, finished, failed) from Fly Machine sessions. |
+| `POST` | `/api/step-report` | Receives per-step progress reports from the pipeline runner. |
+
+<Note>
+  These are internal to the orchestrator and its runner sessions. They are listed here so monitoring and ingress rules account for them correctly — not as an interface to build against. Their paths, payloads, and authentication may change without notice, and nothing outside a runner session should call them.
+</Note>
 
 ### Runner callback endpoints
 

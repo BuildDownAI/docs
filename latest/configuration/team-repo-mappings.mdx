@@ -46,14 +46,15 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
     "jql": "project = ACME",
     "repoFieldValue": "your-org/your-repo",
     "statusFieldOverride": "customfield_10500",
-    "repoFieldOverride": "customfield_10501"
+    "repoFieldOverride": "customfield_10501",
+    "profilesFieldOverride": "customfield_10502"
   }
   ```
 
   The extra configuration fields for Jira are used as follows:
   - `jql` scopes which issues this mapping watches.
   - `repoFieldValue` is the option value of the `AI-Implement Repo` custom field.
-  - The two `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous.
+  - The three `…Override` fields are optional `customfield_NNNNN` IDs you only need to set when Jira auto-discovery by name is ambiguous — for the status field, the repo field, and the multi-select **AI-Implement Profiles** field respectively. Setting all three skips auto-discovery entirely. Leaving `profilesFieldOverride` unset while the field's name is ambiguous or non-default means profiles silently never populate for issues in this mapping.
   
   <Info>
     See [Jira manual custom-field setup](/latest/setup/target-repo#jira-manual-custom-field-setup) for more detailed information.
@@ -89,7 +90,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 <ParamField body="skillsRepo" type="string">
   Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or a full git URL. Cloned into the workspace before implementation begins.
 
-  Leave unset to run without project skills. For `/ai-implement` comment-triggered runs, set the matching repo variable instead — see [`AI_IMPLEMENT_SKILLS_REPO`](/latest/configuration/environment-variables#param-ai-implement-skills-repo).
+  Leave unset to run without project skills. This setting covers `/ai-implement` comment-triggered runs as well.
 </ParamField>
 
 <ParamField body="sensitiveAddPatterns" type="array">
@@ -207,12 +208,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <Tip>
-  These three caps also exist as repo variables for `/ai-implement` comment-triggered gap-fill runs.:
-  - `AI_IMPLEMENT_MAX_TURNS`
-  - `AI_IMPLEMENT_MAX_ITERATIONS`
-  - `AI_IMPLEMENT_MAX_JOB_MINUTES`
-  
-  See the [Run caps variables](/latest/configuration/environment-variables#gap-fill-run-caps) section.
+  These caps cover `/ai-implement` comment-triggered gap-fill runs as well — there is no separate per-repo setting to keep in step with them.
 </Tip>
 
 ## Lifecycle

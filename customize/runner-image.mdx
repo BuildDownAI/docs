@@ -13,7 +13,7 @@ Create a file at `.ai-implement/image.yml` in the default branch of your target 
 image: ghcr.io/your-org/your-runner:v1
 ```
 
-The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or the image is unreachable, the orchestrator falls back to the default runner image automatically.
+The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or its `image:` value isn't a well-formed image reference, the orchestrator falls back to the default runner image automatically — but that check only looks at the file itself. A syntactically valid reference that can't actually be pulled (private, deleted, wrong tag) passes this check and fails later, when the session tries to start, with a manifest/unauthorized error.
 
 <Warning>
   The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
@@ -94,7 +94,7 @@ AI_IMPLEMENT_RUNNER_IMAGE: ghcr.io/your-org/your-runner:v1
 
 **Resolution order** when the orchestrator dispatches a GHA-mode run:
 
-1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `SESSION_IMAGE`) is forwarded as the workflow's `runner_image` input, if either is set
+1. The orchestrator's resolved image (from `.ai-implement/image.yml` or its own `AI_IMPLEMENT_RUNNER_IMAGE` — the deprecated `SESSION_IMAGE` env var name is still honored as a fallback) is forwarded as the workflow's `runner_image` input, if either is explicitly set
 2. Otherwise the workflow falls back to `AI_IMPLEMENT_RUNNER_IMAGE` if that variable is set
 3. Otherwise the built-in default (`ghcr.io/builddownai/ai-implement-runner:latest`) is used
 

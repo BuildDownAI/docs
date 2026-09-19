@@ -160,7 +160,13 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Gap-fill runs with /ai-implement">
-    After reviewing the PR, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the `comment-trigger.yml` workflow picks it up.
+    <Warning>
+      This step and the next both need a GitHub webhook pointed at your orchestrator, which serves them and polls for neither. On a repo synced to the current workflow templates, nothing else watches for an `/ai-implement` comment, and review feedback never starts a follow-up run without it.
+
+      See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) for the setup.
+    </Warning>
+
+    After reviewing the PR, you can send Claude back in for another pass without starting a new run. Comment `/ai-implement` on the PR (in any PR comment), and the orchestrator picks it up.
 
     Anything you write after the trigger becomes the brief for that run, as in `/ai-implement also cover the error path with tests`. Leave it bare and Claude works from the original issue alone.
 
@@ -173,9 +179,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 
   <Step title="Late review feedback handling">
     <Warning>
-      This requires a GitHub webhook pointed at your orchestrator. Unlike the rest of the lifecycle, there's no polling fallback here — without a webhook configured, blocking review feedback is never picked up and no follow-up run happens.
-
-      See [`GITHUB_WEBHOOK_SECRET`](/latest/configuration/environment-variables#param-github-webhook-secret) for the setup.
+      Like the previous step, this runs on the orchestrator's GitHub webhook and has no polling fallback.
     </Warning>
     
     After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave blocking feedback that needs another pass from Claude. AI-Implement watches for this and re-runs Claude automatically; no manual `/ai-implement` comment needed.
