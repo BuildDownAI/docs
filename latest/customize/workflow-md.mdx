@@ -15,7 +15,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 **YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. This block is stripped before Claude sees anything; Claude never receives it.
 
-**Markdown body** — everything after the front matter. This is rendered through `envsubst` (variable substitution) and then sent to Claude as the prompt.
+**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it (see [Variables available in the body](#variables-available-in-the-body)), and the result is sent to Claude as the prompt.
 
 ## Front matter keys
 
@@ -67,7 +67,11 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 ## Variables available in the body
 
-The markdown body is processed with `envsubst` before being sent to Claude. You can reference any of these variables anywhere in the body:
+The variables below are substituted into the body by a regular expression, not by `envsubst`. Reference any of them anywhere in the body.
+
+<Note>
+  Only `${NAME}` forms are substituted, and a token that is not on this list is treated differently than shell semantics would suggest. [Workflow template files](/latest/configuration/workflow-templates) covers the rules and what they mean for a shell example in your body.
+</Note>
 
 | Variable | Description |
 |---|---|
@@ -76,7 +80,10 @@ The markdown body is processed with `envsubst` before being sent to Claude. You 
 | `${ISSUE_DESCRIPTION}` | Full issue description (Markdown) |
 | `${ISSUE_ID}` | Issue UUID — useful if you want Claude to call the ticketing API directly |
 | `${PR_NUMBER}` | Set on gap-fill re-runs; empty on first run |
-| `${PLANNING_CONTEXT}` | Concatenated planning comments fetched from the ticket and sanitized. Empty when planning is disabled or no planning comments are present. |
+
+Planning context is appended to the prompt automatically whenever a planning run produced it, so it is not a variable you place in the body.
+
+Writing `${PLANNING_CONTEXT}` yourself inserts the block a second time through substitution, so the planning context reaches Claude twice.
 
 ## New implementation vs gap-fill runs
 

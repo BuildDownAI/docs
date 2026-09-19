@@ -11,7 +11,7 @@ Like `WORKFLOW.md`, `PLANNING.md` has two parts:
 
 **YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. Stripped before Claude sees anything.
 
-**Markdown body** — everything after the front matter. Processed with `envsubst` and sent to Claude as the prompt.
+**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it, and the result is sent to Claude as the prompt.
 
 ## Front matter keys
 
@@ -37,7 +37,11 @@ Like `WORKFLOW.md`, `PLANNING.md` has two parts:
 
 ## Variables available in the body
 
-The markdown body is processed with `envsubst` before being sent to Claude. You can reference any of these variables anywhere in the body:
+The variables below are substituted into the body by a regular expression, not by `envsubst`. Reference any of them anywhere in the body.
+
+<Note>
+  Only `${NAME}` forms are substituted, and a token that is not on this list is treated differently than shell semantics would suggest. [Workflow template files](/configuration/workflow-templates) covers the rules and what they mean for a shell example in your body.
+</Note>
 
 | Variable | Description |
 |---|---|
