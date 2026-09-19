@@ -1,13 +1,13 @@
 ---
-title: "Use a custom Fly Machine runner image"
-description: "How to point AI-Implement at a custom Docker runner image when your repo needs tools or language runtimes not included in the default Fly Machine environment."
+title: "Use a custom runner image"
+description: "How to point AI-Implement at a custom Docker runner image when your repo needs tools or language runtimes not included in the default runner environment."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
 
-If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image by committing `.ai-implement/image.yml` to the default branch of your target repo. When AI-Implement starts a session for your repo, it reads this file and boots the Fly Machine using your image instead of the default.
+If your repo needs tools or language runtimes that aren't in the default runner image, you can point AI-Implement at a custom image by committing `.ai-implement/image.yml` to the default branch of your target repo. When AI-Implement starts a session for your repo, it reads this file and runs your image instead of the default.
 
 ## How it works
 
@@ -17,7 +17,16 @@ Create a file at `.ai-implement/image.yml` in the default branch of your target 
 image: ghcr.io/your-org/your-runner:v1
 ```
 
-The image must be publicly pullable. AI-Implement does not manage credentials for private registries. If the file is absent, malformed, or its `image:` value isn't a well-formed image reference, the orchestrator falls back to the default runner image automatically — but that check only looks at the file itself. A syntactically valid reference that can't actually be pulled (private, deleted, wrong tag) passes this check and fails later, when the session tries to start, with a manifest/unauthorized error.
+Whether a private image works depends on the execution mode.
+
+In Fly Machines mode the session machine boots on your image with no registry credentials, so the image must be publicly pullable.
+
+In GitHub Actions mode the workflow pulls your image with the implementation job's own token, so a private image on GitHub Container Registry works. How much setup that needs depends on where the image lives:
+
+- **Published by the target repository itself** — no configuration. A package is linked to the repository that publishes it, that repository's workflows inherit access, and the image allowlist trusts the owner's own namespace automatically, so no allowlist entry is needed either.
+- **A sibling repository's, or one in another organization** — the package must grant that repository access, or a personal access token must be swapped into the workflow's registry credentials.
+
+If the file is absent, malformed, or its `image:` value isn't a well-formed image reference, the orchestrator falls back to the default runner image automatically — but that check only looks at the file itself. A syntactically valid reference that can't actually be pulled (private, deleted, wrong tag) passes this check and fails later, when the session tries to start, with a manifest/unauthorized error.
 
 <Warning>
   The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
@@ -55,13 +64,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
     ```
   </Step>
 
-  <Step title="Build and push to a public registry">
-    Build the image and push it to a registry where it can be pulled without authentication. GitHub Container Registry (`ghcr.io`) is a common choice.
+  <Step title="Build and push the image">
+    Build the image and push it to a registry AI-Implement can reach. GitHub Container Registry (`ghcr.io`) is a common choice.
 
     ```bash
     docker build -t ghcr.io/your-org/your-runner:v1 .
     docker push ghcr.io/your-org/your-runner:v1
     ```
+
+    A public image works in either execution mode.
+
+    For a private image, the requirements differ by mode — see [How it works](#how-it-works).
   </Step>
 
   <Step title="Commit .ai-implement/image.yml">
