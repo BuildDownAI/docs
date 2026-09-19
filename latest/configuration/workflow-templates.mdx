@@ -100,7 +100,11 @@ teardown: scripts/ci-teardown.sh
 
 ## Variable substitution in `WORKFLOW.md`
 
-After stripping front matter and HTML comments, the workflow runs `envsubst` on the body of `WORKFLOW.md`. You can use these variables anywhere in the template:
+After stripping front matter and HTML comments, the workflow substitutes a fixed list of `${NAME}` variables into the body of `WORKFLOW.md` with a regular expression — not with `envsubst`, so shell semantics don't apply. Use any of them anywhere in the template.
+
+Any other `${UPPER_SNAKE}` token is replaced with an empty string, so a shell example containing `${...}` is silently emptied, with no error and no log line.
+
+A brace-less `$VAR` is left untouched.
 
 | Variable | Description |
 |---|---|
