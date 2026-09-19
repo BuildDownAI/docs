@@ -17,18 +17,15 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="A Jira issue ran despite an open blocker">
-    The orchestrator skips an issue while any issue linked as blocking it is still open, so a run that starts while a blocker is unresolved means the block was never seen.
+    The orchestrator's poll skips an issue while any issue that blocks it is still open, so an issue it dispatched anyway was never seen as blocked.
 
-    On Jira the check recognizes only the default `Blocks` link type, matched by that name. An instance that renamed the link type gets no blocker check, and the issue dispatches as though nothing blocks it.
+    **Nothing marks the miss.** There is no error and no log line, so the run itself is the only signal you get.
 
-    **Nothing marks the miss.** There is no error and no log line, so a run that should have waited is the only signal you get.
+    On Jira the check recognizes only the default `Blocks` link type, matched by that name — unlike Linear, whose blocking relation is structural and cannot be renamed away. A Jira instance that renamed the link type gets no blocker check at all.
 
-    Linear is unaffected. Its blocking relation is structural rather than matched by a name, so a renamed link type cannot silence it.
+    To restore the check, have a Jira administrator rename the link type back to `Blocks`. To stop depending on it instead, leave the issue in any status other than the two the poll picks up, `Ready` and `Plan Approved`.
 
-    To restore the check, either:
-
-    - Rename the link type back to Jira's default `Blocks`, or
-    - Stop relying on the blocker skip for that project and gate the issue through your mapping's JQL instead.
+    **Your mapping's JQL cannot stand in for the check.** It can exclude an issue from the query, but Jira's query language cannot test whether the issue on the other end of a link is still open — that needs a marketplace app.
   </Accordion>
 
   <Accordion title="The run failed">

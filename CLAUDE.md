@@ -96,9 +96,9 @@ The third direction is the most valuable and the easiest to skip. Asking whether
 
 - the exact label the reader sees, not the internal field name
 - which surface exposes it — the creation flow, the edit dialog, a config file, or an environment variable
-- whether it is configurable at all
+- whether it is configurable at all, and whether the surface can express what you are asking of it
 
-The surfaces diverge, and readers usually reach the docs during the creation flow, so check that flow first.
+The surfaces diverge, and readers usually reach the docs during the creation flow, so check that flow first. Inherited text gets the same check: an instruction to preserve a sentence reads as an assurance that someone already established it, which is exactly when nobody has.
 
 ## How the docs should read
 
@@ -131,6 +131,8 @@ This governs every block of prose on a page — ordinary paragraphs, list items,
 A pointer to where the detail lives is not a beat of its own. A fact and a link to the section that owns it are one thing the reader learns, so keep them together.
 
 **Use `<Steps>` for ordered procedures.** Any sequence where each action depends on the previous one completing — install → restart → verify, a setup walkthrough — goes in a `<Steps>` block, not a bare numbered list or a run of separate paragraphs. The reader is following along as they go.
+
+**Order a troubleshooting entry context → cause → resolution → what obviously doesn't work.** Context is what should have happened and what the reader saw instead, including the absence of any error. Keep provider-specific behavior together in the cause rather than scattered through the other segments. Name the plausible fix that fails, and why, whenever one exists — a reader often arrives having already tried it.
 
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
 
