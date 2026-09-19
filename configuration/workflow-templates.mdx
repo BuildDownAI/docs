@@ -97,9 +97,11 @@ teardown: scripts/ci-teardown.sh
 
 After stripping front matter and HTML comments, the workflow substitutes a fixed list of `${NAME}` variables into the body of `WORKFLOW.md` with a regular expression — not with `envsubst`, so shell semantics don't apply. Use any of them anywhere in the template.
 
-Any other `${UPPER_SNAKE}` token is replaced with an empty string, so a shell example containing `${...}` is silently emptied, with no error and no log line.
-
 A brace-less `$VAR` is left untouched.
+
+<Warning>
+  Any other `${UPPER_SNAKE}` token is replaced with an empty string, so a shell example containing `${...}` is silently emptied, with no error and no log line.
+</Warning>
 
 | Variable | Description |
 |---|---|
@@ -111,7 +113,7 @@ A brace-less `$VAR` is left untouched.
 
 ## Variable substitution in `PLANNING.md`
 
-`PLANNING.md` supports the following variables in addition to the common issue fields:
+`PLANNING.md` is substituted the same way, and the rules above apply to it too. It takes the common issue fields, plus three describing the issue's place in the tree:
 
 | Variable | Description |
 |---|---|
