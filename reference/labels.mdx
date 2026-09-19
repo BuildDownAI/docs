@@ -82,8 +82,12 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     You set `AI-Implement Status` to `Ready` on any Jira issue you want AI-Implement to handle. The orchestrator polls every 60 seconds using the team mapping's JQL query (which filters to this status value) and dispatches a run for each eligible issue.
 
+    To stop an issue from being picked up, move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+
+    An issue must be **unblocked** to be picked up. It counts as blocked while any issue that blocks it is still open, and the block clears once that issue's status reaches the Done category.
+
     <Warning>
-      An issue with an open **Blocks**-type issue link is skipped, the same as Linear — the block clears once the linked issue's status reaches the Done category. This only recognizes Jira's default "Blocks" link type; if your instance renamed it, gate the issue through your JQL instead. To stop an issue from being picked up for another reason, move it to any status other than `Ready` or `Plan Approved` — those are the only two values the poll accepts.
+      The blocker skip only recognizes Jira's default "Blocks" link type. An instance that renamed it silently loses the check. See [A Jira issue ran despite an open blocker](/reference/troubleshooting#a-jira-issue-ran-despite-an-open-blocker) for what that looks like and how to restore it.
     </Warning>
 
     ### Planning / Plan Approved
