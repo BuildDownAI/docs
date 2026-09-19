@@ -5,14 +5,14 @@ description: "What the AI-Implement admin dashboard lets you manage — every pa
 
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
-The sidebar organizes panels into four groups:
+The sidebar organizes panels into groups:
 - **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
 - **Platform** — Runners, Sessions, Deployments, Reaper, Secrets, Settings
 - **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
 
 <Note>
-  Five of these are placeholders for planned functionality and have no section below:
+  Some are placeholders for planned functionality and have no section below:
   - **Triggers & channels**
   - **Policies & risk**
   - **MCP server**
@@ -22,7 +22,7 @@ The sidebar organizes panels into four groups:
   Opening one tells you which panel does that job today.
 </Note>
 
-Two panels are live but not yet documented in full here:
+These panels are live but not yet documented in full here:
 - **Reports** — fleet-wide outcome analytics over a chosen 7-, 30-, or 90-day window: per-repo success and cost, first-pass versus eventual approval rates, post-merge escape rate, and a planned-versus-unplanned comparison.
 - **Deployments** — release a new version of the orchestrator itself: whether an update is available against the running build, the last deploy's outcome, and a self-deploy that pauses new dispatch until in-flight work drains.
 
@@ -128,7 +128,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Steps>
   <Step title="Open the stepper">
-    Click **Configure → Projects → + New project**. The stepper walks through 8 configuration steps.
+    Click **Configure → Projects → + New project**. The stepper walks through the configuration one step at a time.
   </Step>
 
   <Step title="Fill in Ticketing System and Source">
@@ -138,7 +138,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
       Default Branch is required and must match the repo's actual primary branch (commonly `main`, `master`, or `development`).
     </Note>
 
-    Once the owner and repository are filled in, **Check installation** confirms the GitHub App can reach that repo. It reports one of three outcomes:
+    Once the owner and repository are filled in, **Check installation** confirms the GitHub App can reach that repo. It reports one of these outcomes:
     - The App is installed and can access the repository.
     - The App is not installed on that owner, with a link to install it.
     - The App is installed but the repository is not among its selected repositories, with a link to add it.
@@ -361,19 +361,15 @@ The table shows each file's:
 
 ## Admin API reference
 
-Operator-facing `/api/*` endpoints are authenticated by a session. Requests carry the session in an httpOnly cookie set at sign-in, and an `Authorization: Bearer` header holding the same token is accepted as a fallback for compatibility.
+Operator-facing `/api/*` endpoints require a signed-in session, which lasts 24 hours. A request carries it in the cookie the browser sets at sign-in, or in an `Authorization: Bearer` header when you are scripting.
 
-A session is created when you sign in, either through single sign-on or by submitting the access code.
-
-Sessions last 24 hours.
-
-The sign-in routes under `/api/auth/*` — the provider list, sign-out, and each provider's start and callback — are reachable without a session, so signing in works even when no access code is configured.
-
-The session-machine routes at the end of this section authenticate differently, by a per-session nonce.
+The session-machine endpoints at the end of this section are the exception — they authenticate by a per-session nonce instead.
 
 ### Authentication
 
-The browser signs you in through single sign-on or the access code and keeps the session in a cookie for you. For scripting against the API, obtain a token with the access code and pass it as a bearer header:
+In the browser, sign in with single sign-on or the access code — the session lands in a cookie and nothing else is needed.
+
+For scripting, mint a token with the access code and pass it as a bearer header. This works only where an access code is configured: with single sign-on alone the orchestrator refuses access-code sign-in, so there is no bearer flow.
 
 <Steps>
   <Step title="Obtain a bearer token">
@@ -400,6 +396,10 @@ The browser signs you in through single sign-on or the access code and keeps the
   </Step>
 </Steps>
 
+<Warning>
+  Access-code sign-in is deprecated in favor of single sign-on, so this is not a supported basis for new tooling.
+</Warning>
+
 ### Endpoint reference
 
 #### Authentication
@@ -413,11 +413,11 @@ The browser signs you in through single sign-on or the access code and keeps the
 | `POST` | `/api/auth/logout` | Sign out and revoke the current session |
 
 <Note>
-  The `/api/auth/*` sign-in routes above are reachable without a session — they are how you get one, and they stay open even when no access code is configured. Every other operator-facing route on this page returns `401 Unauthorized` when the session cookie or bearer token is missing or expired.
+  The `/api/auth/*` sign-in endpoints above are reachable without a session — they are how you get one, and they stay open even when no access code is configured. Every other operator-facing endpoint on this page returns `401 Unauthorized` when the session cookie or bearer token is missing or expired.
 </Note>
 
 <Warning>
-  A session is not a blanket gate on `/api/*`: a separate handful of routes used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
+  A session is not a blanket gate on `/api/*`: a separate handful of endpoints used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
 </Warning>
 
 #### Project mappings
@@ -492,7 +492,7 @@ The browser signs you in through single sign-on or the access code and keeps the
 
 ### Session-machine endpoints
 
-Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
+The `/api/*` endpoints below are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require an operator session. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -506,7 +506,7 @@ Three more `/api/*` routes are called by Fly Machine and local Docker runner ses
 
 ### Runner callback endpoints
 
-Five endpoints are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. Three sit outside the `/api/*` namespace and two sit inside it, but all are authenticated by a runner token rather than by an operator session.
+The endpoints below are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. Some sit outside the `/api/*` namespace and some inside it, but all are authenticated by a runner token rather than by an operator session.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -516,7 +516,7 @@ Five endpoints are called by **runners** (GitHub Actions workflow jobs, Fly Mach
 | `POST` | `/api/runner/dependency-token` | Vends a read-only token that lets a running session pull the private dependency repositories a build needs. |
 | `POST` | `/api/runner/publication-token` | Vends a token scoped to the run's target repository so the session can push its branch and open the pull request. Issued only for implementation runs, and single-use. |
 
-All five endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
+All of them respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
 
 <Note>
   Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.
@@ -524,7 +524,7 @@ All five endpoints respond `501 Not Implemented` when the orchestrator has no `R
 
 ### Webhook and trigger endpoints
 
-Two endpoints sit outside the operator API but are operator-configurable: you set their URLs and secrets in your target repos (or at the organization level), and the orchestrator validates incoming requests against those secrets. Documented here so monitoring tools, ingress rules, and integration testing can account for the routes.
+These endpoints sit outside the operator API but are operator-configurable: you set their URLs and secrets in your target repos (or at the organization level), and the orchestrator validates incoming requests against those secrets. Documented here so monitoring tools, ingress rules, and integration testing can account for them.
 
 | Method | Path | Purpose |
 |---|---|---|
