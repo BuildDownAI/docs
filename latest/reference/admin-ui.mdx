@@ -9,24 +9,28 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
-The sidebar organizes panels into four groups:
-- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers
+The sidebar organizes panels into groups:
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
-- **Platform** — Runners, Sessions, Reaper, Secrets, Settings
-- **Developer** — MCP server, Webhooks, Audit log, Customizations, Updates
+- **Platform** — Runners, Sessions, Deployments, Reaper, Access, Secrets, Settings
+- **Developer** — Webhooks, Audit log, Customizations, Updates
 
 <Note>
-  Five of these are placeholders for planned functionality and have no section below:
+  Some are placeholders for planned functionality and have no section below:
   - **Triggers & channels**
   - **Policies & risk**
-  - **MCP server**
   - **Webhooks**
   - **Updates**.
   
   Opening one tells you which panel does that job today.
 </Note>
 
-The headings below follow the sidebar order, skipping those five.
+These panels are live but not yet documented in full here:
+- **Reports** — fleet-wide outcome analytics over a chosen 7-, 30-, or 90-day window: per-repo success and cost, first-pass versus eventual approval rates, post-merge escape rate, and a planned-versus-unplanned comparison.
+- **Deployments** — release a new version of the orchestrator itself: whether an update is available against the running build, the last deploy's outcome, and a self-deploy that pauses new dispatch until in-flight work drains.
+- **Access** — control who may sign in to the orchestrator and at what role: manage the allowlist of emails and domains, set admin-versus-user roles, choose which panels ordinary users may open, and review recent access changes.
+
+The headings below follow the sidebar order, covering the panels that have a section of their own.
 
 ## Work
 
@@ -125,7 +129,7 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
 
 <Steps>
   <Step title="Open the stepper">
-    Click **Configure → Projects → + New project**. The stepper walks through 8 configuration steps.
+    Click **Configure → Projects → + New project**. The stepper walks through the configuration one step at a time.
   </Step>
 
   <Step title="Fill in Ticketing System and Source">
@@ -134,6 +138,11 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
     <Note>
       Default Branch is required and must match the repo's actual primary branch (commonly `main`, `master`, or `development`).
     </Note>
+
+    Once the owner and repository are filled in, **Check installation** confirms the GitHub App can reach that repo. It reports one of these outcomes:
+    - The App is installed and can access the repository.
+    - The App is not installed on that owner, with a link to install it.
+    - The App is installed but the repository is not among its selected repositories, with a link to add it.
   </Step>
 
   <Step title="Step through the remaining configuration">
@@ -208,6 +217,16 @@ The table lists each project's:
 
 High-level runner-infrastructure dashboard.
 
+The top of the panel hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
+
+`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
+
+<Note>
+  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
+
+  If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
+</Note>
+
 KPI cards show:
 - Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
 - Live Fly session count
@@ -244,14 +263,6 @@ You can destroy a stuck session directly from this panel. Destroying a session a
 
 The reconciliation-sweep dashboard.
 
-The top of the page hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
-
-`local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
-
-<Note>
-  If the `RUNNER_MODE` environment variable is set on the orchestrator process, it takes precedence over this database value and the UI flags that an env-var lock is active.
-</Note>
-
 A summary card shows the 24-hour total of machines and jobs the reaper destroyed, broken down by rule:
 - `orphan`
 - `stale-terminal-job`
@@ -268,10 +279,6 @@ A recent-actions table lists the latest destructions with:
 - Associated issue
 - Age at destruction (in seconds)
 - `dry-run` or `destroyed` badge (indicating whether the action was a no-op or executed)
-
-<Note>
-  If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
-</Note>
 
 ### Secrets
 
@@ -372,9 +379,15 @@ The table shows each file's:
 
 ## Admin API reference
 
-Every operator-facing `/api/*` endpoint except `/api/auth` requires a `Bearer` token obtained from `/api/auth`. Tokens expire after 24 hours. The session-machine routes at the end of this section are the exception — they authenticate by a per-session nonce instead.
+Operator-facing `/api/*` endpoints require a signed-in session, which lasts 24 hours. A request carries it in the cookie the browser sets at sign-in, or in an `Authorization: Bearer` header when you are scripting.
+
+The session-machine endpoints at the end of this section are the exception — they authenticate by a per-session nonce instead.
 
 ### Authentication
+
+In the browser, sign in with single sign-on or the access code — the session lands in a cookie and nothing else is needed.
+
+For scripting, mint a token with the access code and pass it as a bearer header. This works only where an access code is configured: with single sign-on alone the orchestrator refuses access-code sign-in, so there is no bearer flow.
 
 <Steps>
   <Step title="Obtain a bearer token">
@@ -401,20 +414,28 @@ Every operator-facing `/api/*` endpoint except `/api/auth` requires a `Bearer` t
   </Step>
 </Steps>
 
+<Warning>
+  Access-code sign-in is deprecated in favor of single sign-on, so this is not a supported basis for new tooling.
+</Warning>
+
 ### Endpoint reference
 
 #### Authentication
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/auth` | Authenticate with access code; returns bearer token |
+| `POST` | `/api/auth` | Sign in with the access code; returns a session token |
+| `GET` | `/api/auth/providers` | List the configured single sign-on providers |
+| `GET` | `/api/auth/:provider/start` | Begin single sign-on with a provider |
+| `GET` | `/api/auth/:provider/callback` | Complete single sign-on and open a session |
+| `POST` | `/api/auth/logout` | Sign out and revoke the current session |
 
 <Note>
-  `/api/auth` is the only *operator-facing* endpoint that does not require a bearer token — every other route documented on this page returns `401 Unauthorized` if the token is missing or expired.
+  The `/api/auth/*` sign-in endpoints above are reachable without a session — they are how you get one, and they stay open even when no access code is configured. Every other operator-facing endpoint on this page returns `401 Unauthorized` when the session cookie or bearer token is missing or expired.
 </Note>
 
 <Warning>
-  Bearer tokens are not a blanket gate on `/api/*`: a separate handful of routes used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
+  A session is not a blanket gate on `/api/*`: a separate handful of endpoints used by runner sessions authenticate by a different mechanism, and the GitHub webhook endpoint authenticates by signature. Account for all three when writing ingress rules. See [Session-machine endpoints](#session-machine-endpoints) below.
 </Warning>
 
 #### Project mappings
@@ -483,13 +504,13 @@ Every operator-facing `/api/*` endpoint except `/api/auth` requires a `Bearer` t
 |---|---|---|
 | `GET` | `/api/admin/config-status` | Get environment-status checks (ticketing connection, runner callback, gap-fill trigger) |
 | `GET` | `/api/admin/template-status` | Get workflow-template staleness status per target repo |
-| `GET` | `/api/admin/github-install-state` | Check whether the GitHub App is installed on the configured target repo |
+| `GET` | `/api/admin/github-install-state` | Check whether the GitHub App is installed for a given owner and repository (both passed as parameters), and whether that repository is among the App's selected repositories |
 | `GET` | `/api/customizations` | List files under `custom/` that override built-ins |
 | `GET` | `/api/pipelines-steps` | List pipeline definitions and step modules with override status |
 
 ### Session-machine endpoints
 
-Three more `/api/*` routes are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require a bearer token. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
+The `/api/*` endpoints below are called by Fly Machine and local Docker runner sessions, not by operators, and — unlike the rest of `/api/*` — do **not** require an operator session. Each authenticates with a per-session nonce instead, issued when the session starts and rejected once it expires.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -503,15 +524,17 @@ Three more `/api/*` routes are called by Fly Machine and local Docker runner ses
 
 ### Runner callback endpoints
 
-Three endpoints sit outside the `/api/*` namespace and are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. They use a separate authentication scheme from the bearer tokens above.
+The endpoints below are called by **runners** (GitHub Actions workflow jobs, Fly Machine sessions, or local Docker containers running an issue), not by operators. Some sit outside the `/api/*` namespace and some inside it, but all are authenticated by a runner token rather than by an operator session.
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/runner/result` | Reports the final outcome of a dispatch — success or failure, PR URL when one was opened, error context when not. The token is **single-use**: once consumed, the dispatch result is locked in and the endpoint rejects further calls for that dispatch. |
 | `POST` | `/runner/progress` | Streams step-by-step progress updates throughout a run (each pipeline step's status, elapsed time, and any structured output). The token is **multi-use** so the runner can post many updates during a single dispatch; consumed independently of the result token. |
 | `GET` | `/runner/planning-context` | Fetches the planning comments recorded on the originating issue, so an implementation run can include the approved plan in its prompt without the runner needing ticketing credentials. |
+| `POST` | `/api/runner/dependency-token` | Vends a read-only token that lets a running session pull the private dependency repositories a build needs. |
+| `POST` | `/api/runner/publication-token` | Vends a token scoped to the run's target repository so the session can push its branch and open the pull request. Issued only for implementation runs, and single-use. |
 
-All three endpoints respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
+All of them respond `501 Not Implemented` when the orchestrator has no `RUNNER_TOKEN_SECRET` configured, since none can validate tokens without it.
 
 <Note>
   Operators do not normally call these directly. They're documented here so that monitoring tools, ingress configurations, and debugging sessions can account for runner-side traffic correctly.
@@ -519,7 +542,7 @@ All three endpoints respond `501 Not Implemented` when the orchestrator has no `
 
 ### Webhook and trigger endpoints
 
-Two endpoints sit outside the operator API but are operator-configurable: you set their URLs and secrets in your target repos (or at the organization level), and the orchestrator validates incoming requests against those secrets. Documented here so monitoring tools, ingress rules, and integration testing can account for the routes.
+These endpoints sit outside the operator API but are operator-configurable: you set their URLs and secrets in your target repos (or at the organization level), and the orchestrator validates incoming requests against those secrets. Documented here so monitoring tools, ingress rules, and integration testing can account for them.
 
 | Method | Path | Purpose |
 |---|---|---|
