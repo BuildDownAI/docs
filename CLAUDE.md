@@ -126,7 +126,9 @@ Write the docs the way a reader uses them, not the way the product is built.
 
 Two tells that a boundary is being papered over: an em-dash or semicolon joining two complete thoughts, and a sentence that opens by restating the subject of the one before it. Both mean the split was already there and got written as punctuation instead.
 
-This governs every block of prose on a page — ordinary paragraphs, accordion bodies, `<Step>` bodies, and `<ParamField>` bodies alike.
+This governs every block of prose on a page — ordinary paragraphs, list items, accordion bodies, `<Step>` bodies, and `<ParamField>` bodies alike. In a list item the fix is a second item rather than a blank line: a bullet carrying two beats is two bullets written as one.
+
+A pointer to where the detail lives is not a beat of its own. A fact and a link to the section that owns it are one thing the reader learns, so keep them together.
 
 **Use `<Steps>` for ordered procedures.** Any sequence where each action depends on the previous one completing — install → restart → verify, a setup walkthrough — goes in a `<Steps>` block, not a bare numbered list or a run of separate paragraphs. The reader is following along as they go.
 

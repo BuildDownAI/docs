@@ -19,14 +19,14 @@ image: ghcr.io/your-org/your-runner:v1
 
 Whether a private image works depends on the execution mode.
 
-In Fly Machines mode the session machine boots on your image with no registry credentials, so the image must be publicly pullable.
+In **Fly Machines** mode the session machine boots on your image with no registry credentials, so the image must be publicly pullable.
 
-In GitHub Actions mode the workflow pulls your image with the implementation job's own token, so a private image on GitHub Container Registry works. How much setup that needs depends on where the image lives:
+In **GitHub Actions** mode the workflow pulls your image with the implementation job's own token, so a private image on GitHub Container Registry works. How much setup that needs depends on where the image lives:
 
-- **Published by the target repository itself** — no configuration. A package is linked to the repository that publishes it, that repository's workflows inherit access, and the image allowlist trusts the owner's own namespace automatically, so no allowlist entry is needed either.
+- **Published by the target repository itself** — no configuration. A package is linked to the repository that publishes it, so that repository's workflows inherit access.
 - **A sibling repository's, or one in another organization** — the package must grant that repository access, or a personal access token must be swapped into the workflow's registry credentials.
 
-If the file is absent, malformed, or its `image:` value isn't a well-formed image reference, the orchestrator falls back to the default runner image automatically — but that check only looks at the file itself. A syntactically valid reference that can't actually be pulled (private, deleted, wrong tag) passes this check and fails later, when the session tries to start, with a manifest/unauthorized error.
+If the file is absent, malformed, or its `image:` value isn't a well-formed image reference, the orchestrator falls back to the default runner image automatically — but that check only looks at the file itself. A syntactically valid reference that can't actually be pulled (deleted, the wrong tag, or private where the execution mode has no credentials for it) passes this check and fails later, when the session tries to start, with a manifest/unauthorized error.
 
 <Warning>
   The file is always read from the default branch, never from a pull request's head — so editing `image.yml` in an open PR won't change which image that PR's runs use. Merge the change first.
@@ -38,22 +38,11 @@ The default base image is:
 ghcr.io/builddownai/ai-implement-runner:latest
 ```
 
-## Building a custom image
-
-Build your image `FROM` the published base image so you inherit all the tools and configuration the default runner provides. Then add whatever your repo needs on top:
-
-```dockerfile
-FROM ghcr.io/builddownai/ai-implement-runner:latest
-
-# Add your tools
-RUN apt-get update && apt-get install -y --no-install-recommends terraform
-```
-
 ## Setup steps
 
 <Steps>
   <Step title="Create a Dockerfile">
-    Start from the base image and add the tools or runtimes your repo requires.
+    Build `FROM` the published base image so you inherit the tools and configuration the default runner provides, then add the tools or runtimes your repo requires.
 
     ```dockerfile
     FROM ghcr.io/builddownai/ai-implement-runner:latest
@@ -65,16 +54,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
   </Step>
 
   <Step title="Build and push the image">
-    Build the image and push it to a registry AI-Implement can reach. GitHub Container Registry (`ghcr.io`) is a common choice.
+    Build the image and push it to a registry AI-Implement can pull from. GitHub Container Registry (`ghcr.io`), under your own namespace, is the usual choice.
 
     ```bash
     docker build -t ghcr.io/your-org/your-runner:v1 .
     docker push ghcr.io/your-org/your-runner:v1
     ```
 
-    A public image works in either execution mode.
+    In GitHub Actions mode the image must also sit under a trusted prefix — your own `ghcr.io/<owner>/` namespace, or one you add to the [image allowlist](/latest/configuration/environment-variables#param-ai-implement-allowed-runner-image-prefixes). A public image is no exception, and one outside every trusted prefix fails the run rather than falling back to the default image. Fly Machines mode has no such restriction.
 
-    For a private image, the requirements differ by mode — see [How it works](#how-it-works).
+    Whether a private image works differs by mode as well — see [the per-mode rules above](#how-it-works).
   </Step>
 
   <Step title="Commit .ai-implement/image.yml">
@@ -87,12 +76,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends terraform
     Commit this to your default branch. AI-Implement reads it from there on the next run.
   </Step>
 </Steps>
-
-<Note>
-  `.ai-implement/image.yml` works for **both** execution modes.
-  - In Fly Machines mode, the orchestrator boots the session machine directly on your image.
-  - In GitHub Actions mode, the orchestrator forwards your image to `claude-implement.yml` as the `container.image` for the workflow job.
-</Note>
 
 <Tip>
   Common use cases for a custom runner image include repos that need Terraform, Ruby, Go, or a specific language version that isn't available in the default image.
