@@ -13,11 +13,26 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="An issue is triggered but no PR appears">
     The orchestrator polls for eligible issues every 60 seconds (configurable via `POLL_INTERVAL_MS`). If a triggered issue does not produce a PR after a few minutes, check the following in order:
 
-    1. **The issue is blocked.** An issue is skipped while any issue linked as blocking it is still open. Resolve the blockers and the orchestrator will pick it up on the next poll.
+    1. **The issue is blocked.** An issue is skipped while any issue linked as blocking it is still open. Resolve the blockers and the orchestrator will pick it up on the next poll. On Jira this check can miss silently — see [A Jira issue ran despite an open blocker](#a-jira-issue-ran-despite-an-open-blocker).
     2. **No team/repo mapping exists.** Open the admin UI at `/admin` and confirm that a mapping exists for the team that owns the issue. If not, add one.
     3. **The concurrency cap is reached.** Each project mapping has a `maxInProgressAiIssues` limit (default `3`). If the project already has that many issues in progress (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira), new issues are held until a slot opens. You can raise the cap from the admin UI or via `PATCH /api/mappings/:teamKey`.
     4. **The orchestrator is not running or not polling.** Health-check the orchestrator with `curl https://your-orchestrator/`. If it does not respond, check the Fly logs with `fly logs --app your-app`.
     5. **Check the dispatch log.** The log at `/api/log` shows whether the orchestrator attempted to dispatch the issue and what the outcome was.
+  </Accordion>
+
+  <Accordion title="A Jira issue ran despite an open blocker">
+    The orchestrator skips an issue while any issue linked as blocking it is still open, so a run that starts while a blocker is unresolved means the block was never seen.
+
+    On Jira the check recognizes only the default `Blocks` link type, matched by that name. An instance that renamed the link type gets no blocker check, and the issue dispatches as though nothing blocks it.
+
+    **Nothing marks the miss.** There is no error and no log line, so a run that should have waited is the only signal you get.
+
+    Linear is unaffected. Its blocking relation is structural rather than matched by a name, so a renamed link type cannot silence it.
+
+    To restore the check, either:
+
+    - Rename the link type back to Jira's default `Blocks`, or
+    - Stop relying on the blocker skip for that project and gate the issue through your mapping's JQL instead.
   </Accordion>
 
   <Accordion title="The run failed">
