@@ -67,8 +67,8 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   Name of the target GitHub repository (e.g. `my-api`). Combined with `owner`, this tells the orchestrator where to dispatch workflow runs.
 </ParamField>
 
-<ParamField body="defaultBranch" type="string" default="main">
-  Branch that Claude creates pull requests against. Set this to `master` or your primary branch name if it differs.
+<ParamField body="defaultBranch" type="string" required>
+  Branch that Claude creates pull requests against. It must match the repository's actual primary branch, commonly `main`, `master`, or `development`.
 </ParamField>
 
 <ParamField body="branchPrefix" type="string">

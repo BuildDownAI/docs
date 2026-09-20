@@ -53,7 +53,7 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
         - **Ticketing Config → Linear Team Key** — your Linear team key (e.g. `ENG`)
         - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
         - **Source → Repository Name** — the target repository's name without the owner prefix
-        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly.
       </Tab>
 
       <Tab title="Jira">
@@ -62,9 +62,13 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
         - **Ticketing Config → Repo Field Value** — the option value of the `AI-Implement Repo` field for issues belonging to this project mapping
         - **Source → GitHub Owner** — the GitHub org or user that owns the **target repo**
         - **Source → Repository Name** — the target repository's name without the owner prefix
-        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly.
       </Tab>
     </Tabs>
+
+    <Warning>
+      Nothing checks the default branch name against the repository when you save. A default branch name that does not exist saves cleanly and fails the run at its first step, when the runner tries to clone it.
+    </Warning>
 
     Step through the remaining steps accepting defaults for a first run, then **Create project**. The orchestrator begins watching the configured scope on its next poll cycle.
 
