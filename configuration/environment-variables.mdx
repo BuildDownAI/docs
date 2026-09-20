@@ -126,6 +126,12 @@ Pick the tab that matches where you're configuring right now.
       How often the orchestrator polls for new AI-Implement issues, in milliseconds. Lower values increase ticketing-API usage; values below `10000` are not recommended.
     </ParamField>
 
+    <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="string" default="3">
+      How many consecutive failed dispatches for one issue and phase are tolerated before the orchestrator **parks that issue** and stops picking it up. This is the setting behind an issue that silently stops being dispatched, and a parked issue stays parked until a person clears it.
+
+      Set to `0` to disable the breaker, so a repeatedly failing issue is retried on every poll instead.
+    </ParamField>
+
     <ParamField body="DEDUP_DB_PATH" type="string" default="/data/dedup.sqlite">
       Absolute path to the SQLite file used for deduplication, dispatch logging, and project-mapping storage. Defaults to `/data/dedup.sqlite` in production (the Fly.io volume mount point) and `./dedup.sqlite` when running locally. Change this only if you are mounting the volume at a different path.
     </ParamField>
@@ -196,6 +202,24 @@ Pick the tab that matches where you're configuring right now.
       </Accordion>
     </AccordionGroup>
 
+    ### MCP server
+
+    The orchestrator exposes a bundled knowledge graph to MCP clients through an OAuth-authenticated proxy at `/mcp`. These variables configure how clients connect to it, alongside `OAUTH_REDIRECT_BASE_URL` and a sign-in provider from **Admin sign-in** above.
+
+    <ParamField body="MCP_ALLOWED_REDIRECT_ORIGINS" type="string">
+      Comma-separated allowlist of non-loopback callback origins accepted at dynamic client registration, for example `https://claude.ai,https://claude.com`. Set it as a secret.
+
+      Loopback callbacks are accepted by default, so a local client such as Claude Code needs nothing here. Any other HTTPS origin must be listed, and arbitrary origins stay denied.
+
+      Leave it unset and connecting from a browser-based client fails at registration with `invalid_redirect_uri`, before any sign-in screen appears. See [Add the orchestrator as a project connector](/setup/sso#add-the-orchestrator-as-a-project-connector).
+    </ParamField>
+
+    <ParamField body="MCP_ACCESS_TOKEN_TTL" type="string" default="3600">
+      Lifetime of an MCP access token, in seconds.
+
+      The server also issues refresh tokens, so a connected client refreshes silently rather than re-authenticating when the access token expires — this value only changes how often that background refresh happens.
+    </ParamField>
+
     ### Notifications
 
     <ParamField body="NOTIFY_TYPE" type="string" default="slack">
@@ -258,11 +282,13 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <AccordionGroup>
-      <Accordion title="Runner callbacks (advanced)">
-        These configure how Fly Machine and local-Docker runners authenticate their callbacks to the orchestrator. Defaults are correct for most setups.
+      <Accordion title="Runner callbacks">
+        Every execution mode reports back to the orchestrator through these — Fly Machines, local Docker, and GitHub Actions alike. The GitHub Actions path receives the values as workflow inputs rather than reading its own environment, so you set them on the orchestrator whichever mode your mappings use.
+
+        Leaving either unset disables the callback path entirely. The most visible symptom is a planning run that never reports completion, leaving the issue stalled mid-planning.
 
         <ParamField body="RUNNER_CALLBACK_BASE_URL" type="string">
-          Public base URL the runner uses to call back to the orchestrator (e.g. `https://your-orchestrator.fly.dev`). Required for Fly Machines and local Docker runner modes.
+          Public base URL the runner uses to call back to the orchestrator, e.g. `https://your-orchestrator.fly.dev`.
         </ParamField>
 
         <ParamField body="RUNNER_TOKEN_SECRET" type="string">
@@ -448,9 +474,9 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
-      Verbosity of runner logs. Set to `stream` to get full streaming output, including verbose git tracing on the push step.
+      Verbosity of runner logs. Set to `stream` to log the agent's activity as it happens — each tool call with a summary of its input, each result, and any text it writes — and to add verbose git tracing on the push step.
 
-      Any other value, including leaving it unset, gives the condensed summary.
+      Any other value, including leaving it unset, logs only each run's closing totals.
     </ParamField>
   </Tab>
 </Tabs>
