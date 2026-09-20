@@ -119,7 +119,7 @@ This guide walks you through running AI-Implement for the first time. By the end
         - **Ticketing Config → Linear Team Key** — your Linear team's identifier (e.g. `ENG`)
         - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
         - **Source → Repository Name** — the repository name (e.g. `your-repo`)
-        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly.
       </Tab>
 
       <Tab title="Jira">
@@ -128,9 +128,13 @@ This guide walks you through running AI-Implement for the first time. By the end
         - **Ticketing Config → Repo Field Value** — the value of the `AI-Implement Repo` field for issues belonging to this project mapping (e.g. `your-org/your-repo`)
         - **Source → GitHub Owner** — the GitHub org or user (e.g. `your-org`)
         - **Source → Repository Name** — the repository name (e.g. `your-repo`)
-        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly; saving fails with a clear error if the branch doesn't exist.
+        - **Source → Default Branch** — the repo's primary branch (e.g. `main`). Must match the repo exactly.
       </Tab>
     </Tabs>
+
+    <Warning>
+      Nothing checks the default branch name against the repository when you save. A default branch name that does not exist saves cleanly and fails the run at its first step, when the runner tries to clone it.
+    </Warning>
 
     Click through the remaining steps (Runner, Provider, Capacity, Secrets, Review) accepting defaults, then **Create project**.
   </Step>
