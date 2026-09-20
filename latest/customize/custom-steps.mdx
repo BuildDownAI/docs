@@ -45,6 +45,14 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
 
+  <Accordion title="dependency-auth">
+    Mints a short-lived, read-only access token during the run and registers it as a git credential helper, so ordinary dependency fetches against private sibling repositories succeed without any per-repository setup.
+
+    The step does nothing unless the project's [dependency-token scope](/latest/configuration/team-repo-mappings#param-dependencytokenscope) is turned on — the first thing to rule out when a private dependency fetch fails.
+
+    It also no-ops silently, without failing the run, when the run has no callback URL to request the token from, or no progress token to authenticate the request.
+  </Accordion>
+
   <Accordion title="install">
     Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
     
@@ -151,6 +159,7 @@ The `type:` field accepts exactly eight values — anything else fails to load:
   - `setup`
   - `feedback-loop`
   - `install-skills`
+  - `dependency-auth`
   - `verify`
   - `post-push-review`
 
@@ -187,7 +196,7 @@ steps:
 ```
 
 <Tip>
-  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
+  Step input wiring and `skip` predicates for the built-in step IDs (`clone`, `install-skills`, `dependency-auth`, `install`, `setup`, `feedback-loop`, `preflight`, `push`, `verify`, `post-push-review`) are applied automatically by the pipeline loader.
   
   Your YAML only needs to declare `id`, `type`, and optional `moduleId` — no other key is recognized. An `inputs:` key, for example, is parsed but silently ignored. A step whose `id` isn't one of the built-ins above always receives an empty `inputs` object, so a genuinely new custom step must read whatever it needs from the pipeline's shared context data rather than from step-level YAML config.
 </Tip>

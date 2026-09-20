@@ -93,6 +93,17 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   Leave unset to run without project skills. This setting covers `/ai-implement` comment-triggered runs as well.
 </ParamField>
 
+<ParamField body="dependencyTokenScope" type="string" default="off">
+  Grants each run read access to repositories beyond the one it is working in, so a build that pulls a private sibling repository as a dependency can fetch it.
+
+  - Left unset (the default), the feature is off, and a run can read only its own target repository.
+  - Set to `installation`, the run receives a token covering every repository the installed GitHub App can see.
+
+  That grant is all-or-nothing and read-only: it cannot be narrowed to a chosen subset of repositories, and it never permits writing or pushing to any of them.
+
+  [The `dependency-auth` step](/latest/customize/custom-steps#dependency-auth) mints and installs this token during the run.
+</ParamField>
+
 <ParamField body="sensitiveAddPatterns" type="array">
   Extra glob patterns treated as sensitive for this project, on top of the built-in list. A run that stages a matching file is blocked before it commits — see [Blocked by a security guardrail](/latest/reference/error-codes#blocked-by-a-security-guardrail).
 
