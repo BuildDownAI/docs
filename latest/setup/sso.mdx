@@ -198,7 +198,13 @@ The registration endpoint accepts loopback callbacks by default, so **Claude Cod
         fly secrets set MCP_ALLOWED_REDIRECT_ORIGINS=https://claude.ai,https://claude.com --app <your-app>
         ```
 
-        The callback claude.ai registers is `https://claude.ai/api/mcp/auth_callback`. Allowlisting the origin is enough — you register no callback path yourself.
+        The callback claude.ai registers is `https://claude.ai/api/mcp/auth_callback`, and allowlisting its origin is all you do.
+
+        <Note>
+            This is not the same as the provider redirect URIs you added earlier. Those let the orchestrator finish sign-in with Google or Microsoft.
+
+            This allowlist decides which client origins may register with the orchestrator at all, which happens before any sign-in begins.
+        </Note>
     </Step>
 
     <Step title="Add the connector in claude.ai">
