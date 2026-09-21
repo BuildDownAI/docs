@@ -10,12 +10,11 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 A **project mapping** connects a ticketing-system scope (a Linear team or a Jira JQL clause) to a target GitHub repository and controls exactly how AI-Implement dispatches and runs implementations for that scope. Each mapping is stored in the orchestrator's SQLite database and can be created, edited, or deleted through the admin UI at `/admin`. You need at least one mapping for the orchestrator to do any work.
 
 <Note>
-  The **New project** stepper doesn't expose every field. Seven are set afterwards, by opening the project's **Edit** dialog:
+  The **New project** stepper doesn't expose every field. These are set afterwards, by opening the project's **Edit** dialog:
 
-  - `workflowFile` and `branchPrefix` — under [Source](#source) below
+  - `workflowFile` — under [Source](#source) below
   - `extraEnv` — under [Runner](#runner)
   - `planningWorkflowFile` — under [Planning](#planning)
-  - `maxTurns`, `maxIterations`, and `maxJobMinutes` — under [Capacity](#capacity)
 
   `paused` comes from neither dialog — it's the **Pause** / **Resume** button on the project's row.
 </Note>
