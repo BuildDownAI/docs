@@ -127,7 +127,7 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="DISPATCH_BREAKER_THRESHOLD" type="string" default="3">
-      How many consecutive failed dispatches for one issue and phase are tolerated before the orchestrator **parks that issue** and stops picking it up. This is the setting behind an issue that silently stops being dispatched, and a parked issue stays parked until a person clears it.
+      How many consecutive failed dispatches for one issue and phase are tolerated before the orchestrator **parks that issue** and stops picking it up. This is the setting behind an issue that silently stops being dispatched, and a parked issue stays parked until a person clears it from the [Runners panel's **Parked issues** section](/reference/admin-ui#parked-issues).
 
       Set to `0` to disable the breaker, so a repeatedly failing issue is retried on every poll instead.
     </ParamField>

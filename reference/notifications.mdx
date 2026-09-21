@@ -31,7 +31,9 @@ AI-Implement notifies on two kinds of event.
 **Run lifecycle**
 
 - **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
-- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+- **Dispatch failed** — the workflow dispatch itself was rejected (for example, the target repo's workflow inputs are out of date). Includes the workflow file name and, for an HTTP 422 response specifically, a hint that the target repo's workflow templates may need re-syncing.
+- **Completion** — a run finishes. Includes the outcome (`completed`, `review_failed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration. `review_failed` means the post-push review found blockers still outstanding — see [Post-push review](/reference/post-push-review).
+- **Stuck — needs human** — the stuck-run watchdog gave up on an issue after repeatedly finding its run stuck and requeueing it. The ticket's in-progress marker is cleared, and the notification includes how many attempts were made and the last known run status, so the issue is visibly unassigned again rather than silently stalled.
 
 **Orchestrator lifecycle**
 

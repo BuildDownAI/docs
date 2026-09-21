@@ -63,16 +63,15 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   <Step title="Planning phase (if enabled)">
     If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
 
-    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to four structured comments to the issue:
+    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts three structured comments to the issue:
 
-    - **Architecture Analysis** — how the codebase is structured and what changes are needed
-    - **Test Plan** — what tests should be written or updated
-    - **Work Units** — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must come after.
-    - **Cross-Story Context** — relevant context from related issues (if available)
+    - **Implementation Map** — the approach, the files to create, modify, test, or delete, and any constraints the implementer must not break
+    - **Acceptance Bar** — a numbered list of falsifiable claims the reviewer can check directly against the diff
+    - **Risks & Open Questions** — edge cases and unknowns Claude found while exploring the codebase
 
-    <Note>
-      When the **Work Units** section is present, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time instead of one after another. Skipped when the issue is too small or too tightly coupled to decompose, in which case implementation runs as a single pass.
-    </Note>
+    <Info>
+      When the issue has a parent, siblings, or dependencies, the Implementation Map folds in cross-story coordination notes rather than getting a separate comment.
+    </Info>
 
     When the planning workflow finishes successfully, these comments appear on the issue and its marker is updated:
     

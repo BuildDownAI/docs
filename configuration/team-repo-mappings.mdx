@@ -84,7 +84,9 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="skillsRepo" type="string">
-  Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or a full git URL. Cloned into the workspace before implementation begins.
+  Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or an `https://github.com/...` URL. Cloned into the workspace before implementation begins.
+
+  Only GitHub is supported — the runner clones with a GitHub-minted token, so an SSH (`git@…`) URL or a URL on another host is rejected when you save the mapping.
 
   Leave unset to run without project skills. This setting covers `/ai-implement` comment-triggered runs as well.
 </ParamField>
@@ -181,12 +183,12 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="autoMerge" type="boolean" default="false">
-  When `true`, the orchestrator merges this project's child pull requests into their shared grouping branch once checks pass, so a parent issue's children collect without manual merging.
+  Reserved for a future per-project opt-in. In the current release, merging a parent issue's child pull requests into their shared grouping branch happens automatically for every non-paused project with a parent/child group, and this setting has no effect on that behavior either way — see [Feature-branch grouping](/reference/feature-branch-grouping).
 
-  Applies only to issues that belong to a parent/child group — see [Feature-branch grouping](/reference/feature-branch-grouping). Ordinary single-issue runs are unaffected.
+  Ordinary single-issue runs are unaffected regardless of this setting.
 
   <Note>
-    This never merges into `defaultBranch`. The final pull request from the grouping branch into your default branch always waits for a human.
+    Grouping-branch merges never touch `defaultBranch`. The final pull request from the grouping branch into your default branch always waits for a human.
   </Note>
 </ParamField>
 

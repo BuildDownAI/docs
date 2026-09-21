@@ -61,8 +61,13 @@ You can mark the whole tree at once. The ordering rules below sequence it for yo
 | Parent still has children in flight | Waits |
 | Parent's children are all finished | The parent's own work runs, landing on its own grouping branch |
 | Issue is blocked by an open blocking relation | Waits |
+| Issue's declared files overlap an in-flight sibling's | Waits until the in-flight sibling merges |
 
 A parent can carry work of its own — a final cleanup, a piece of integration — that isn't part of any child. That work is deliberately held until every child is finished, so it builds on top of them rather than racing them.
+
+<Note>
+  Two siblings in the same tree that touch the same files run one at a time rather than in parallel, so the second doesn't start from a stale checkout of a file the first is still changing. Which files an issue declares comes from planning output (a work unit's `Files:` list) when planning is enabled; an issue with no declared files is never deferred by this check. Once the in-flight sibling's pull request merges, the deferred one is free to run.
+</Note>
 
 <Tip>
   "Finished" includes cancelled. Cancelling a child you've decided against releases the parent instead of stalling it.
@@ -76,9 +81,9 @@ The exception is the top of the tree. That one becomes a **pull request into you
 
 Merge that final pull request however you like — merge commit, squash, or rebase all work. The orchestrator notices it merged, deletes the grouping branch, and marks the top issue done.
 
-## Merging child pull requests automatically
+## Merging child pull requests into the grouping branch
 
-By default every child pull request waits for a human, same as any other. Turning on **Auto Merge** for a project changes that: child pull requests are merged into their grouping branch once they're ready.
+Once a child pull request targets a grouping branch, AI-Implement merges it automatically as soon as it's ready — for every non-paused project with a parent/child tree, whether or not that project's **Auto Merge** setting is on.
 
 A child is merged only when all of the following hold:
 
@@ -94,10 +99,12 @@ Anything else is left alone. Pending checks are waited on, failures and change-r
 </Note>
 
 <Warning>
-  Auto Merge never merges into your default branch. The final pull request out of the tree always waits for human review.
+  This never merges into your default branch. The final pull request out of the tree always waits for human review.
 </Warning>
 
-Turn it on per project — see [`autoMerge`](/configuration/team-repo-mappings#param-auto-merge) in the project mapping reference.
+<Note>
+  The project mapping's [`autoMerge`](/configuration/team-repo-mappings#param-auto-merge) field is reserved for a future per-project opt-in and currently has no effect on grouping-branch merges — they happen the same way whether it's on or off.
+</Note>
 
 ## Naming the grouping branch
 

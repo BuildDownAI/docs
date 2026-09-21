@@ -40,6 +40,10 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
     <Warning>
       Both **Actions** and **Workflows** permissions are needed for GitHub Actions to function. **Workflows** allows `sync-workflow.yml` to write workflows to target repos, and **Actions** allows the orchestrator to run those workflows.
     </Warning>
+
+    <Note>
+      The **Pull requests** permission above is what lets AI-Implement open PRs — every synced workflow authenticates as the App, not as the default `github-actions[bot]` actor. You do not also need to enable target repos' **"Allow GitHub Actions to create and approve pull requests"** setting; that setting governs the default actor only and has no effect on App-authenticated workflows.
+    </Note>
   </Step>
 
   <Step title="Configure webhook delivery">
@@ -114,16 +118,6 @@ Each secret below notes its counterpart on the orchestrator where the names diff
 <Note>
   `CLAUDE_CODE_OAUTH_TOKEN` takes precedence over `ANTHROPIC_API_KEY` when both secrets are set. You only need one Claude authentication method, but having both configured gives you a fallback.
 </Note>
-
-## Enable pull request creation in target repos
-
-Each target repo must allow GitHub Actions to create and approve pull requests. Without this setting, the workflow will fail when it tries to open the PR.
-
-In each target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
-
-<Warning>
-  This setting must be enabled in every repo you connect to AI-Implement. It is not inherited from organization-level settings.
-</Warning>
 
 ## What's next
 

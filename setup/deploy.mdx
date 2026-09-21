@@ -86,15 +86,7 @@ Running locally is the fastest way to test a configuration before committing to 
       </Tab>
     </Tabs>
 
-    <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
-      so variables in `.env` are ignored unless you load them yourself.
-
-      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
-      first with `set -a; source .env; set +a` before starting the orchestrator.
-    </Note>
-
-    Either mode starts the polling loop and HTTP server on port 8080.
+    Either mode starts the polling loop and HTTP server on port 8080, loading `.env` automatically — no separate step needed.
   </Step>
 
   <Step title="Verify it is running">

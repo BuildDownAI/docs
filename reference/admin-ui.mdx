@@ -226,6 +226,12 @@ A per-project table shows each mapping's:
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
 
+#### Parked issues
+
+A **Parked issues** section appears on this panel whenever the dispatch circuit breaker has parked at least one issue — after [`DISPATCH_BREAKER_THRESHOLD`](/configuration/environment-variables#param-dispatch-breaker-threshold) consecutive dispatch failures for the same issue and phase, the orchestrator stops picking it up.
+
+Each row shows the issue, repo, phase, failure count, last failure conclusion, and how long ago it was parked. A parked issue stays parked until you **unpark** it from this panel — the breaker never clears one on its own.
+
 ### Sessions
 
 Lists every Fly Machine session currently in `started`, `starting`, or `created` state.
@@ -454,6 +460,8 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+| `GET` | `/api/parked` | List issues parked by the dispatch circuit breaker |
+| `POST` | `/api/parked/unpark` | Unpark an issue so it can be dispatched again |
 
 #### Runner mode and settings
 
