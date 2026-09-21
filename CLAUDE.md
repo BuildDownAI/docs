@@ -157,7 +157,7 @@ A pointer to where the detail lives is not a beat of its own. A fact and a link 
 Verify the destination anchor exists before linking. Slug rules:
 
 - `##`/`###`/`####` headings, `<Accordion title="…">`, `<Update label="…">` → `#<slugified-text>`
-- `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix)
+- `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix); the slug splits camelCase, so `autoMerge` is `#param-auto-merge`, never `#param-automerge`
 - `<Step title="…">` and `<Tab title="…">` generate **no anchor** — link to the page instead
 - A `/` inside a heading stays in the slug and must be URL-encoded as `%2F` in the link — a "Projects (team/repo mappings)" heading becomes `#projects-team%2Frepo-mappings`
 
