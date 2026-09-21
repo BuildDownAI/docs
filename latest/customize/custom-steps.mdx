@@ -54,7 +54,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="install">
-    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for repo-level `packageManager`, `models`, and `reviewProviders` settings.
+    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for the [repo-level settings](#repo-level-configuration-file) documented below.
     
     Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
   </Accordion>
@@ -98,7 +98,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
 
     It runs up to three review passes by default, which force-push at most two revised versions: on the third pass the step reports that it reached the review cap rather than force-pushing again. [Post-push review](/latest/reference/post-push-review) covers the comments it leaves and how each outcome reads.
 
-    The one setting you can change without code is which external reviewers to wait for, via `reviewProviders` in `.ai-implement/config.yml`. The iteration cap and the external-review wait timings are built in; change them by overriding this step.
+    Without code, you can change which external reviewers to wait for and which check-run names the step matches, both in [`.ai-implement/config.yml`](#repo-level-configuration-file). The iteration cap and the external-review wait timings are built in; change them by overriding this step.
   </Accordion>
 </AccordionGroup>
 
@@ -207,6 +207,10 @@ A step whose `id` isn't one of the built-ins always receives an empty `inputs` o
 
 Drop a YAML file at `.ai-implement/config.yml` in your target repo's root to override certain runtime behaviors without modifying `WORKFLOW.md` or any synced workflow files. The orchestrator's install step reads this file at the start of every run.
 
+<Tip>
+  Changes take effect on the next dispatch, with no orchestrator restart needed.
+</Tip>
+
 ```yaml
 packageManager: pnpm
 models:
@@ -214,6 +218,9 @@ models:
   review: claude-sonnet-4-6
 reviewProviders:
   - github-claude-code-review
+reviewCheckNames:
+  - claude-review
+  - my-org-review-bot
 ```
 
 <Note>
@@ -247,14 +254,31 @@ reviewProviders:
   Controls whether the `post-push-review` step waits for an external GitHub Actions review check on the same PR and folds its findings into its own review.
 
   This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The three cases each do something different:
-  - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting checks named `claude-review` or `claude code review`.
+  - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting the check by name (see [`reviewCheckNames`](#param-review-check-names) for the names recognized by default and how to override them).
   - **Empty list** — the step skips the external wait entirely and runs only its own review.
   - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
 </ParamField>
 
-<Tip>
-  The file is read fresh at the start of every run, so changes take effect on the next dispatch without needing to restart the orchestrator.
-</Tip>
+<ParamField body="reviewCheckNames" type="string[]">
+  Sets which external review check runs the `post-push-review` step waits for, by check-run name.
+
+  Set it when your external review bot posts under a name the step doesn't recognize by default — findings from an unrecognized check are never folded in.
+
+  When omitted or left empty, the step uses its built-in defaults, recognizing these check-run names:
+  - `review`
+  - `code-review-plugin`
+  - `claude-review`
+  - `claude code review`
+  - `claude-code-review`
+
+  It also matches any other check whose name contains both `claude` and `review`, catching most naming variants without configuration.
+
+  <Warning>
+    A list here **replaces** the defaults rather than extending them, and matching becomes exact — the `claude`-and-`review` heuristic stops applying.
+
+    Any check you leave off silently stops being matched, so list every one you rely on.
+  </Warning>
+</ParamField>
 
 ## custom/providers/ — override a ticketing provider
 
