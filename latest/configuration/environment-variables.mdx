@@ -221,7 +221,11 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="MCP_ACCESS_TOKEN_TTL" type="string" default="3600">
       Lifetime of an MCP access token, in seconds.
 
-      The server also issues refresh tokens, so a connected client refreshes silently rather than re-authenticating when the access token expires — this value only changes how often that background refresh happens.
+      The server also issues refresh tokens, so a connected client refreshes silently rather than re-authenticating when the access token expires.
+
+      <Warning>
+        Each refresh re-checks the allowlist, so this value is also how long someone keeps access after being removed from it. Raising it widens that window.
+      </Warning>
     </ParamField>
 
     ### Notifications

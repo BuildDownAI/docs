@@ -28,6 +28,10 @@ The **allowlist** is set through two variables, and an address matching either o
 
 Pick the provider you want to sign in with. Configuring both is fine — operators then choose at the sign-in screen.
 
+<Warning>
+  Configuring both breaks MCP sign-in for anyone who can only use Microsoft: an [MCP client](/reference/mcp-tools) is never offered a choice, and always signs in with Google. Either provider works on its own.
+</Warning>
+
 <Tabs>
     <Tab title="Google">
         Google has 2 provider specific environment variables, both retrievable in the **Create the OAuth Client** step:
@@ -211,7 +215,7 @@ The registration endpoint accepts loopback callbacks by default, so **Claude Cod
 Only the origins you list are accepted. Arbitrary HTTPS origins stay **denied by design**, so the allowlist is exactly the origins above unless you connect from somewhere else.
 
 <Tip>
-    A connector survives access-token expiry on its own. The server issues refresh tokens, so a connected client refreshes silently in the background rather than sending you back through sign-in when its hourly access token expires.
+    A connector survives access-token expiry on its own: it refreshes silently in the background rather than sending you back through sign-in. [How long access lasts](/reference/mcp-tools#staying-signed-in) covers when someone does have to sign in again.
 </Tip>
 
 ## The shared access code

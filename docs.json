@@ -52,8 +52,9 @@
                   "setup/github-app",
                   "setup/linear-app",
                   "setup/deploy",
+                  "setup/target-repo",
                   "setup/sso",
-                  "setup/target-repo"
+                  "setup/knowledge-graph"
                 ]
               },
               {
@@ -85,6 +86,7 @@
                 "group": "Reference",
                 "pages": [
                   "reference/admin-ui",
+                  "reference/mcp-tools",
                   "reference/labels",
                   "reference/post-push-review",
                   "reference/feature-branch-grouping",
@@ -115,8 +117,8 @@
                   "latest/setup/github-app",
                   "latest/setup/linear-app",
                   "latest/setup/deploy",
-                  "latest/setup/sso",
-                  "latest/setup/target-repo"
+                  "latest/setup/target-repo",
+                  "latest/setup/sso"
                 ]
               },
               {

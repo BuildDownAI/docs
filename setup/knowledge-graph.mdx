@@ -1,0 +1,115 @@
+---
+title: "Set up a knowledge graph"
+description: "Add a project's knowledge graph to the orchestrator so the BuildDown skills can search it, and check that a deployment is serving it."
+---
+
+The orchestrator can serve a **knowledge graph** — the project memory the BuildDown skills [search before they plan or land work](/skills/introduction#knowledge-graph).
+
+Setting one up spans both products. The graph's contents live in a repository of their own, which the skills create and keep current. The orchestrator builds that repository into its image and serves it.
+
+## How the graph is served
+
+The graph is built into the orchestrator's image rather than run as a separate service. At build time the image clones the graph's repository and builds the graph from the snapshot committed there. When the container starts, it runs the query server that repository provides, beside the orchestrator.
+
+Nothing outside the container reaches that server directly. The [orchestrator's `/mcp`](/reference/mcp-tools) endpoint is the only way in.
+
+**Each orchestrator serves one graph, and every project configured on it shares that graph.** The graph covers those projects, and each refresh adds any project repository it doesn't yet include. A project that needs a graph of its own needs an orchestrator of its own.
+
+**The graph's contents are fixed until the next build.** Refreshing it means committing a new snapshot to the graph's repository and redeploying the orchestrator.
+
+<Warning>
+  The graph is optional, but `/mcp` can't be signed into without one. An orchestrator deployed without a graph runs normally in every other respect, yet no client can connect to `/mcp` — not even for the orchestrator's own diagnostic tools, which never touch the graph.
+</Warning>
+
+## Add a graph to an orchestrator
+
+Before you start, you need:
+
+- the [BuildDown skills](/skills/installation) installed in your project
+- an orchestrator that [deploys itself](/setup/self-deploy)
+- [admin sign-in](/setup/sso) configured, including the MCP callback URI for each provider
+
+Signing in to the graph is checked against the same allowlist as admin sign-in.
+
+<Steps>
+  <Step title="Start creating the graph's repository">
+    Run `bd-kg-create` in your project. It creates a private repository from the BuildDown knowledge-graph template and sets what the graph covers.
+
+    It then goes on to build and deploy the graph, which works only once the orchestrator can reach the new repository. Complete the next two steps before it deploys.
+  </Step>
+
+  <Step title="Give the GitHub App read access to the graph's repository">
+    If your GitHub App isn't installed on all repositories, add the graph's repository on the App's settings page under **Install App**.
+
+    Whenever the orchestrator deploys a new version of itself, it reads the graph's repository through the App, with read-only access to that repository alone.
+
+    Without that access, the orchestrator can't deploy any new version of itself — whether or not the graph changed — until the access is fixed. The running version keeps running, but each attempt first pauses new work and waits for running jobs to finish.
+  </Step>
+
+  <Step title="Point the orchestrator at the graph's repository">
+    Set [`KG_SOURCE_REPO`](/configuration/environment-variables#param-kg-source-repo) to the graph's repository, as `owner/repo`:
+
+    ```bash
+    fly secrets set KG_SOURCE_REPO=your-org/knowledge-graph-your-project --app <app_name>
+    ```
+
+    It takes effect at the next deploy, not when you set it. An invalid value stops the orchestrator from deploying itself at all, rather than letting it fall back to a different graph.
+  </Step>
+
+  <Step title="Let bd-kg-create finish">
+    Once the orchestrator can reach the graph's repository, let `bd-kg-create` carry on. It deploys the graph, then binds your project to it and runs a real search against the deployed graph — the check that the whole setup works.
+  </Step>
+</Steps>
+
+## Check that a deployment is serving the graph
+
+A deployment can come up without its graph — built without it, or with a query server that failed to start — and the orchestrator carries on regardless.
+
+After a self-deploy, the admin UI's **Deployments** panel records whether the release came up with its graph, and shows a notice when it didn't. Any other deploy records nothing.
+
+Request the orchestrator's resource-metadata document:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://<your-orchestrator>/.well-known/oauth-protected-resource
+```
+
+With admin sign-in working, `200` means the release came up with its query server, and `503` means it didn't.
+
+**Probing `/mcp` itself can't tell you this.** It answers `401` to an unauthenticated request whether the query server is running or not.
+
+A `200` confirms only that the query server started with this release — not that the graph holds anything, or that sign-in works. A real search, like the one `bd-kg-create` runs when it binds a project, checks both.
+
+## Keeping it current
+
+Run `bd-kg-refresh` whenever the graph should reflect newly landed work. Each run commits a fresh snapshot and redeploys the orchestrator, so it needs someone with permission to deploy.
+
+Any other deploy that builds the graph also picks up the latest committed snapshot, since the image clones the default branch of the graph's repository each time.
+
+## When search is degraded
+
+The graph's semantic search is built separately from the graph itself, and a failure there doesn't stop the image from shipping. The graph still loads, but search falls back to keyword matching alone. In a graph repository created from the BuildDown template, that is far narrower:
+
+- A result appears only when the **whole query** appears in its title or one of its tags, word for word.
+- Issues can't be found by search at all.
+- Only learnings and decisions are matched, plus implementation and planning notes in repositories created or updated from the template on or after 2026-09-13.
+
+So a question such as "how do we stop re-dispatching a torn-down issue" returns nothing unless something in the graph carries that exact phrase in its title, even when the graph holds the answer.
+
+The orchestrator and the graph both report it:
+
+- as `"kgDegraded": true` in the orchestrator's response to `GET /`
+- as a warning line in the deploy notification
+- as `"degraded": true` on each search response
+
+Clearing it means redeploying.
+
+## What's next
+
+<Columns cols={2}>
+  <Card title="Connect claude.ai" icon="plug" href="/setup/sso#add-the-orchestrator-as-a-project-connector">
+    Add the orchestrator as a project connector, so claude.ai can search the graph too.
+  </Card>
+  <Card title="Bind another project" icon="diagram-project" href="/skills/project-setup">
+    Point another project's BuildDown skills at this orchestrator's graph.
+  </Card>
+</Columns>

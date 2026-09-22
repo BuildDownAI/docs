@@ -32,6 +32,10 @@ The **allowlist** is set through two variables, and an address matching either o
 
 Pick the provider you want to sign in with. Configuring both is fine — operators then choose at the sign-in screen.
 
+<Warning>
+  Configuring both breaks MCP sign-in for anyone who can only use Microsoft: an [MCP client](/latest/reference/mcp-tools) is never offered a choice, and always signs in with Google. Either provider works on its own.
+</Warning>
+
 <Tabs>
     <Tab title="Google">
         Google has 2 provider specific environment variables, both retrievable in the **Create the OAuth Client** step:

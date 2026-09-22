@@ -204,7 +204,29 @@ Pick the tab that matches where you're configuring right now.
 
     ### MCP server
 
-    The orchestrator exposes a bundled knowledge graph to MCP clients through an OAuth-authenticated proxy at `/mcp`. These variables configure how clients connect to it, alongside `OAUTH_REDIRECT_BASE_URL` and a sign-in provider from **Admin sign-in** above.
+    The orchestrator exposes a bundled knowledge graph to MCP clients through an OAuth-authenticated proxy at `/mcp`. These variables choose the graph and control how clients connect to it, alongside `OAUTH_REDIRECT_BASE_URL` and a sign-in provider from **Admin sign-in** above.
+
+    <Note>
+      Setting these variables alone doesn't produce a working graph: the repository they name has to exist and carry a committed snapshot, and the orchestrator has to rebuild before it serves one. [Set up a knowledge graph](/setup/knowledge-graph) covers the procedure end to end.
+    </Note>
+
+    <ParamField body="KG_SOURCE_REPO" type="string">
+      **Required to serve a knowledge graph.**
+      
+      GitHub repository it is built from, as `owner/repo`.
+
+      Your GitHub App has to be installed on it, since each build clones it with a token minted through the App.
+    </ParamField>
+
+    <ParamField body="KG_SIDECAR_URL" type="string">
+      **Only set for local development.**
+      
+      Where the orchestrator reaches the graph's query server.
+
+      <Tip>
+        In a container the entrypoint sets it, so a deployed orchestrator needs nothing here. Set it by hand when you run the query server yourself, or leave it blank to run without `/mcp`.
+      </Tip>
+    </ParamField>
 
     <ParamField body="MCP_ALLOWED_REDIRECT_ORIGINS" type="string">
       Comma-separated allowlist of non-loopback callback origins accepted at dynamic client registration, for example `https://claude.ai,https://claude.com`. Set it as a secret.
@@ -217,7 +239,11 @@ Pick the tab that matches where you're configuring right now.
     <ParamField body="MCP_ACCESS_TOKEN_TTL" type="string" default="3600">
       Lifetime of an MCP access token, in seconds.
 
-      The server also issues refresh tokens, so a connected client refreshes silently rather than re-authenticating when the access token expires — this value only changes how often that background refresh happens.
+      The server also issues refresh tokens, so a connected client refreshes silently rather than re-authenticating when the access token expires.
+
+      <Warning>
+        Each refresh re-checks the allowlist, so this value is also how long someone keeps access after being removed from it. Raising it widens that window.
+      </Warning>
     </ParamField>
 
     ### Notifications
