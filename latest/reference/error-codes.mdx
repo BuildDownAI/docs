@@ -453,9 +453,11 @@ When a dispatch is overdue, the orchestrator cancels the GitHub Actions workflow
 
 The retry is bounded. The orchestrator keeps a per-issue attempt count that spans both overdue runs and outright failures, so a mix of the two draws down one budget.
 
-It requeues an issue up to three times, and each attempt within the budget cancels the run and requeues the issue the same way — the second and third attempts add nothing beyond another cancel-and-requeue.
+It requeues an issue up to three times, and every attempt within the budget requeues it the same way for the next poll to pick up. An overdue attempt cancels its live run before requeueing, while a failing attempt has no live run to cancel.
 
-The fourth time the same issue goes overdue or fails, the budget is spent and recovery changes. The orchestrator still cancels the run and clears the in-progress marker, but it leaves the dedup entry in place, so no poll re-dispatches the issue. It records the job as `timed_out` with the `stuck_giveup` reason, posts an **AI Implementation Stuck — Needs Human** comment on the ticket naming the attempt count and the last run, and sends a notification.
+The fourth time the same issue goes overdue or fails, the budget is spent and recovery changes. The orchestrator clears the in-progress marker but leaves the dedup entry in place, so no poll re-dispatches the issue. It posts an **AI Implementation Stuck — Needs Human** comment on the ticket naming the attempt count and the last run, and sends a notification.
+
+How the run itself is recorded depends on which limit was hit. An overdue fourth attempt is cancelled, and the job is recorded as `timed_out` with the `stuck_giveup` reason. A fourth attempt that reached the budget by failing has no live run to cancel and keeps the failure reason it already reported.
 
 A spent budget does not clear on its own. The issue stays out of the automatic queue until an operator re-applies the trigger, as [Triggers and status indicators](/latest/reference/labels) describes.
 
