@@ -1,0 +1,137 @@
+---
+title: "External code reviewers"
+description: "The review-findings contract an external reviewer posts, who AI-Implement reads it from, how it waits for the review check, and which findings gate the merge."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+You can run your own code reviewer next to AI-Implement's built-in reviewers. A reviewer such as Codex posts its verdict on the pull request. AI-Implement reads that verdict and folds the findings into its own review.
+
+The reviewer states its verdict in a fixed format. This page describes that format, who can post it, and how AI-Implement waits for it.
+
+## The findings block
+
+The reviewer ends its pull-request comment with one fenced code block. The info string is exactly `json review-findings`. The JSON stays on one line.
+
+````
+```json review-findings
+{"schema":"review-findings/v1","verdict":"changes_requested","findings":[{"severity":"blocking","path":"src/x.ts","line":42,"body":"..."}]}
+```
+````
+
+The block carries these fields:
+
+| Field | Required | Values |
+| -- | -- | -- |
+| `schema` | yes | exactly `review-findings/v1`; any other value is rejected |
+| `verdict` | yes | `approve`, `changes_requested`, `incomplete` |
+| `findings` | yes | array; empty when nothing is found |
+| `findings[].severity` | yes | `blocking`, `minor` |
+| `findings[].body` | yes | self-contained description |
+| `findings[].path` | no | file path |
+| `findings[].line` | no | one-based line |
+
+AI-Implement parses the block by these rules:
+
+- A broken or unclosed block makes the verdict `incomplete`. AI-Implement does not fall back to the comment prose.
+- With more than one block in one comment, the last block counts.
+- Every finding in the block gates the merge, including a `minor` one.
+
+When AI-Implement cannot parse the block, the pull-request comment shows this line:
+
+```
+⚠️ External review findings could not be parsed — verdict from reviewer summary only.
+```
+
+## Who can post the block
+
+AI-Implement reads the block only from a trusted comment author.
+
+Two kinds of author are trusted:
+
+- `github-actions[bot]` — a workflow that posts with its `GITHUB_TOKEN`.
+- One of these logins: `ai-implement`, `ai-implement[bot]`, `claude`, `claude[bot]`, `claude-code[bot]`.
+
+<Warning>
+  A reviewer that posts as its own GitHub App or user is not read. Post the block from `github-actions[bot]` or one of the five listed logins, or AI-Implement ignores it.
+</Warning>
+
+## When AI-Implement reads the block
+
+The post-push review reads the newest eligible comment while the run waits for the review check.
+
+A contract comment posted after the run ends does not start a fix run by itself.
+
+## The review check
+
+AI-Implement waits for a check run whose name matches. It recognizes these names by default:
+
+- `review`
+- `code-review-plugin`
+- `claude-review`
+- `claude code review`
+- `claude-code-review`
+- any name that contains both `claude` and `review`
+
+Set `reviewCheckNames` in `.ai-implement/config.yml` to replace the defaults with exact matches — see [`reviewCheckNames`](/latest/customize/custom-steps#param-review-check-names).
+
+AI-Implement waits up to five minutes for the check to finish. What it does depends on the check state:
+
+| Check state | Result |
+| -- | -- |
+| Finishes with `success`, `failure`, or `stale` | AI-Implement reads the verdict and findings |
+| Any other conclusion (skipped, neutral, cancelled, timed out) | Fails closed: no auto-approval |
+| Still running after 5 minutes | Fails closed: "external review did not complete" |
+| No matching check on two probes in a row | Fails open: review continues without it, with a warning |
+| Check runs cannot be read (permission) | Run stops with `CHECKS_PERMISSION_DENIED` (see [GitHub App setup](/latest/setup/github-app)) |
+
+## Which findings gate the merge
+
+Merge gating depends on where a finding comes from:
+
+| Source | Gates the merge |
+| -- | -- |
+| The findings block | yes |
+| A GitHub review with "Request changes" | yes |
+| An inline review thread | only when that reviewer's latest review requests changes |
+| AI-Implement's internal reviewers | per the reviewer's **Gates** setting (see [Reviewers](/latest/customize/reviewers)) |
+| Prose findings in a comment with no block | advisory only |
+
+AI-Implement splits the two kinds in the pull-request comment. Gating findings go under "Unresolved external review findings:". Advisory findings go under "Advisory external review findings (do not block merge):".
+
+## Build your own reviewer
+
+A reviewer has two obligations:
+
+- Post the comment from a workflow step, not from the model's own comment tool.
+- Fail the check when there is no valid verdict. Never post a partial or synthetic block.
+
+A non-Claude reviewer follows this outline:
+
+<Steps>
+  <Step title="Produce the verdict JSON">
+    Build the `{"schema":"review-findings/v1","verdict":...,"findings":[...]}` object as one line of valid JSON. An empty result is still a `findings: []` block, not a missing one.
+  </Step>
+  <Step title="Render the comment">
+    Write the human-readable body, then append the fenced block with the info string `json review-findings`.
+  </Step>
+  <Step title="Post the comment">
+    Post it with `gh pr comment` from the workflow step.
+  </Step>
+</Steps>
+
+The AI-Implement repository is public at `BuildDownAI/AI-Implement`. It ships a reusable composite action at `.github/actions/claude-review` that does this for Claude.
+
+The action takes these inputs:
+
+- `github_token` and `pr_number` — required.
+- One of `claude_code_oauth_token`, `anthropic_api_key`, `use_bedrock`, or `use_vertex`.
+- `prompt_extra` — optional.
+
+AI-Implement does not sync this action to target repositories. Copy or reference it yourself.
+
+## Turn off the wait
+
+Set `reviewProviders: []` in `.ai-implement/config.yml` to skip the wait — see [`reviewProviders`](/latest/customize/custom-steps#param-review-providers).
