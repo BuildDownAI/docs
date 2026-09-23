@@ -66,7 +66,9 @@ Create or update **only** the documentation this issue describes. This is a targ
 
 Creating a new page is in scope when the issue asks for one. Give it `title` and `description` frontmatter and add it to `docs.json` under the product and version it belongs to. A new page is unreachable without that navigation entry, which is the one case where editing `docs.json` is expected rather than out of bounds.
 
-If you notice an unrelated problem while working, **don't fix it** — add a short "Noticed (out of scope)" note to `ai-output/comments/01-summary.md` so a human can triage it.
+**The issue's description was true when it was written, and its list of affected pages is a floor rather than a ceiling.** The defect it reports is almost always real; the set of places carrying that defect is often larger than the issue knows. Search for the claim before deciding you are done.
+
+If you notice an unrelated problem while working, **don't fix it** — add a short "Noticed (out of scope)" note to `ai-output/comments/01-summary.md` so a human can triage it. Use the same note when the issue's own scope falls short: another page carrying the same claim, or an instance it does not name. Report it there rather than widening the edit.
 
 ---
 

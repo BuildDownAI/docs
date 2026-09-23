@@ -1,0 +1,153 @@
+---
+title: "Let the orchestrator deploy itself"
+description: "What an orchestrator needs before it can release its own next version, what the Deployments panel reports while it does, and how deploying is tied to the knowledge graph."
+---
+
+The orchestrator can build and release its own next version. It watches a branch of the repository its running image was built from, and the admin UI's **Deployments** panel is where you release from it.
+
+This is the normal way an orchestrator is updated, and the only way to change the knowledge graph it serves. The two are tied together in both directions: refreshing the graph means deploying, and a deploy fails outright when the graph's repository is unreadable — even a deploy that changes nothing about the graph.
+
+## Before you start
+
+You need:
+
+- an orchestrator [deployed on Fly.io](/setup/deploy)
+- a copy of the orchestrator's repository your [GitHub App](/setup/github-app) can read
+- a Fly deploy token for the orchestrator's own app
+- a [knowledge graph](/setup/knowledge-graph) repository the same App can read
+
+<Warning>
+  Leaving `KG_SOURCE_REPO` unset doesn't make the graph optional. The build falls back to a BuildDown repository your App has no access to, so a deploy pauses new work, waits for running jobs to finish, and only then fails at the point it reaches for the graph.
+</Warning>
+
+## Where it deploys from
+
+The repository and branch are recorded in the image when it is built, rather than set afterward. That is deliberate: a running version can then always say what it is, and no setting can claim otherwise.
+
+It also means pointing an orchestrator at a different branch is a deploy rather than an edit.
+
+Your App has to be able to read whatever you point it at, so the choice is between two shapes:
+
+- **A fork**, which is the simpler one. A fork of a public repository is always public itself — GitHub offers no private fork — so choose the other shape if the copy has to be private.
+- **A mirror**, a private repository you push the upstream branches into. Keeping it current is a force push, which makes the branch an exact copy of upstream and drops anything committed only to the mirror.
+
+Either way, add it to your App's installation before the first deploy.
+
+## Deploy it the first time
+
+<Steps>
+  <Step title="Create a deploy token">
+    Create one scoped to the orchestrator's own app:
+
+    ```bash
+    fly tokens create deploy --app <app_name> --expiry 8760h
+    ```
+
+    <Note>
+      This is not the sessions token. `FLY_SESSIONS_TOKEN` is scoped to the sessions app and cannot deploy the orchestrator, so an orchestrator that runs Fly Machine sessions still needs a deploy token of its own.
+    </Note>
+  </Step>
+
+  <Step title="Set it on the app">
+    ```bash
+    fly secrets set FLY_DEPLOY_TOKEN=<token> --app <app_name>
+    ```
+  </Step>
+
+  <Step title="Deploy once with the build arguments">
+    No setting can supply the image's own record of what it was built from — that comes from the build itself, so no orchestrator can produce its first one.
+
+    Run this once, from a checkout of the branch you want watched:
+
+    ```bash
+    export GH_TOKEN="$(gh auth token)"
+
+    fly deploy --remote-only --no-cache \
+      --build-secret kg_token="$GH_TOKEN" \
+      --build-arg KG_SOURCE_REPO=your-org/knowledge-graph-your-project \
+      --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" \
+      --build-arg SOURCE_REPO=your-org/AI-Implement \
+      --build-arg SOURCE_BRANCH="$(git rev-parse --abbrev-ref HEAD)" \
+      --app <app_name>
+    ```
+
+    Export the token on its own line. A `GH_TOKEN=... fly deploy` prefix does not reach the expansion on the same line, so the build receives an empty secret and ships without the graph.
+
+    You only do this once. Every release after it comes from the **Deployments** panel, which passes these same arguments itself and stamps each image it builds.
+
+    One difference between this deploy and those matters: here the graph is read with your own GitHub credential, while a release from the panel mints one for the App. A first deploy can therefore succeed on an App that cannot read the graph at all, and the failure surfaces on the next release rather than this one.
+
+    Every argument earns its place:
+
+    - `--build-secret kg_token` — clones the graph. Without it the build succeeds and the image serves no graph.
+    - `--build-arg KG_SOURCE_REPO` — which graph to build in.
+    - `--no-cache` — a build secret is not part of the layer cache, so a repeat deploy otherwise reuses the previous clone, graph-less or stale.
+    - `--build-arg SOURCE_REPO` and `SOURCE_BRANCH` — what the new image watches, and what lets it deploy itself at all.
+    - `--build-arg SOURCE_COMMIT` — what it compares against the branch. Without it the panel reports availability as unknown, and nothing is announced or released automatically.
+    - `--app` — always explicit, so a copy of the repository cannot deploy over the original.
+  </Step>
+
+  <Step title="Verify the orchestrator can deploy itself">
+    Open **Deployments** in the admin UI. The panel names the repository and branch it is watching, and offers **Deploy now** once that branch moves past the commit you deployed.
+
+    A **Self-deploy not configured** banner in its place means a prerequisite is missing:
+
+    - the deploy token
+    - the image's build arguments
+    - a usable `KG_SOURCE_REPO`, where anything that is not an `owner/repo` pair counts as unusable
+
+    The banner names the first two. A malformed graph setting produces the same banner while saying so only in the orchestrator's log, as `invalid KG_SOURCE_REPO; self-deploy disabled` — and an unset one produces no banner at all, since it fails later, at the deploy.
+  </Step>
+</Steps>
+
+## Release a new version
+
+The panel compares the commit the running version was built from against the head of the watched branch, re-checking once per poll cycle. When they differ, it says a deployment is **Available** and offers **Deploy now**.
+
+Releasing pauses new dispatches immediately, then waits for work already running to finish before the build starts — so nothing is dispatched into a version that is about to be replaced. The panel reports which phase it is in, and what it is still waiting on.
+
+The release replaces the machine running it, so the deploy's own report comes from the version that comes up. **Last deploy** then records one of:
+
+- **Completed** — the new version is running and serving its graph.
+- **Degraded** — the release is running, but its graph never started. The panel says so and offers **Deploy now** to rebuild the same commit.
+- **Failed** — nothing was released, and the version you were running is untouched.
+
+Dispatch resumes when the deploy ends, whichever of those it was.
+
+<Tip>
+  **Deploy now** re-releases whatever the branch head is, without checking whether it is already running. That is how a degraded release gets repaired: rebuilding the same commit is a legitimate thing to ask for.
+</Tip>
+
+## Let it deploy automatically
+
+The panel's **When a deployment becomes available** card holds the switches that act on that event:
+
+- **Deploy it automatically** — off unless you turn it on. Each new commit on the watched branch is released without being asked.
+- **Announce it to the notification webhook** — on by default, and available only once [`NOTIFY_WEBHOOK_URL`](/configuration/environment-variables#param-notify-webhook-url) is set.
+
+Each commit gets one of those, never both and never twice. A commit that was announced has had its turn, so turning automatic deploying on afterward does not reach back for it — use **Deploy now** for that one, and the next push behaves as configured.
+
+That same rule is what makes automatic deploying safe to leave on: a deploy that fails is not retried, so a commit that cannot build waits for the next push rather than pausing dispatch on every poll.
+
+## When you have to deploy by hand again
+
+The panel is no help when there is nothing left to ask: an image that will not boot, or a release that broke deploying itself. The way back in is the one you came in by — [the command above](#deploy-it-the-first-time), run from a checkout of the commit you want running.
+
+<Warning>
+  Carry the build arguments every time. A deploy without them leaves a working orchestrator that can no longer deploy itself, and nothing announces it: the **Deployments** panel simply reads **Self-deploy not configured** again, on a system where it worked an hour earlier.
+</Warning>
+
+## Check that a release is serving
+
+A release can come up without its graph while every other route stays healthy, which the panel reports as **Degraded** after a release it ran itself, and cannot report at all after a deploy by hand. The [knowledge graph page](/setup/knowledge-graph#check-that-a-deployment-is-serving-the-graph) covers how to tell whether a deployment is serving the graph.
+
+## What's next
+
+<Columns cols={2}>
+  <Card title="Knowledge graph" icon="diagram-project" href="/setup/knowledge-graph">
+    Give the orchestrator a graph of its own, so deploys build yours rather than a default you cannot read.
+  </Card>
+  <Card title="Admin UI reference" icon="sliders" href="/reference/admin-ui#deployments">
+    What the Deployments panel reports, field by field.
+  </Card>
+</Columns>

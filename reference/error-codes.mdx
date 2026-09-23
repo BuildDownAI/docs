@@ -326,6 +326,19 @@ Override the global runner execution mode.
 | 500 | *(underlying error message)* | The secret operation failed |
 | 503 | `Fly sessions config not set` | Secrets require Fly sessions to be configured |
 
+#### Deployments
+
+- `POST /api/deploy` starts a self-deploy
+- `POST /api/deploy-policy` changes what happens when a deployment becomes available
+
+| HTTP | `error` | Condition |
+|---|---|---|
+| 400 | `autoDeploy must be a boolean` | A policy switch was sent as something other than `true` or `false`; `notifyAvailable` reports the same way |
+| 409 | `deploy-in-progress` | A deploy is already running |
+| 500 | `Internal server error` | The deploy could not be started, or the policy body could not be parsed |
+| 501 | `Self-deploy is not configured` | This orchestrator cannot deploy itself |
+| 503 | `head-unknown` | The watched branch's head could not be read |
+
 ## Ticket comments
 
 AI-Implement comments on the issue it is working so you can follow a run from your issue tracker, without watching the admin UI or the GitHub Actions logs.

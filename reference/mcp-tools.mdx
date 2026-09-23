@@ -1,0 +1,82 @@
+---
+title: "MCP tools reference for AI-Implement"
+description: "The orchestrator's /mcp endpoint — how a Claude client signs in, how long access lasts, and every tool it serves."
+---
+
+The orchestrator's `/mcp` endpoint lets a Claude client call tools on the orchestrator over the Model Context Protocol (MCP). It serves:
+
+- **Diagnostic tools**, answered by the orchestrator itself — its health, its projects, its running jobs, and why an issue is or isn't being dispatched
+- **Knowledge-graph tools**, answered by the [knowledge graph](/setup/knowledge-graph) bundled into the orchestrator
+
+Every tool is read-only, and everyone on the allowlist can call all of them.
+
+<Note>
+  The environment variables this page names are described together under [Admin sign-in and MCP server](/configuration/environment-variables#admin-sign-in) in the variable reference.
+</Note>
+
+## Signing in
+
+The endpoint uses OAuth, with no pre-shared secret. A client that reaches `/mcp` without a token is pointed to the orchestrator's resource-metadata document, finds the orchestrator's authorization server there, registers itself, and sends the person to their browser to sign in.
+
+The orchestrator is that authorization server, and it hands the sign-in itself to your [admin sign-in](/setup/sso) providers. Every sign-in therefore returns through two callbacks — one from the provider to the orchestrator, then one from the orchestrator to the client. Each has to be registered, and which ones you need depends on the providers and clients you use:
+
+| Callback | Registered by |
+|---|---|
+| [`OAUTH_REDIRECT_BASE_URL`](/configuration/environment-variables#param-oauth-redirect-base-url)`/mcp/callback/google` | You, on your Google OAuth client |
+| [`OAUTH_REDIRECT_BASE_URL`](/configuration/environment-variables#param-oauth-redirect-base-url)`/mcp/callback/microsoft` | You, on your Microsoft Entra app registration |
+| `https://claude.ai/api/mcp/auth_callback`, with its origin listed in [`MCP_ALLOWED_REDIRECT_ORIGINS`](/configuration/environment-variables#param-mcp-allowed-redirect-origins) | claude.ai, automatically |
+| An address on your own machine, accepted by default even by a deployed orchestrator | Claude Code, automatically |
+
+Each provider's MCP callback is registered alongside its admin sign-in one, not instead of it.
+
+Any other web-based client works the same way as claude.ai: its callback must use HTTPS, and its origin must be listed. To connect claude.ai itself, follow [Add the orchestrator as a project connector](/setup/sso#add-the-orchestrator-as-a-project-connector).
+
+Signing in needs all of these on the orchestrator:
+
+- a [knowledge graph](/setup/knowledge-graph) — required even though the diagnostic tools never use it
+- at least one sign-in provider — the same providers admin sign-in uses
+- `OAUTH_REDIRECT_BASE_URL` — the orchestrator's public base URL
+
+Without any one of them, sign-in fails.
+
+The person signing in must pass the same fail-closed allowlist as admin sign-in. Someone who doesn't sees only `access_denied` in their client, and the orchestrator's log records the reason.
+
+<Warning>
+  With both Google and Microsoft configured, MCP sign-in always uses Google — unlike admin sign-in, it offers no choice of provider. People who can sign in only with Microsoft can't connect a client.
+</Warning>
+
+## Staying signed in
+
+Access tokens last an hour by default, set in seconds by `MCP_ACCESS_TOKEN_TTL`, and a client refreshes them without sending the person back to sign in.
+
+Each refresh also issues a new refresh token that lasts thirty days from that moment. A client in regular use therefore stays signed in indefinitely, and a person signs in again only after thirty days without using it.
+
+Access can also end sooner in the following ways:
+
+- **When the person is removed from the allowlist.** It takes effect at their next refresh — within one access-token lifetime.
+- **When a refresh token is presented twice.** That is treated as theft: the whole chain the token belongs to is revoked, and the person must sign in again.
+
+## Diagnostic tools
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `get_fleet_report` | `days` — look-back window, default 30 | Per-repository job, issue, cost and pass counts, approval rates, a planning cohort comparison, the review escape rate, and the issues that ran away |
+| `get_issue_dispatch_status` | `identifier` — an issue identifier such as `ENG-123` | Whether the issue is in flight, whether it holds a dedup entry, and its last five dispatches |
+| `get_issue_report_card` | `issue` — an issue identifier | Every dispatch run with per-pass telemetry, totals, and approval, merge, gap-fill and review-fix history |
+| `get_runner_mode` | — | The global runner mode, and whether it came from an environment variable, a database setting, or the default |
+| `get_tenant_health` | — | Runner mode, in-flight job count, pending gap-fill count, project count, and whether search is degraded |
+| `list_in_flight_jobs` | — | Every dispatching or running job, with its issue, repository, phase, status, and time since dispatch |
+| `list_projects` | — | Every project's configuration except its [`extraEnv`](/configuration/team-repo-mappings#param-extra-env) |
+
+## Knowledge-graph tools
+
+These come from the query server in the graph's own repository, not from the orchestrator. Every repository created from the BuildDown template serves the same tools:
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `kg_hybrid_search` | `query`, `limit` — default 10 | Results found by keyword and by meaning combined; the one to use by default |
+| `kg_neighbors` | `iri`, `limit` — default 30 | Every node one step from the given one, in either direction |
+| `kg_path` | `from_iri`, `to_iri`, `max_len` — default 4 | Whether two nodes are connected, and the path between them |
+| `kg_provenance` | `iri` | What a node was derived from, and the run that produced it |
+| `kg_search` | `term`, `limit` — default 10 | Results found by keyword alone — see [what keyword search covers](/setup/knowledge-graph#when-search-is-degraded) |
+| `kg_semantic_search` | `query`, `limit` — default 10 | Results found by meaning alone, or an error when the graph was built without semantic search |
