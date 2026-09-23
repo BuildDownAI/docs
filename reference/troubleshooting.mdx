@@ -68,8 +68,8 @@ This page covers the most common issues you may encounter when running AI-Implem
     This is a wall-clock limit, and it is not the same as [Reached max turns](#reached-max-turns) — that one is a cap on how many steps Claude takes, not how long the run lasts. A run can hit either bound independently.
 
     Two wall-clock bounds exist:
-    - **The job timeout**, which ends a GitHub Actions run. The default is 90 minutes.
-    - **The maximum session age**, which applies to Fly Machine runs. Sessions older than 4 hours are destroyed by the reconciliation sweep. This bound is fixed and cannot be configured.
+    - **The job timeout**, which limits a GitHub Actions run. The default is 90 minutes. A run that passes it without finishing is [detected as overdue and recovered](/reference/error-codes#overdue-run-recovery), not left to hang.
+    - **The machine timeout**, which ends a Fly Machine session around 60 minutes after it is dispatched. This bound is fixed and cannot be configured.
 
     Hitting either usually means the ticket was over-scoped for one run rather than that anything is broken. Splitting the ticket is the more reliable fix — a narrower issue finishes inside the budget and produces a reviewable diff.
 

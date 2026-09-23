@@ -26,6 +26,10 @@ Comprehensive reference for the error codes, statuses, and failure messages AI-I
         The states a dispatch moves through, end to end.
     </Card>
 
+    <Card title="Overdue run recovery" icon="arrows-rotate" href="#overdue-run-recovery">
+        How the orchestrator recovers a dispatch that stops reporting back.
+    </Card>
+
     <Card title="Run failure messages" icon="triangle-exclamation" href="#run-failure-messages">
         Common planning and implementation failures, and how to fix them.
     </Card>
@@ -388,7 +392,7 @@ These report how a run finished:
 |---|---|
 | container_failed | The local Docker container exited with an error |
 | container_timeout | The local Docker session exceeded its lifetime |
-| machine_timeout | The session machine exceeded its lifetime |
+| machine_timeout | The session machine exceeded its lifetime (around 60 minutes) |
 | post_push_review_not_approved | A PR was opened as a draft because the post-push review flagged blockers |
 | pr_not_found | The run finished but did not open a PR |
 | session_failed | The session run failed |
@@ -431,12 +435,29 @@ A `timed_out` status carries one of these reasons:
 
 | Reason | Meaning |
 |---|---|
-| `container_timeout` | The local Docker session exceeded its lifetime |
-| `machine_timeout` | The session machine exceeded its lifetime (around 60 minutes) |
-| `run_not_found` | A run was never linked within the time limit (around 10 minutes) |
-| `timed_out` | The GitHub Actions run reported a timeout |
+| `stuck_requeued` | A run passed its time budget; the orchestrator stopped it and requeued the issue for another attempt. See [Overdue run recovery](#overdue-run-recovery). |
+| `stuck_giveup` | A run passed its time budget with the retry budget already spent, so the issue was handed back to a person. See [Overdue run recovery](#overdue-run-recovery). |
+| `machine_max_age_sweep` | The reconciliation sweep ended a Fly Machine session that had reached the maximum session age. |
+| `issue_completed_sweep` | The reconciliation sweep ended a Fly Machine session whose issue was already completed or cancelled. |
+| `timed_out` | The GitHub Actions run itself reported a timeout. |
 
 For how completion statuses appear in Slack or Teams, see [Notifications](/latest/reference/notifications).
+
+## Overdue run recovery
+
+A run does not hang forever when it stops reporting back. The orchestrator watches each dispatch and, on its own poll cycle, recovers one that has gone quiet.
+
+A GitHub Actions dispatch is treated as **overdue** once it has stayed non-terminal for its configured **Job Timeout (min)** plus a short grace period. [The run hit the time limit](/latest/reference/troubleshooting#the-run-hit-the-time-limit) covers where that timeout is set and how to raise it.
+
+When a dispatch is overdue, the orchestrator cancels the GitHub Actions workflow run, then clears the issue's in-progress marker and dedup entry so the next poll dispatches a fresh run for the same issue.
+
+The retry is bounded. The orchestrator keeps a per-issue attempt count that spans both overdue runs and outright failures, so a mix of the two draws down one budget.
+
+It requeues an issue up to three times, and each attempt within the budget cancels the run and requeues the issue the same way — the second and third attempts add nothing beyond another cancel-and-requeue.
+
+The fourth time the same issue goes overdue or fails, the budget is spent and recovery changes. The orchestrator still cancels the run and clears the in-progress marker, but it leaves the dedup entry in place, so no poll re-dispatches the issue. It records the job as `timed_out` with the `stuck_giveup` reason, posts an **AI Implementation Stuck — Needs Human** comment on the ticket naming the attempt count and the last run, and sends a notification.
+
+A spent budget does not clear on its own. The issue stays out of the automatic queue until an operator re-applies the trigger, as [Triggers and status indicators](/latest/reference/labels) describes.
 
 ## Run failure messages
 
