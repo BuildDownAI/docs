@@ -330,6 +330,20 @@ Override the global runner execution mode.
 | 500 | *(underlying error message)* | The secret operation failed |
 | 503 | `Fly sessions config not set` | Secrets require Fly sessions to be configured |
 
+#### Dispatch breaker
+
+- `GET /api/parked` lists the issues the breaker has parked
+- `POST /api/parked/unpark` releases one
+
+| HTTP | `error` | Condition |
+|---|---|---|
+| 400 | `Invalid request body` | Body could not be parsed as JSON |
+| 400 | `issueId is required` | The body carried no `issueId`, or carried one that was not a string |
+
+<Note>
+    Unparking an issue that is not parked is not an error — it answers `200` with `unparked: false`.
+</Note>
+
 ## Ticket comments
 
 AI-Implement comments on the issue it is working so you can follow a run from your issue tracker, without watching the admin UI or the GitHub Actions logs.

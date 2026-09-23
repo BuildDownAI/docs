@@ -211,7 +211,15 @@ The table lists each project's:
 
 High-level runner-infrastructure dashboard.
 
-The top of the panel hosts the **runner mode toggle**, offering four options: `default`, `gha`, `fly`, and `shadow`.
+KPI cards show:
+- Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
+- Live Fly session count
+- Capacity utilization (in-progress runs vs. total cap across mappings)
+- 24-hour reaper destructions
+
+#### Runner mode
+
+The toggle offers four options: `default`, `gha`, `fly`, and `shadow`.
 
 `local` is a valid runner mode too, but the toggle doesn't expose it — set it through the environment or the API instead.
 
@@ -221,18 +229,42 @@ The top of the panel hosts the **runner mode toggle**, offering four options: `d
   If you change runner mode via the UI or API while `RUNNER_MODE` is set in the environment, the new value is persisted to the database but has no effect until the env var is removed and the orchestrator is restarted.
 </Note>
 
-KPI cards show:
-- Current runner-mode override (`default` / `gha` / `fly` / `local` / `shadow`)
-- Live Fly session count
-- Capacity utilization (in-progress runs vs. total cap across mappings)
-- 24-hour reaper destructions
+#### Live Fly sessions
 
-A live-sessions table (top 8) links into the **Sessions** panel for the full list.
+A table of the most recent eight, linking into the **Sessions** panel for the full list.
 
-A per-project table shows each mapping's:
+#### Per-project execution mode
+
+A table shows each mapping's:
 - Configured execution mode
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
+
+#### Parked issues
+
+Issues the dispatch breaker has parked. This section renders at the top of the panel, above the runner-mode controls, and stays hidden while nothing is parked.
+
+An issue is parked once [enough consecutive dispatches fail](/latest/configuration/environment-variables#param-dispatch-breaker-threshold) for the same issue and phase, and is skipped on every poll from then on. Planning and implementation are counted separately, so an issue can be parked in one while the other keeps running, and a successful dispatch resets the count — only an unbroken run of failures parks anything.
+
+A failure classified as *transient* — an outage upstream of the ticket rather than the ticket's own problem — does not count at all, so an unlucky run against a flaky provider cannot park an issue. Transient failures are:
+
+- provider overload
+- rate limiting
+- transport errors
+- git server errors
+
+Every other failure counts.
+
+Each row shows:
+- Issue identifier
+- Repo
+- Phase (planning or implementation)
+- Consecutive failure count
+- Last conclusion
+- How long ago it was parked
+- An **Unpark** action
+
+**Unpark** is the only thing that releases a parked issue — a later successful dispatch resets the failure count but leaves the park in place. Unparking clears it for every phase and resets the counter, so the orchestrator dispatches the issue again on the next poll.
 
 ### Sessions
 
@@ -471,6 +503,13 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+
+#### Dispatch breaker
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/parked` | List issues the dispatch breaker has parked |
+| `POST` | `/api/parked/unpark` | Unpark an issue (all phases) so it can be dispatched again |
 
 #### Runner mode and settings
 

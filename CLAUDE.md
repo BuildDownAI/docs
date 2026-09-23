@@ -132,13 +132,17 @@ Two tells that a boundary is being papered over: an em-dash or semicolon joining
 
 This governs every block of prose on a page — ordinary paragraphs, list items, accordion bodies, `<Step>` bodies, and `<ParamField>` bodies alike. In a list item the fix is a second item rather than a blank line: a bullet carrying two beats is two bullets written as one.
 
-A pointer to where the detail lives is not a beat of its own. A fact and a link to the section that owns it are one thing the reader learns, so keep them together.
+**Splitting has an opposite failure, and a run of one-sentence paragraphs is its tell.** Facts the reader takes in together are one beat however separably they can be stated — what a field does and what it defaults to, a fact and the pointer to the section that owns its detail. Before splitting, ask whether either half is usable on its own: if it is not, you have one beat written as two. This applies wherever prose does, and it is the half of this rule that gets missed, because a draft that is too fragmented still looks like it obeyed the instruction.
 
 **Use `<Steps>` for ordered procedures.** Any sequence where each action depends on the previous one completing — install → restart → verify, a setup walkthrough — goes in a `<Steps>` block, not a bare numbered list or a run of separate paragraphs. The reader is following along as they go.
 
 **Order a troubleshooting entry context → cause → resolution → what obviously doesn't work.** Context is what should have happened and what the reader saw instead, including the absence of any error. Keep provider-specific behavior together in the cause rather than scattered through the other segments. Name the plausible fix that fails, and why, whenever one exists — a reader often arrives having already tried it.
 
+Those four segments are the entry's beats: each is one move the reader makes, so each is one paragraph however many facts it rests on. Facts about the mechanism are not beats here at all — they belong on the page documenting it, reached by a link from the cause.
+
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
+
+**Some pages are siblings, and a change to one is a check on the other.** Two pairs, both of which have been missed. An endpoint added to the admin UI reference needs its failure codes checked against the error-codes reference, which owns them — no endpoint row on the admin page carries a status code, by convention. And a claim about one prompt template is usually true of the other, since `WORKFLOW.md` and `PLANNING.md` are rendered by the same code. This is not duplication: each page keeps its own half, and the check is whether the other half exists.
 
 **A count is not an enumeration, and a count in front of one ages.** Giving a set's size instead of its members refuses the reader the membership; giving both states one fact twice, and the number is the half that rots. Name the members, or name the set by its shape — *every planning and landing skill, plus `bd-project-setup`*. Keep a number only when it carries something the list cannot, such as a split the sentence is about.
 

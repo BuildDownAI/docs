@@ -61,7 +61,9 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
     - **Recent** — even after a job finishes, the same issue won't be re-dispatched while a dedup entry from its previous dispatch is still on record.
 
-    Either condition is enough to skip dispatch.
+    A separate condition also stops a dispatch: an issue the dispatch breaker has [parked](/latest/reference/admin-ui#parked-issues) after repeated failed dispatches is skipped until an operator unparks it.
+
+    Any of these is enough to skip dispatch.
   </Step>
 
   <Step title="Planning phase (if enabled)">

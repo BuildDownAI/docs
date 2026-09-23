@@ -17,7 +17,24 @@ This page covers the most common issues you may encounter when running AI-Implem
     2. **No team/repo mapping exists.** Open the admin UI at `/admin` and confirm that a mapping exists for the team that owns the issue. If not, add one.
     3. **The concurrency cap is reached.** Each project mapping has a `maxInProgressAiIssues` limit (default `3`). If the project already has that many issues in progress (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira), new issues are held until a slot opens. You can raise the cap from the admin UI or via `PATCH /api/mappings/:teamKey`.
     4. **The orchestrator is not running or not polling.** Health-check the orchestrator with `curl https://your-orchestrator/`. If it does not respond, check the Fly logs with `fly logs --app your-app`.
-    5. **Check the dispatch log.** The log at `/api/log` shows whether the orchestrator attempted to dispatch the issue and what the outcome was.
+    5. **The issue is parked.** After enough failed dispatches the orchestrator stops picking an issue up until someone unparks it — see [An eligible issue stopped being dispatched](#an-eligible-issue-stopped-being-dispatched).
+    6. **Check the dispatch log.** The log at `/api/log` shows whether the orchestrator attempted to dispatch the issue and what the outcome was.
+  </Accordion>
+
+  <Accordion title="An eligible issue stopped being dispatched">
+    An issue that was being picked up normally — correctly triggered, not blocked, with a project mapping and a free concurrency slot — quietly stops producing runs. Nothing obvious marks it, and it does not reach the [Blockers](/latest/reference/admin-ui#blockers) panel either, because parking is not one of the reasons that panel reports.
+
+    **The cause is the dispatch breaker.** After enough consecutive failed dispatches for the same issue and phase, the orchestrator *parks* the issue and skips it from then on. [Parked issues](/latest/reference/admin-ui#parked-issues) covers which failures count and what unparking changes.
+
+    **Confirm the breaker is the cause.** When it trips, the orchestrator posts a comment to the ticket — **⛔ AI-Implement parked this issue** — naming the phase, the failure count, the last conclusion, and links to the failed runs.
+
+    **Fix the failure, then unpark.** Open **Platform → Runners**, find the issue in the Parked issues section, and click **Unpark**.
+
+    <Warning>
+      Unparking lifts the block; it does not fix what was failing. With the underlying failure still in place, the issue is dispatched, fails, and parks again once the count is reached.
+    </Warning>
+
+    **Nothing else releases it.** Clearing the issue's [dedup entry](/latest/reference/admin-ui#audit-log) does nothing, because parking is tracked apart from the dedup window. Re-applying the trigger does not help either, since the orchestrator re-checks the park on every poll.
   </Accordion>
 
   <Accordion title="A Jira issue ran despite an open blocker">
