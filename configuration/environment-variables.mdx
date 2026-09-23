@@ -4,9 +4,8 @@ description: "All environment variables the AI-Implement orchestrator reads at s
 ---
 
 The AI-Implement orchestrator is configured entirely through environment variables.
-Variables fall into three contexts depending on **where** you configure them:
+Where each one goes depends on what reads it:
 - On the orchestrator service itself
-- As GitHub Actions secrets on the **orchestrator's own repo** (for CI auto-deploy)
 - As GitHub Actions secrets on each **target repo** (read by the synced workflow files when Claude runs).
 
 A few credentials are needed in more than one context, though only one pair changes names between contexts:
@@ -246,6 +245,18 @@ Pick the tab that matches where you're configuring right now.
       </Warning>
     </ParamField>
 
+    ### Self-deploy
+    
+    This is the only variable self-deployment adds. What the orchestrator watches — the repository and the branch — is recorded in its image when that image is built, rather than set here. [Set up self-deployment](/setup/self-deployment) covers that build.
+
+    <ParamField body="FLY_DEPLOY_TOKEN" type="string">
+      Fly deploy token scoped to the orchestrator's own app. Leaving it unset makes self-deployment unavailable; everything else runs normally.
+
+      <Note>
+        `FLY_SESSIONS_TOKEN` is a different credential, scoped to the sessions app, and cannot deploy the orchestrator.
+      </Note>
+    </ParamField>
+
     ### Notifications
 
     <ParamField body="NOTIFY_TYPE" type="string" default="slack">
@@ -348,7 +359,7 @@ Pick the tab that matches where you're configuring right now.
         Identifiers used when deploying multiple AI-Implement instances as separate Fly apps from a single repo. Most single-client deployments leave these unset.
 
         <ParamField body="CLIENT_SLUG" type="string">
-          The client identifier matching this app's `clients/<slug>.toml` file. Used in logs and notifications to disambiguate multi-tenant deployments.
+          Identifier for this orchestrator instance, recorded with each reaper action and shown in the Reaper panel, so several deployments can be told apart. Defaults to the Fly.io app name.
         </ParamField>
 
         <ParamField body="FLY_APP_NAME" type="string">
@@ -370,20 +381,6 @@ Pick the tab that matches where you're configuring right now.
         </ParamField>
       </Accordion>
     </AccordionGroup>    
-  </Tab>
-
-  <Tab title="GitHub Actions CI (orchestrator repo)">
-    GitHub Actions secrets on the **AI-Implement orchestrator's own repo** (not target repos).
-    
-    Used by `.github/workflows/deploy-clients.yml` for auto-deploy on push to `main`. Configure under **Settings → Secrets and variables → Actions** on the orchestrator repo.
-
-    <ParamField body="FLY_API_TOKEN" type="string" required>
-      Fly API token used by `deploy-clients.yml` to run `flyctl deploy` for each client in `clients/*.toml`. 
-    </ParamField>
-
-    <Warning>
-      **Distinct from `FLY_SESSIONS_TOKEN`** (which lives in the orchestrator runtime tab and authorizes session-machine creation, not deploys).
-    </Warning>
   </Tab>
 
   <Tab title="Target-repo workflow secrets">

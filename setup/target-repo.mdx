@@ -170,7 +170,18 @@ Once the PR appears, you can:
   No `Fixes` reference or Jira automation is needed.
 </Tip>
 
-<Columns cols={2}>
+From here you can add a capability the orchestrator runs fine without, or go deeper on what you already have:
+
+<Columns cols={3}>
+  <Card title="Admin sign-in" icon="shield-check" href="/setup/sso">
+    Per-person sign-in in place of a shared access code.
+  </Card>
+  <Card title="Self-deployment" icon="rocket" href="/setup/self-deployment">
+    Let the orchestrator build and release its own updates.
+  </Card>
+  <Card title="Knowledge graph" icon="diagram-project" href="/setup/knowledge-graph">
+    Project memory the BuildDown skills search before they plan.
+  </Card>
   <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/customize/workflow-md">
     Edit the Claude prompt template to match your repo's stack and conventions.
   </Card>

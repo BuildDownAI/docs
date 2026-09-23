@@ -1,5 +1,5 @@
 ---
-title: "Set up a knowledge graph"
+title: "Serve a knowledge graph from the orchestrator"
 description: "Add a project's knowledge graph to the orchestrator so the BuildDown skills can search it, and check that a deployment is serving it."
 ---
 
@@ -26,7 +26,7 @@ Nothing outside the container reaches that server directly. The [orchestrator's 
 Before you start, you need:
 
 - the [BuildDown skills](/skills/installation) installed in your project
-- an orchestrator that [deploys itself](/setup/self-deploy)
+- an orchestrator that [deploys itself](/setup/self-deployment)
 - [admin sign-in](/setup/sso) configured, including the MCP callback URI for each provider
 
 Signing in to the graph is checked against the same allowlist as admin sign-in.

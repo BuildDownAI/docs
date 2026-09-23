@@ -24,9 +24,7 @@ The sidebar organizes panels into groups:
 
 The **MCP server** entry is a placeholder for a panel that does not exist. The endpoint it names does: `/mcp` already serves the knowledge graph and the orchestrator's read-only diagnostic tools, covered in the [MCP tools reference](/reference/mcp-tools).
 
-These panels are live but not yet documented in full here:
-- **Reports** — fleet-wide outcome analytics over a chosen 7-, 30-, or 90-day window: per-repo success and cost, first-pass versus eventual approval rates, post-merge escape rate, and a planned-versus-unplanned comparison.
-- **Deployments** — release a new version of the orchestrator itself: whether an update is available against the running build, the last deploy's outcome, and a self-deploy that pauses new dispatch until in-flight work drains.
+**Reports** is live but not yet documented in full here — fleet-wide outcome analytics over a chosen 7-, 30-, or 90-day window, covering per-repo success and cost, first-pass versus eventual approval rates, post-merge escape rate, and a planned-versus-unplanned comparison.
 
 The headings below follow the sidebar order, covering the panels that have a section of their own.
 
@@ -247,6 +245,23 @@ You can destroy a stuck session directly from this panel. Destroying a session a
   If a Fly Machine appears stuck and is not progressing, destroying it from the sessions panel is the cleanest recovery path.
 </Tip>
 
+### Deployments
+
+Where you release a new version of the orchestrator itself. [Set up self-deployment](/setup/self-deployment) covers what it needs and how releasing behaves.
+
+Cards report:
+- **Availability** — the repository and branch the running image was built from, and whether that build's commit is behind the branch head (`Available`, `Up to date`, or `Unknown` when either commit can't be read)
+- **Last deploy** — how the most recent release from this panel ended: `Completed`, `Degraded` (running, but without its knowledge graph), or `Failed` (nothing released, the running version untouched)
+- **Deploy status**, while one is running — whether it is waiting for in-flight work to drain, and what that work is, or building
+
+Only a release from this panel is recorded there, so an orchestrator deployed by hand reads `None yet` until the first one.
+
+The controls are:
+- **Deploy now**, offered when a deployment is available and also when the last one was degraded or failed, since rebuilding the same commit is how a degraded release gets repaired. It asks for confirmation, then pauses new dispatches immediately and resumes them when the deploy ends, however it ends
+- **The switches under When a deployment becomes available**, deciding whether a new commit is released without being asked and whether it is announced to your notification webhook. Each states its current effect in place, and [Let it deploy automatically](/setup/self-deployment#let-it-deploy-automatically) covers the rule they share
+
+On an orchestrator that can't deploy itself, a **Self-deploy not configured** banner replaces all of it.
+
 ### Reaper
 
 The reconciliation-sweep dashboard.
@@ -456,6 +471,14 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+
+#### Deployments
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/deploy` | Start a self-deploy, returning the commit it is building |
+| `GET` | `/api/deployment-status` | Everything the Deployments panel reports — whether self-deploy is configured, the watched repository and branch, availability, the hold and the work it is waiting on, the policy switches, and the last deploy's outcome |
+| `POST` | `/api/deploy-policy` | Turn automatic deploying or the availability announcement on or off |
 
 #### Runner mode and settings
 

@@ -114,7 +114,7 @@ Running locally is the fastest way to test a configuration before committing to 
 
 ## Fly.io deployment
 
-For production use, deploy the orchestrator as a Fly.io app. Each client (team or tenant) runs as a separate Fly app defined by a `.toml` file in the `clients/` directory.
+For production use, deploy the orchestrator as a Fly.io app. Each client (team or tenant) runs as a separate Fly app.
 
 <Steps>
   <Step title="Install the Fly CLI and log in">
@@ -128,21 +128,20 @@ For production use, deploy the orchestrator as a Fly.io app. Each client (team o
     ./scripts/provision-client.sh <client-slug>
     ```
 
-    Alternatively, copy the example client config and create resources manually:
+    Alternatively, create the resources yourself:
 
     ```bash
-    cp clients/example-client.toml clients/<slug>.toml
     fly apps create <app_name> --org <org>
     fly volumes create dedup_data --size 1 --region iad --app <app_name>
     ```
+
+    <Note>
+      The script signs off by suggesting you commit the `clients/<slug>.toml` it wrote and push to deploy. That deploys nothing — the file is ignored by git and nothing reads it. Deploy with the step below instead.
+    </Note>
   </Step>
 
   <Step title="Set Fly secrets">
     The orchestrator reads its credentials from Fly secrets at runtime:
-
-    <Tip>
-      When running on Fly.io, set secrets with `fly secrets set` rather than committing them in `.toml` files. The `clients/<slug>.toml` file should contain only non-sensitive configuration.
-    </Tip>
 
     ```bash
     fly secrets set \
@@ -157,27 +156,17 @@ For production use, deploy the orchestrator as a Fly.io app. Each client (team o
   </Step>
 
   <Step title="Deploy the app">
-    Commit your new `clients/<slug>.toml` and push to trigger an automated deploy, or deploy manually at any time:
-
     ```bash
     fly deploy --remote-only --app <app_name>
     ```
   </Step>
 </Steps>
 
-### Auto-deploy on push (`FLY_API_TOKEN`)
-
-The `deploy-clients.yml` workflow in the orchestrator repo deploys every client in `clients/*.toml` on each push to `main`. It authenticates with a single GitHub Actions secret, `FLY_API_TOKEN`, set on the orchestrator repo under **Settings → Secrets and variables → Actions**.
-
-<Note>
-  This is **not the same token as `FLY_SESSIONS_TOKEN`**. `FLY_API_TOKEN` is a CI secret used only to run `flyctl deploy`. `FLY_SESSIONS_TOKEN` is a runtime environment variable the orchestrator reads to spawn Fly Machine session machines.
-</Note>
-
 ### Fly.io infrastructure details
 
 Each Fly app uses:
 
-- **Machine size**: `shared-cpu-1x` with 256 MB of memory — sufficient for the polling loop and admin UI
+- **Machine size**: `shared-cpu-1x` with 512 MB of memory — sufficient for the polling loop and admin UI
 - **Volume**: A `dedup_data` volume mounted at `/data` for SQLite persistence (deduplication, team mappings, and dispatch log)
 - **HTTP service**: Internal port 8080, HTTPS enforced, minimum one machine always running
 

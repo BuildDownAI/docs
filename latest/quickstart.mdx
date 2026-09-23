@@ -198,9 +198,22 @@ This guide walks you through running AI-Implement for the first time. By the end
 
 ## Next steps
 
-Now that you have a working end-to-end flow, you can:
+Now that you have a working end-to-end flow, here is where you can go next.
 
-- Edit `WORKFLOW.md` in the target repo to give Claude repo-specific instructions and set the model.
-- Enable the planning phase to have Claude post an architecture analysis and test plan to your ticketing system before implementation starts.
-- Add more mappings in the admin UI to connect additional projects to repos.
-- Deploy the orchestrator to Fly.io for a persistent, production setup.
+<Columns cols={3}>
+  <Card title="Deploy the orchestrator" icon="server" href="/latest/setup/deploy">
+    Move off your machine to a persistent Fly.io app.
+  </Card>
+  <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/latest/customize/workflow-md">
+    Give Claude repo-specific instructions, and set the model it runs.
+  </Card>
+  <Card title="Enable planning" icon="list-check" href="/latest/configuration/planning">
+    Have Claude post an architecture analysis and test plan to your ticketing system before it implements.
+  </Card>
+  <Card title="Project mappings" icon="folder-gear" href="/latest/configuration/team-repo-mappings">
+    Connect additional projects to repos, and tune how each one dispatches.
+  </Card>
+  <Card title="Admin sign-in" icon="shield-check" href="/latest/setup/sso">
+    Per-person sign-in in place of a shared access code.
+  </Card>
+</Columns>
