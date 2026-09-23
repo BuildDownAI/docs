@@ -111,18 +111,18 @@ Per-issue rows include:
 
 Fleet-wide outcome analytics across every tracked repository, over a window you choose — the last 7, 30, or 90 days, defaulting to 30.
 
-Four cards each settle a different fleet-level question:
+Each card settles a different fleet-level question:
 
 - **Fleet by repo** — how repositories compare on throughput, completions, failures, merges, and cost, a row apiece.
 - **Outcomes** — how cleanly work lands: how often it is approved on the first dispatch versus eventually, and how often merged work needed a human edit afterward (the escape rate).
 - **Planning A/B** — whether planning pays for itself, setting issues that went through planning against those that did not on the same outcome and cost measures.
 - **Runaways** — which issues are consuming dispatches without landing: those with three or more dispatches, or three or more consecutive failures.
 
-The **Cost (USD)** column, and the average cost in the **Planning A/B** card, are estimates computed from token usage at list prices — not billed spend.
+The **Cost (USD)** column, and the average cost in the **Planning A/B** card, are estimates computed from token usage at list prices — not billed spend. The estimate counts only each run's implementation passes, not any other invocation the run makes.
 
-The figure takes no account of how a run authenticated, so a subscription-authenticated run that bills nothing per run still reports a cost here.
-
-On this version, the estimate reflects only each run's implementation passes; review is not counted toward it.
+<Note>
+  The figure takes no account of how a run authenticated, so a subscription-authenticated run that bills nothing per run still reports a cost here.
+</Note>
 
 ## Configure
 
@@ -503,7 +503,7 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/report` | Fleet-wide outcome analytics behind the Reports panel; `days` sets the window (7, 30, or 90) and an optional `project` narrows it to one repo |
+| `GET` | `/api/report` | Fleet-wide outcome analytics behind the Reports panel; `days` sets the window and accepts any positive integer, and an optional `project` narrows it to one repo |
 
 #### Sessions, reaper, and deduplication
 
