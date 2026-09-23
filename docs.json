@@ -52,8 +52,14 @@
                   "setup/github-app",
                   "setup/linear-app",
                   "setup/deploy",
-                  "setup/target-repo",
+                  "setup/target-repo"
+                ]
+              },
+              {
+                "group": "Optional setup",
+                "pages": [
                   "setup/sso",
+                  "setup/self-deployment",
                   "setup/knowledge-graph"
                 ]
               },
@@ -117,7 +123,12 @@
                   "latest/setup/github-app",
                   "latest/setup/linear-app",
                   "latest/setup/deploy",
-                  "latest/setup/target-repo",
+                  "latest/setup/target-repo"
+                ]
+              },
+              {
+                "group": "Optional setup",
+                "pages": [
                   "latest/setup/sso"
                 ]
               },
