@@ -31,6 +31,8 @@ Each version describes a different state of both source repos:
 
 A version pill in the navigation shows what that version's pages have been brought up to, and it can trail the release while corrections are pending. Never read the pill as the version to write for.
 
+**Write each version's pages as though they were the only ones.** A reader has one tree in front of them, so "on this version", "in this release" or "unlike the other version" asks for a comparison they cannot make. State what is true and let the other tree state its own truth. You will have both checkouts open while writing; they will not.
+
 **The two products' version numbers are not comparable.** AI-Implement's track release cadence; the skills plugin's track delivery, since a plugin change reaches nobody without a version bump. Never write prose implying one product is ahead of, behind, or in step with the other.
 
 `snippets/` is shared across both versions. Touch it only for a change that is genuinely cross-version.
@@ -142,7 +144,7 @@ Those four segments are the entry's beats: each is one move the reader makes, so
 
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
 
-**Some pages are siblings, and a change to one is a check on the other.** Two pairs, both of which have been missed. An endpoint added to the admin UI reference needs its failure codes checked against the error-codes reference, which owns them — no endpoint row on the admin page carries a status code, by convention. And a claim about one prompt template is usually true of the other, since `WORKFLOW.md` and `PLANNING.md` are rendered by the same code. This is not duplication: each page keeps its own half, and the check is whether the other half exists.
+**Before finishing, name the page that owns the half you left out, and open it.** Some subjects are split across two pages by convention, so changing one leaves the other stale. The tell is a sentence you did not write because it belongs elsewhere: the admin UI reference lists endpoints and never their status codes, which the error-codes reference owns, and the two prompt-template pages are rendered by the same code, so a claim about one is usually true of both. Each page keeps its own half — what you are checking is whether the other half has to move with it.
 
 **A count is not an enumeration, and a count in front of one ages.** Giving a set's size instead of its members refuses the reader the membership; giving both states one fact twice, and the number is the half that rots. Name the members, or name the set by its shape — *every planning and landing skill, plus `bd-project-setup`*. Keep a number only when it carries something the list cannot, such as a split the sentence is about.
 

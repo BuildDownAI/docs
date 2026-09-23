@@ -26,7 +26,6 @@ The sidebar organizes panels into groups:
 </Note>
 
 These panels are live but not yet documented in full here:
-- **Reports** — fleet-wide outcome analytics over a chosen 7-, 30-, or 90-day window: per-repo success and cost, first-pass versus eventual approval rates, post-merge escape rate, and a planned-versus-unplanned comparison.
 - **Deployments** — release a new version of the orchestrator itself: whether an update is available against the running build, the last deploy's outcome, and a self-deploy that pauses new dispatch until in-flight work drains.
 - **Access** — control who may sign in to the orchestrator and at what role: manage the allowlist of emails and domains, set admin-versus-user roles, choose which panels ordinary users may open, and review recent access changes.
 
@@ -108,6 +107,23 @@ Per-issue rows include:
 - Blocking reason
 - Detail (further context on the blocking reason)
 - Direct link back to the ticket
+
+### Reports
+
+Fleet-wide outcome analytics across every tracked repository, over a window you choose — the last 7, 30, or 90 days, defaulting to 30.
+
+Each card settles a different fleet-level question:
+
+- **Fleet by repo** — how repositories compare on throughput, completions, failures, merges, and cost, a row apiece.
+- **Outcomes** — how cleanly work lands: how often it is approved on the first dispatch versus eventually, and how often merged work needed a human edit afterward (the escape rate).
+- **Planning A/B** — whether planning pays for itself, setting issues that went through planning against those that did not on the same outcome and cost measures.
+- **Runaways** — which issues are consuming dispatches without landing: those with three or more dispatches, or three or more consecutive failures.
+
+The **Cost (USD)** column, and the average cost in the **Planning A/B** card, are estimates computed from token usage at list prices — not billed spend. The estimate counts every model invocation a run makes: its implementation and review passes alike, including retried attempts and the review that runs after changes are pushed.
+
+<Note>
+  The figure takes no account of how a run authenticated, so a subscription-authenticated run that bills nothing per run still reports a cost here.
+</Note>
 
 ## Configure
 
@@ -492,6 +508,12 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `GET` | `/api/blockers` | List issues currently blocked from dispatch, with reason |
 | `GET` | `/api/jobs/:jobId/steps` | Get step-by-step execution status for a specific job |
 | `GET` | `/api/log` | Dispatch audit log (last 500 entries) |
+
+#### Reports
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/report` | Fleet-wide outcome analytics behind the Reports panel; `days` sets the window and accepts any positive integer, and an optional `project` narrows it to one repo |
 
 #### Sessions, reaper, and deduplication
 
