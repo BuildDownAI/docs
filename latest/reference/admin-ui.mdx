@@ -234,6 +234,19 @@ A per-project table shows each mapping's:
 - Effective mode (after applying any global override)
 - Capacity-utilization meter
 
+A **Parked issues** section lists issues the dispatch breaker has parked after repeated failed dispatches. It stays hidden while nothing is parked.
+
+Each row shows:
+- Issue identifier
+- Repo
+- Phase (planning or implementation)
+- Consecutive failure count
+- Last conclusion
+- How long ago it was parked
+- An **Unpark** action
+
+Unparking clears the park and resets the failure counter, so the orchestrator dispatches the issue again on the next poll. See [An eligible issue stopped being dispatched](/latest/reference/troubleshooting#an-eligible-issue-stopped-being-dispatched) for what parks an issue and what unparking does and does not change.
+
 ### Sessions
 
 Lists every Fly Machine session currently in `started`, `starting`, or `created` state.
@@ -471,6 +484,13 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
 | `GET` | `/api/dedup` | List issues currently in the dedup window |
 | `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+
+#### Dispatch breaker
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/parked` | List issues the dispatch breaker has parked |
+| `POST` | `/api/parked/unpark` | Unpark an issue (all phases) so it can be dispatched again |
 
 #### Runner mode and settings
 
