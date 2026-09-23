@@ -108,9 +108,13 @@ Write the docs the way a reader uses them, not the way the product is built.
 
 **No internal vocabulary in published MDX.** Drop source paths and `file:line` citations, internal identifiers (type, interface, function, variable, or state names), and Mintlify component names spelled out in prose ("uses the Note component"). The reader doesn't have the codebase open. Describe user-relevant behavior in user-relevant language.
 
+**Reuse the words the page already uses.** Before introducing a term for something the corpus already names, search for it. A second word for one concept makes a reader stop to work out whether two things are meant — *routes* beside *endpoints*, or a credential named one way in its reference and another on the page that tells you to create it. A coined term reads naturally to whoever coined it, which is why this needs a search rather than a judgment.
+
 **Don't document baseline-expected behavior.** If a reader would assume it without being told — that a Docker command needs Docker running, that a local process doesn't notify a team channel — stating it costs attention and buys nothing. This also means: don't invent setup steps for controls a vendor doesn't expose.
 
 **Don't restate what another section or page already owns.** Before writing a fact, check whether it is already stated at its natural home — a summary table and a reassurance paragraph are the usual shapes, and a correction landing on several pages is the one that catches writers out. If the fact is already home, the copy is maintenance burden that will drift, and it is the copy that drifts, because the natural home is what gets updated. When a fact legitimately belongs in two places, keep it at the **point of action** (the field the reader fills in) and drop it at the point of consequence.
+
+**Re-read the page after editing it, not only the edit.** Changing what a page asserts about a set can falsify a sentence nowhere near the change — a count, an enumeration, a summary of what the set used to be. Removing content leaves its own residue: a list with one item, an example that no longer contrasts with anything, a callout guarding against something the page no longer describes. Neither is a wrong claim *about* the change, which is why both survive review. After changing or removing anything, search the page for whatever counted, enumerated, or characterized what you touched, and read the block a removal left behind. Repairing what your own edit broke is not widening its scope.
 
 **One change, several pages: pick the owner first.** Correcting a claim everywhere it appears is required; writing the same corrected sentence everywhere it appears is not. Decide which page owns the mechanism before drafting — that page carries the explanation, and every other page carries only what its own reader needs in order to keep reading, plus a link. The tell is a sentence you are about to write for the second time on a different page.
 
@@ -136,6 +140,8 @@ A pointer to where the detail lives is not a beat of its own. A fact and a link 
 
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
 
+**A count is not an enumeration, and a count in front of one ages.** Giving a set's size instead of its members refuses the reader the membership; giving both states one fact twice, and the number is the half that rots. Name the members, or name the set by its shape — *every planning and landing skill, plus `bd-project-setup`*. Keep a number only when it carries something the list cannot, such as a split the sentence is about.
+
 **Don't scaffold examples.** In a `**term** — examples` list the dash already signals that what follows are examples, so list them directly: `**Cloud credentials** — an AWS credentials file, a GCP service-account JSON`, not `— for example an AWS credentials file …`.
 
 ### Components
@@ -157,7 +163,7 @@ A pointer to where the detail lives is not a beat of its own. A fact and a link 
 Verify the destination anchor exists before linking. Slug rules:
 
 - `##`/`###`/`####` headings, `<Accordion title="…">`, `<Update label="…">` → `#<slugified-text>`
-- `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix); the slug splits camelCase, so `autoMerge` is `#param-auto-merge`, never `#param-automerge`
+- `<ParamField body="X">` → `#param-<slugified-x>` (note the `#param-` prefix); the slug splits camelCase and turns underscores into hyphens, so `autoMerge` is `#param-auto-merge`, never `#param-automerge`, and `NOTIFY_WEBHOOK_URL` is `#param-notify-webhook-url`
 - `<Step title="…">` and `<Tab title="…">` generate **no anchor** — link to the page instead
 - A `/` inside a heading stays in the slug and must be URL-encoded as `%2F` in the link — a "Projects (team/repo mappings)" heading becomes `#projects-team%2Frepo-mappings`
 
