@@ -85,7 +85,8 @@
                   "customize/workflow-md",
                   "customize/planning-md",
                   "customize/custom-steps",
-                  "customize/runner-image"
+                  "customize/runner-image",
+                  "customize/local-harness"
                 ]
               },
               {
@@ -155,7 +156,8 @@
                   "latest/customize/workflow-md",
                   "latest/customize/planning-md",
                   "latest/customize/custom-steps",
-                  "latest/customize/runner-image"
+                  "latest/customize/runner-image",
+                  "latest/customize/local-harness"
                 ]
               },
               {

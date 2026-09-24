@@ -99,14 +99,16 @@ This guide walks you through running AI-Implement for the first time. By the end
     The orchestrator starts polling for new issues and serving HTTP on port 8080. You should see log output confirming both.
 
     <Tip>
-      Want to run the entire loop on your own machine? `npm run dev:local` executes each job locally instead of on GitHub Actions. See [Local development](/setup/deploy#local-development) for what it needs and when to use it.
+      Want to run the entire loop on your own machine? `npm run dev:local` executes each job locally instead of on GitHub Actions — the orchestrator still polls your ticketing system and opens pull requests. See [Local development](/setup/deploy#local-development) for what it needs and when to use it.
+
+      `npm run dev:run` is the smaller one: a single task read from a file, with no ticketing system and no orchestrator involved. See the [local harness](/customize/local-harness).
     </Tip>
   </Step>
 
   <Step title="Create a project mapping in the admin UI">
     Open the admin UI at [http://localhost:8080/admin](http://localhost:8080/admin) and enter your `ADMIN_ACCESS_CODE`.
 
-    Click **Configure → Projects → + New project** to open the stepper. The stepper has 8 steps; for a first run, fill ticketing config and source, then accept defaults for the rest.
+    Click **Configure → Projects → + New project** to open the stepper. For a first run, fill ticketing config and source, then accept defaults for the rest.
 
     <Tabs>
       <Tab title="Linear">
