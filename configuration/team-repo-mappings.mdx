@@ -99,7 +99,7 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="sensitiveAddPatterns" type="array">
-  Extra glob patterns treated as sensitive for this project, on top of the built-in list. A run that stages a matching file is blocked before it commits — see [Blocked by a security guardrail](/reference/error-codes#blocked-by-a-security-guardrail).
+  Extra glob patterns treated as sensitive for this project, on top of the built-in list. A run that stages a matching file is blocked before it commits — see [Blocked by a security guardrail](/reference/run-statuses#blocked-by-a-security-guardrail).
 
   <Note>
     Patterns match against both the full path and the file name, so `*.pem` catches `certs/server.pem`.
