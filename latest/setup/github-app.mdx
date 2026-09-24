@@ -34,10 +34,15 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
     | Permission | Level |
     |---|---|
     | Actions | Read and write |
+    | Checks | Read-only |
     | Contents | Read and write |
     | Issues | Read and write |
     | Pull requests | Read and write |
     | Workflows | Read and write |
+
+    AI-Implement reads check runs to wait for an external review, to see failing CI, and to decide auto-merge.
+
+    Without the **Checks** permission, post-push review cannot read check runs, and each run stops with [`CHECKS_PERMISSION_DENIED`](/latest/reference/error-codes).
 
     Leave all other permissions at their defaults (no access).
 
@@ -102,6 +107,20 @@ AI-Implement uses a GitHub App — not a personal access token — to authentica
   </Step>
 </Steps>
 
+## Add the Checks permission to an installed App
+
+A change to App permissions does not take effect until each installation accepts it.
+
+<Steps>
+  <Step title="Set the permission in App settings">
+    In the App settings, set **Checks** to **Read-only**, then save.
+  </Step>
+
+  <Step title="Accept the new permission on the installation">
+    The organization owner opens the installation, then selects **Review request** and **Accept new permissions**.
+  </Step>
+</Steps>
+
 ## Add secrets to your target repos
 
 The workflow templates that AI-Implement syncs into target repos read the following secrets. Add them at the organization level (recommended) so all target repos inherit them, or add them individually per repo under **Settings → Secrets and variables → Actions**.
@@ -119,15 +138,13 @@ Each secret below notes its counterpart on the orchestrator where the names diff
   `CLAUDE_CODE_OAUTH_TOKEN` takes precedence over `ANTHROPIC_API_KEY` when both secrets are set. You only need one Claude authentication method, but having both configured gives you a fallback.
 </Note>
 
-## Enable pull request creation in target repos
+## GitHub Actions pull request setting
 
-Each target repo must allow GitHub Actions to create and approve pull requests. Without this setting, the workflow will fail when it tries to open the PR.
+The target repo setting **Allow GitHub Actions to create and approve pull requests** is not required.
 
-In each target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
+Every synced workflow opens pull requests with a GitHub App token. The setting governs the separate `github-actions[bot]` identity, which AI-Implement does not use.
 
-<Warning>
-  This setting must be enabled in every repo you connect to AI-Implement. It is not inherited from organization-level settings.
-</Warning>
+Leaving the setting on does no harm.
 
 ## What's next
 
