@@ -1,0 +1,233 @@
+---
+title: "Run the pipeline on your machine"
+description: "Run the implementation loop against a local checkout from a task file, with no ticket, no orchestrator and no pull request — for trying AI-Implement out, and for exercising a change to a pipeline step before it reaches a real run."
+---
+
+The runner can be driven directly from a markdown file describing the task, against a checkout on your own machine. No ticketing system, no orchestrator, no pull request.
+
+It is worth reaching for when:
+
+- **Evaluating AI-Implement** — watch the loop work without first standing up a GitHub App and a ticketing integration.
+- **Changing how a run behaves** — exercise a pipeline step, a hook script or a prompt template in seconds, rather than dispatching a real issue and waiting for it.
+
+<Note>
+  This is not the same as `npm run dev:local`. That runs the whole orchestrator on your machine — polling your ticketing system, dispatching runs, opening pull requests. This runs one task, once, and stops.
+</Note>
+
+## What it runs, and what it leaves out
+
+A real dispatch has two halves: the orchestrator decides what to run and records what happened, and the runner does the work. This gives you the second half only.
+
+**These steps take their ordinary code path**, though with only what the task file gives them, where a dispatched run would also carry its project mapping's configuration:
+
+- **Setup** — the `setup:` hook from your `WORKFLOW.md`, when it declares one.
+- **The implement and review loop** — Claude writes the change, then a review pass reads it back, repeating up to the iteration limit. This is the part the harness exists to exercise.
+- **Preflight** — the checks that run before anything is published.
+- **Verify** — the `verify:` hook from your `WORKFLOW.md`, when it declares one.
+
+**These are deliberately inert**, because your checkout is mounted rather than cloned:
+
+- **Clone** does nothing — the workspace is already there.
+- **Install** does nothing. It still reads `.ai-implement/config.yml` for the package manager, model and review settings, but installs no dependencies: your checkout already has them, and installing into a mounted tree would churn what you have.
+- **Push** does nothing, for the reason under [Your changes stay in the working tree](#your-changes-stay-in-the-working-tree).
+
+**The rest never runs at all:**
+
+- **Skills installation and dependency tokens**, both of which a project mapping configures. There is no mapping.
+- **Callbacks.** A dispatched runner reports its progress and its result back to the orchestrator. Nothing here is listening, and no callback address is set, so none are sent.
+- **Every ticketing interaction** — no labels or status changes, no progress comments, no failure comment, no run autopsy.
+- **Dispatch itself** — no deduplication, no concurrency cap, no dispatch breaker.
+- **The pull request**, and therefore the post-push review that reads one.
+- **Notifications.**
+
+So a run that passes here tells you the runner did the work. It tells you nothing about whether the orchestrator would have dispatched the issue, what it would have reported while the run was going, or what it would have recorded afterwards.
+
+<Warning>
+  The run executes your repository's commands directly, and does not isolate them from the model process or from your host environment. Claude runs your build, your tests and whatever else the task calls for; your `setup:` and `verify:` hooks and any custom steps run too. Use it only with repositories and task files you trust.
+</Warning>
+
+## Before you start
+
+You need two directories, and they are usually not the same one:
+
+- **A checkout of AI-Implement**, where you run the command. Install its dependencies with `npm install` if you have not already.
+- **The repository the task operates on** — the *workspace*. It can be any git checkout, including the AI-Implement one.
+
+<Steps>
+  <Step title="Start Docker">
+    The run executes in a container. [Local development](/setup/deploy#local-development) covers starting Docker for the orchestrator, and the same applies here.
+
+    The WSL2 callback warning on that page does not apply to this command, because nothing calls back.
+  </Step>
+
+  <Step title="Provide a Claude credential">
+    Set either `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`. The command reads the `.env` beside it, so an AI-Implement checkout already configured for local development needs nothing further, and a run with neither stops immediately and names both.
+
+    A GitHub token is optional. Without one the run uses a placeholder, which is enough because nothing is pushed.
+  </Step>
+
+  <Step title="Build the runner image">
+    ```bash
+    npm run build:runner:local
+    ```
+
+    <Warning>
+      This command never builds the image for you, unlike `npm run dev:local`. A stale image is the most common reason a first run behaves oddly, so rebuild it after pulling changes that touch the runner.
+    </Warning>
+  </Step>
+</Steps>
+
+## Run the bundled demo
+
+AI-Implement ships a task that edits one file, so you can see the loop end to end before writing your own. Run this from your AI-Implement checkout, which here is also the workspace:
+
+```bash
+npm run dev:run -- --workspace . --task examples/local-demo/task.md
+```
+
+The bare `--` is npm's, not ours: everything after it is passed to the command instead of being read by npm itself. [The task file](#the-task-file) covers writing your own.
+
+The run streams the container's logs as it goes, and takes a couple of minutes — most of it the implement and review loop.
+
+<Note>
+  Repeated `dbus-run-session: ignoring unknown child process` lines are expected, and nothing is wrong. The image runs the pipeline under `dbus-run-session` so Claude Code's startup keychain read fails fast instead of hanging, and that wrapper is the container's first process — so it inherits and reaps whatever your repository's commands leave behind, announcing each one.
+</Note>
+
+When it finishes, these are worth looking at:
+
+- **What changed** — `git status` in the workspace, then `git diff`. For the demo it is one line of `examples/local-demo/message.txt`, uncommitted, on whatever branch you already had.
+- **What the run thought it did** — `ai-output/comments/01-summary.md` in the workspace, written the way a pull-request body would be, alongside the run's statistics.
+- **What the run recorded** — the artifacts directory named in the last lines of the output.
+
+## Your changes stay in the working tree
+
+Your checkout is mounted into the container rather than copied into it, and that runs in both directions.
+
+The run edits your files in place, on whatever branch you already had checked out, and leaves the edit uncommitted for you to read, keep or discard. Nothing is committed and nothing is pushed — pushing from a mounted checkout would never be safe, so the push step deliberately does nothing.
+
+Going the other way, your uncommitted work is already inside the container. Edits to `WORKFLOW.md` or to a hook script take effect on the very next run, with no commit and no rebuild. So does a `custom/` directory in the workspace, which overrides a pipeline definition or a step module ahead of the one the image carries.
+
+### What the image holds, and when to rebuild
+
+The image is the runner — the pipeline it executes and the toolchain it runs your commands with. Your repository is never part of it.
+
+So rebuild after changing AI-Implement's own code and wanting the run to use it: after pulling, or after editing a built-in step. Nothing you change inside the workspace needs one.
+
+## The task file
+
+A task file is YAML front matter and a markdown body. The body is the task description — what a ticket's description would have been.
+
+This is `examples/local-demo/task.md`, the one the demo above runs:
+
+```markdown
+---
+title: Complete the AI-Implement local quick demo
+id: LOCAL-DEMO-1
+limits:
+  maxTurns: 20
+  maxIterations: 1
+---
+
+Update only `examples/local-demo/message.txt`.
+
+Acceptance criteria:
+
+- Replace the file's entire contents with `AI-Implement completed this local task.`
+- Keep exactly one trailing newline.
+- Do not modify any other tracked file or add a dependency.
+```
+
+Only `title` is required. The rest:
+
+<ParamField body="id" type="string" default="DEV-<timestamp>">
+  Stands in for the ticket identifier, and names the container and the run's log lines.
+</ParamField>
+
+<ParamField body="base" type="string" default="the workspace's current branch">
+  The base branch the run works against.
+</ParamField>
+
+<ParamField body="repo" type="string" default="the workspace's origin remote, or a placeholder when that is not a GitHub URL">
+  `owner/repo`. Most runs never set it: nothing is cloned or pushed, so it only names the repository the run reports itself as working on.
+</ParamField>
+
+<ParamField body="limits.maxTurns" type="integer">
+  How many turns Claude may take in one pass.
+</ParamField>
+
+<ParamField body="limits.maxIterations" type="integer">
+  How many times the implement-and-review loop may repeat.
+</ParamField>
+
+<ParamField body="profiles" type="array">
+  Profile names carried into the run for custom steps to branch on. Set this only if your own steps expect it.
+</ParamField>
+
+## What a run leaves behind
+
+Each run writes a directory under `.dev-runs/`, named for the time it started:
+
+| File | What it holds |
+|---|---|
+| `run.log` | Everything the container printed, including each step's timing |
+| `changes.diff` | The full diff the run produced in your workspace |
+| `diffstat.txt` | The same diff, summarized |
+| `telemetry.json` | Identifier, phase, exit code, and how long the run took |
+
+A planning run also saves the plan it produced.
+
+AI-Implement ignores `.dev-runs/` in git, so these never show up as changes — but nothing prunes them either, and they accumulate a directory per run.
+
+The run writes into the workspace as well: `ai-output/comments/` holds the summary the run would have posted to a ticket, alongside the run's statistics. That summary is the readable account of what happened, and usually the first thing worth opening — but you will not find it through `git status`, because the run adds `ai-output/` to the workspace's `.git/info/exclude` so its own scratch files can never be staged.
+
+<Note>
+  `.dev-runs/` is created relative to the directory you run the command from — the AI-Implement checkout — not the workspace the task operates on.
+</Note>
+
+## Exercising a change without spending a run
+
+The following flags make the loop cheap to iterate against, and they are the reason to reach for this over a real dispatch.
+
+`--until <step>` stops after a named step. `--until setup` is the one that matters: it mounts the workspace and runs your setup hook without ever invoking Claude. A hook script that fails on its first line is worth finding in a few seconds, and it costs nothing.
+
+```bash
+npm run dev:run -- --workspace . --task task.md --until setup
+```
+
+`--shell` leaves the container running when the last step finishes instead of removing it, and opens a shell inside it — at a prompt, in the workspace, with the environment your hooks ran under. Typing `exit` ends the session and removes the container.
+
+That prompt is where you can:
+
+- Re-run a hook command by hand and watch it fail.
+- Look at what a step left behind.
+- Check which version of a tool the container actually has.
+
+It does not require `--until`, but the two are usually used together: stopping after `setup` and then stepping inside is how you debug a hook without paying for a Claude pass.
+
+```bash
+npm run dev:run -- --workspace . --task task.md --until setup --shell
+```
+
+Both flags apply to implementation runs only.
+
+## Running the other phases
+
+`--phase` selects what the run does. It defaults to `implementation`.
+
+- `planning` produces the plan a planning run would have posted to the ticket, and saves it with the run's artifacts.
+- `full` runs planning and then implementation, feeding the plan into the implementation pass.
+
+## Script options
+
+<Tip>
+  Run `npm run dev:run` with no arguments to print the usage line.
+</Tip>
+
+| Option | Effect |
+|---|---|
+| `--workspace`, `-w` | The repository the task operates on. Required. |
+| `--task`, `-t` | The task file to run. Required. |
+| `--phase` | `implementation` (the default), `planning`, or `full`. |
+| `--image` | The runner image to use. Defaults to `LOCAL_RUNNER_IMAGE`, then to `ai-implement-runner:local`. |
+| `--until` | Stop after this step. Implementation runs only. |
+| `--shell` | Open a shell in the container when the run finishes. Implementation runs only. |
