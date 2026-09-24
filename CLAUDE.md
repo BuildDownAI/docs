@@ -140,7 +140,7 @@ This governs every block of prose on a page — ordinary paragraphs, list items,
 
 **Order a troubleshooting entry context → cause → resolution → what obviously doesn't work.** Context is what should have happened and what the reader saw instead, including the absence of any error. Keep provider-specific behavior together in the cause rather than scattered through the other segments. Name the plausible fix that fails, and why, whenever one exists — a reader often arrives having already tried it.
 
-Those four segments are the entry's beats: each is one move the reader makes, so each is one paragraph however many facts it rests on. Facts about the mechanism are not beats here at all — they belong on the page documenting it, reached by a link from the cause.
+Those four segments are the entry's beats: each is one move the reader makes, so each is one paragraph however many facts it rests on. Mechanism is not a beat here, and the page that documents it keeps the full account — but the entry still has to stand on its own. Carry as much of the mechanism as the fix depends on and link for the rest, because a reader who must leave the page to finish the fix has been handed a detour rather than a resolution.
 
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
 
