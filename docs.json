@@ -98,6 +98,7 @@
                   "reference/feature-branch-grouping",
                   "reference/notifications",
                   "reference/troubleshooting",
+                  "reference/run-statuses",
                   "reference/error-codes",
                   "releases"
                 ]
@@ -167,6 +168,7 @@
                   "latest/reference/feature-branch-grouping",
                   "latest/reference/notifications",
                   "latest/reference/troubleshooting",
+                  "latest/reference/run-statuses",
                   "latest/reference/error-codes",
                   "latest/releases"
                 ]

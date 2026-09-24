@@ -13,24 +13,26 @@ This page covers the most common issues you may encounter when running AI-Implem
     2. **No team/repo mapping exists.** Open the admin UI at `/admin` and confirm that a mapping exists for the team that owns the issue. If not, add one.
     3. **The concurrency cap is reached.** Each project mapping has a `maxInProgressAiIssues` limit (default `3`). If the project already has that many issues in progress (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira), new issues are held until a slot opens. You can raise the cap from the admin UI or via `PATCH /api/mappings/:teamKey`.
     4. **The orchestrator is not running or not polling.** Health-check the orchestrator with `curl https://your-orchestrator/`. If it does not respond, check the Fly logs with `fly logs --app your-app`.
-    5. **The issue is parked.** After enough failed dispatches the orchestrator stops picking an issue up until someone unparks it — see [An eligible issue stopped being dispatched](#an-eligible-issue-stopped-being-dispatched).
+    5. **The orchestrator has stopped picking it up.** After repeated failed dispatches or runs it holds an issue back until someone intervenes, and the fix depends on which mechanism did it — see [An eligible issue stopped being dispatched](#an-eligible-issue-stopped-being-dispatched).
     6. **Check the dispatch log.** The log at `/api/log` shows whether the orchestrator attempted to dispatch the issue and what the outcome was.
   </Accordion>
 
   <Accordion title="An eligible issue stopped being dispatched">
-    An issue that was being picked up normally — correctly triggered, not blocked, with a project mapping and a free concurrency slot — quietly stops producing runs. Nothing obvious marks it, and it does not reach the [Blockers](/reference/admin-ui#blockers) panel either, because parking is not one of the reasons that panel reports.
+    An issue that was being picked up normally — correctly triggered, not blocked, with a project mapping and a free concurrency slot — quietly stops producing runs.
 
-    **The cause is the dispatch breaker.** After enough consecutive failed dispatches for the same issue and phase, the orchestrator *parks* the issue and skips it from then on. [Parked issues](/reference/admin-ui#parked-issues) covers how parking is counted and what unparking changes.
+    **Two mechanisms announce themselves on the ticket, and their fixes are not interchangeable.** The comment tells you which one you have.
 
-    **Confirm the breaker is the cause.** When it trips, the orchestrator posts a comment to the ticket — **⛔ AI-Implement parked this issue** — naming the phase, the failure count, the last conclusion, and links to the failed runs.
+    **⛔ AI-Implement parked this issue — the dispatch breaker.** After enough consecutive failed dispatches for the same issue and phase, the orchestrator *parks* the issue and skips it from then on. The comment names the phase, the failure count, the last conclusion, and links to the failed runs. Nothing marks it in the [Blockers](/reference/admin-ui#blockers) panel, because parking is not one of the reasons that panel reports. [Parked issues](/reference/admin-ui#parked-issues) covers how parking is counted and what unparking changes.
 
-    **Fix the failure, then unpark.** Open **Platform → Runners**, find the issue in the Parked issues section, and click **Unpark**.
+    To release it, open **Platform → Runners**, find the issue in the Parked issues section, and click **Unpark**. Clearing the issue's dedup entry does nothing here, because parking is tracked apart from the dedup window, and re-applying the trigger does not help either, since the orchestrator re-checks the park on every poll.
+
+    **AI Implementation Stuck — Needs Human — the retry budget.** Once four runs for the same issue have failed or gone overdue, the orchestrator stops retrying and leaves the issue's dedup entry in place so no poll picks it up. This one does reach the Blockers panel, under `dedup` — reported as waiting for an in-flight job, though the run it refers to has already ended. [Overdue run recovery](/reference/run-statuses#overdue-run-recovery) covers how that budget is counted.
+
+    To release it, remove the issue's entry from the [Audit log](/reference/admin-ui#audit-log). Unparking does nothing here — the issue was never parked.
 
     <Warning>
-      Unparking lifts the block; it does not fix what was failing. With the underlying failure still in place, the issue is dispatched, fails, and parks again once the count is reached.
+      Neither fix addresses what was failing. With the underlying cause still in place, the issue is dispatched, fails, and returns to the same state.
     </Warning>
-
-    **Nothing else releases it.** Clearing the issue's [dedup entry](/reference/admin-ui#audit-log) does nothing, because parking is tracked apart from the dedup window. Re-applying the trigger does not help either, since the orchestrator re-checks the park on every poll.
   </Accordion>
 
   <Accordion title="A Jira issue ran despite an open blocker">
@@ -56,20 +58,22 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     Common causes:
     - A `setup:` script declared in `WORKFLOW.md` exited non-zero, which aborts the run before Claude starts.
-    - The push was blocked because the diff touched sensitive files. See [sensitive file patterns](/reference/error-codes) for what the guard covers and how to tune it per project.
+    - The push was blocked because the diff touched sensitive files. See [sensitive file patterns](/reference/run-statuses#blocked-by-a-security-guardrail) for what the guard covers and how to tune it per project.
     - The run errored before pushing, leaving the branch incomplete.
 
-    Once you have fixed the cause, re-dispatch by removing and re-applying the trigger.
+    When a run fails without producing a pull request, the orchestrator retries on its own rather than waiting for you: the failure clears the issue's dedup entry, so the next poll dispatches a fresh job. An issue that keeps failing can spend several attempts this way before anyone looks at it.
 
-    A failed run usually clears the issue's dedup entry, so the issue is eligible again right away. After repeated failures the entry is kept instead, and you need to remove it from the admin UI's Audit log before the issue can be dispatched again.
+    A run that fails but still pushes a draft pull request — [Reached max turns](#reached-max-turns), or a review that did not approve — is left alone deliberately, since the work is already on a branch waiting for a person.
+
+    Once four runs for the same issue have failed or gone overdue, the budget is spent and the entry is kept instead — see [An eligible issue stopped being dispatched](#an-eligible-issue-stopped-being-dispatched) for how to clear it.
   </Accordion>
 
   <Accordion title="The run hit the time limit">
     This is a wall-clock limit, and it is not the same as [Reached max turns](#reached-max-turns) — that one is a cap on how many steps Claude takes, not how long the run lasts. A run can hit either bound independently.
 
     Two wall-clock bounds exist:
-    - **The job timeout**, which limits a GitHub Actions run. The default is 90 minutes. A run that passes it without finishing is [detected as overdue and recovered](/reference/error-codes#overdue-run-recovery), not left to hang.
-    - **The machine timeout**, which ends a Fly Machine session around 60 minutes after it is dispatched. This bound is fixed and cannot be configured.
+    - **The job timeout**, which limits a GitHub Actions run. The default is 90 minutes. A run that passes it without finishing is [detected as overdue and recovered](/reference/run-statuses#overdue-run-recovery), not left to hang.
+    - **The machine timeout**, which ends a Fly Machine session 60 minutes after it is dispatched. This bound is fixed and cannot be configured.
 
     Hitting either usually means the ticket was over-scoped for one run rather than that anything is broken. Splitting the ticket is the more reliable fix — a narrower issue finishes inside the budget and produces a reviewable diff.
 
@@ -181,8 +185,8 @@ This page covers the most common issues you may encounter when running AI-Implem
 
         Destroying the session also clears the in-progress marker on the associated issue (`AI-Working` on Linear, or `AI-Implement Status` set to `Implementing` on Jira) and clears its dedup entry.
       </Step>
-      <Step title="Re-trigger the issue if needed">
-        If you want the orchestrator to retry the issue, re-apply the trigger on the issue. The orchestrator will pick it up on the next poll.
+      <Step title="Let it retry, or stop it">
+        The orchestrator picks the issue up again on the next poll, because destroying the session cleared its dedup entry and left the issue marked for pickup. If you do not want it retried, remove the trigger before destroying the session.
       </Step>
     </Steps>
   </Accordion>
