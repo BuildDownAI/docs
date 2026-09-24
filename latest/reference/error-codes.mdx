@@ -30,6 +30,10 @@ Comprehensive reference for the error codes, statuses, and failure messages AI-I
         Common planning and implementation failures, and how to fix them.
     </Card>
 
+    <Card title="Post-push review failures" icon="clipboard-check" href="#post-push-review-failures">
+        Codes and comments the post-push review posts when it cannot approve.
+    </Card>
+
     <Card title="Issue lifecycle" icon="diagram-project" href="#issue-lifecycle">
         The state diagram of triggers and transitions.
     </Card>
@@ -68,7 +72,7 @@ A runner reports the final outcome of a dispatch: success with a PR, or failure 
 | 400 | `invalid_comment_shape` | A comment entry is not an object with a string `body` |
 | 400 | `invalid_comments` | `comments` is missing or not an array |
 | 400 | `invalid_outcome` | `outcome` is not `success` or `failure` |
-| 400 | `invalid_phase` | `phase` is not `planning`, `implementation`, or `gap-analysis` |
+| 400 | `invalid_phase` | `phase` is not `planning`, `implementation`, `gap-analysis`, or `kg-refresh` |
 | 400 | `missing_prUrl` | A successful implementation result did not include a PR URL |
 | 400 | `phase_mismatch` | The token's phase does not match the body |
 | 401 | `bad_signature`, `expired`, `malformed`, `wrong_audience` | The run token has a bad signature, is expired, is malformed, or is for the wrong endpoint |
@@ -491,6 +495,112 @@ The most common failures are listed below.
         - **Tokens and auth files** — `.npmrc`, `.netrc`, or a `kubeconfig`.
 
         To resolve it, remove the file from the change, or add it to `.gitignore` so it's never staged, then re-run the issue.
+    </Accordion>
+
+    <Accordion title="A person pushed to the branch during the run" description="GIT_LEASE_REJECTED — the branch changed under the run, so it stopped without pushing">
+        A person pushed to the pull request branch while AI-Implement was running, so the run stopped without pushing. On the pull request you see:
+
+        > A human pushed to this branch while AI-Implement was running, so the run stopped without pushing. Comment `/ai-implement` to resume.
+
+        Comment `/ai-implement` to resume the run over the updated branch.
+
+        When a bot pushed instead, AI-Implement queues a new fix run by itself and needs no action from you.
+    </Accordion>
+
+    <Accordion title="The push failed on a network error" description="GIT_REMOTE_TRANSIENT — a transient network failure during the push">
+        The push failed on a network error — a DNS failure, a failed connection, or a timeout. This failure is transient, and it is not a branch conflict.
+
+        Re-dispatch the issue. The push usually succeeds on the next run.
+    </Accordion>
+</AccordionGroup>
+
+## Post-push review failures
+
+After AI-Implement opens a pull request, a second review reads the pushed diff. See [Post-push review](/latest/reference/post-push-review) for how that pass works.
+
+When the review cannot approve, it posts one of the outcomes below. Some post on the pull request, some on the issue, and some on both.
+
+<AccordionGroup>
+    <Accordion title="The review cannot read check runs" description="CHECKS_PERMISSION_DENIED — the GitHub App lacks the Checks read permission">
+        On the pull request, the review posts:
+
+        > 🔒 Post-push review could not verify check runs.
+        >
+        > The GitHub App cannot read check runs on this repo. Grant Checks: read to the App and accept the updated permissions on the installation.
+        >
+        > **Merge readiness:** Manual review required; check runs could not be read.
+
+        On the issue, AI-Implement posts the summary:
+
+        > 🔒 The GitHub App cannot read check runs on this repo.
+
+        with the remediation:
+
+        > Grant Checks: read to the GitHub App and accept the updated permissions on the installation, then re-dispatch.
+
+        **Cause.** The GitHub App does not have the Checks read permission, or the installation has not accepted an updated permission set.
+
+        **Fix.** Grant the App **Checks: Read-only**, then accept the permission change on the installation. See [Install the GitHub App](/latest/setup/github-app). Re-dispatch the issue after you accept the change.
+
+        <Warning>
+            Auto-merge holds a child pull request as pending while check runs stay unreadable. It never merges the pull request until the read succeeds.
+        </Warning>
+    </Accordion>
+
+    <Accordion title="A reviewer reached its turn limit" description="REVIEWER_TURNS_EXHAUSTED — a reviewer used its whole turn budget without a verdict">
+        On the pull request, the review posts:
+
+        > 🟠 Required automated review is incomplete; at least one reviewer did not finish.
+
+        On the issue, AI-Implement posts:
+
+        > 🟠 A post-push reviewer reached its turn limit ({cap}); required review is incomplete.
+
+        `{cap}` is the turn limit the reviewer reached.
+
+        **Cause.** A reviewer used its whole turn budget before it reached a verdict, so the required review is incomplete.
+
+        **Fix.** Raise the reviewer's **Max turns** in the project's **Reviewers** list, or the inherited **Review Max Turns** in **Settings**.
+    </Accordion>
+
+    <Accordion title="The model provider was unavailable" description="PROVIDER_UNAVAILABLE — a provider outage outlasted the retry budget">
+        On the issue, AI-Implement posts:
+
+        > 🟠 The model provider was unavailable during {stage}; the code was {state}.
+
+        `{stage}` is `implementation`, `review`, or `post-push review`. `{state}` is `not implemented`, `partially implemented`, or `not reviewed`.
+
+        **Cause.** The model provider was unavailable, and the outage outlasted the retry budget. This is a provider outage, not a problem in the code.
+
+        **Fix.** Re-trigger the run after the provider recovers.
+    </Accordion>
+
+    <Accordion title="The external review did not complete" description="A separate review tool did not report a usable verdict in time">
+        On the pull request, the review posts one of:
+
+        > ⚠️ Internal review passed, but the external review did not complete within the wait budget. Not auto-approving.
+
+        > ⚠️ Internal review passed, but the external review verdict was unavailable or incomplete. Not auto-approving.
+
+        The first case ends with:
+
+        > **Merge readiness:** Manual review required; external review did not complete.
+
+        **Cause.** The post-push review waits up to five minutes for the external review check on the current commit. The check did not finish in time, or it reported without a verdict the review could read.
+
+        **Fix.** Check that the external review check runs and finishes within five minutes, and that the reviewer posts a valid findings block. See [Post-push review](/latest/reference/post-push-review).
+    </Accordion>
+
+    <Accordion title="Post-push review could not start" description="The project's reviewer selection did not resolve">
+        On the pull request, the review posts `⚠️ Post-push review could not start.`, followed by one of:
+
+        - `Project reviewer selection is empty; automated review is incomplete.`
+        - `Project reviewer selection contains no internal reviewers; automated review is incomplete.`
+        - `Selected reviewer(s) did not resolve from trusted code or default-branch config definitions: {ids}. Automated review is incomplete.`
+
+        **Cause.** The project's reviewer selection is empty, names no internal reviewer, or names a reviewer whose definition the review could not resolve.
+
+        **Fix.** Fix the project's **Reviewers** list, or merge the reviewer definition to the default branch. See [Post-push review](/latest/reference/post-push-review).
     </Accordion>
 </AccordionGroup>
 
