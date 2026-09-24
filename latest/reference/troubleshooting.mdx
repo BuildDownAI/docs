@@ -81,15 +81,15 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="The automated review flagged the pull request">
-    The run finished and opened a pull request, but the post-push review used up its iteration budget without clearing every blocking issue. The pull request stays open and ordinary — the verdict is in its comments, not in its state.
+    AI-Implement finished the run and opened a pull request, but its review did not clear every blocking issue.
 
-    This is a working outcome, not an error — the review did its job. Read the review comments on the pull request: the last one ends with a merge-readiness line and lists what the review still considers unresolved against the original ticket.
+    The review opens the pull request as a draft, so auto-merge cannot merge the flagged work past you. On a repository whose plan does not allow draft pull requests, the review opens an ordinary pull request titled `[NEEDS REVIEW — unapproved]` instead.
+
+    Read the review feedback on the pull request. It lists what the review still considers unresolved against the original ticket.
+
+    The review also blocks on failing continuous integration. It reports **CI check failing** when a non-review check fails on the current commit, and **CI check status could not be verified** when it cannot read the check status.
 
     From there you can finish the work yourself, or comment `/ai-implement` with a specific instruction to send Claude back over the same branch.
-
-    <Note>
-      The failure notice on the ticket may describe the work as "preserved in a draft PR" even when the pull request is not a draft. Trust the pull request over the notice.
-    </Note>
   </Accordion>
 
   <Accordion title="PR opened but no automated review comment appears">
@@ -100,6 +100,24 @@ This page covers the most common issues you may encounter when running AI-Implem
     - **No pull request was opened.** If Claude pushed commits without opening one, there is nothing for the review to run against.
 
     If none of those apply, confirm the run actually reached the review step — check the GitHub Actions logs for the `claude-implement.yml` workflow, and fix any earlier failure first.
+  </Accordion>
+
+  <Accordion title="The review cannot read check runs">
+    The post-push review ran, but it could not read the pull request's check runs, so it judged nothing. On the pull request you see `🔒 Post-push review could not verify check runs.`, with the merge-readiness line `Manual review required; check runs could not be read.` On the issue you see `🔒 The GitHub App cannot read check runs on this repo.`
+
+    **The cause is a missing permission.** The GitHub App does not have the Checks read permission, or the installation has not accepted an updated permission set.
+
+    **Grant the permission, then re-dispatch.** Grant the App **Checks: Read-only** and accept the permission change on the installation — see [Install the GitHub App](/latest/setup/github-app). Re-dispatch the issue after you accept the change.
+
+    **Re-dispatching before you grant it does not help.** The review reads check runs on every run, so it fails the same way until the permission is in place.
+  </Accordion>
+
+  <Accordion title="The external review did not complete">
+    The post-push review's own pass was clean, but a separate review tool did not report a usable verdict, so AI-Implement did not auto-approve. On the pull request you see one of `⚠️ Internal review passed, but the external review did not complete within the wait budget. Not auto-approving.` or `⚠️ Internal review passed, but the external review verdict was unavailable or incomplete. Not auto-approving.` The merge-readiness line asks for manual review.
+
+    **The cause is the external review tool.** The post-push review waits up to five minutes for the external review check on the current commit. The check did not finish in that time, or it reported without a verdict the review could read.
+
+    **Make the external review finish in time and report a verdict.** Check that the external review check runs and finishes within five minutes, and that the reviewer posts a valid findings block. See [Post-push review](/latest/reference/post-push-review).
   </Accordion>
 
   <Accordion title="provider=bedrock but workflow hard-fails with a model error">
