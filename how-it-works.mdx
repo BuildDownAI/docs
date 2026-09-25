@@ -26,7 +26,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       </Tab>
     </Tabs>
 
-    Per-project-mapping concurrency limits apply: by default, no more than 3 issues per mapping can be in progress at once. You can change this limit per mapping in the admin UI. If a mapping is at capacity, eligible issues wait until a slot opens.
+    A concurrency limit applies: by default, no more than 3 issues can be in progress at once. You set the limit per mapping in the admin UI, and eligible issues wait until a slot opens.
     
     <Note>
       Capacity is bucketed differently per provider:
@@ -40,7 +40,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   <Step title="Issue is picked up and marked In Progress">
     <Tabs>
       <Tab title="Linear">
-        When the orchestrator selects an issue, it marks it **In Progress** in Linear and adds the **AI-Working** label. The AI-Working label signals to your team that a run is active on this issue.
+        When the orchestrator selects an issue, it adds the **AI-Working** label, which signals to your team that a run is active on this issue. It also moves the issue to **In Progress**, unless you have already started it yourself.
       </Tab>
 
       <Tab title="Jira">
@@ -55,7 +55,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     Two deduplication checks prevent duplicate dispatches:
 
     - **In-flight** — if a job is already actively running for this issue, no new dispatch happens regardless of how recent the last one was.
-    - **Recent** — even after a job finishes, the same issue won't be re-dispatched while a dedup entry from its previous dispatch is still on record.
+    - **Already dispatched** — even after a job finishes, the same issue won't be re-dispatched while a dedup entry from its previous dispatch is still on record.
 
     A separate condition also stops a dispatch: an issue the dispatch breaker has [parked](/reference/admin-ui#parked-issues) after repeated failed dispatches is skipped until an operator unparks it.
 
@@ -63,18 +63,15 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   </Step>
 
   <Step title="Planning phase (if enabled)">
-    If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
+    If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins, and labels the issue **AI-Planning** while it runs.
 
-    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to four structured comments to the issue:
+    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template, then posts structured comments to the issue:
 
-    - **Architecture Analysis** — how the codebase is structured and what changes are needed
-    - **Test Plan** — what tests should be written or updated
-    - **Work Units** — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must come after.
-    - **Cross-Story Context** — relevant context from related issues (if available)
+    - **Implementation Map** — the approach, the files it expects to create, modify, test or delete, and the constraints an implementer must not break.
+    - **Acceptance Bar** — numbered claims that can be checked against the diff, or by running a command.
+    - **Risks & Open Questions** — edge cases and unknowns found while exploring the codebase.
 
-    <Note>
-      When the **Work Units** section is present, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time instead of one after another. Skipped when the issue is too small or too tightly coupled to decompose, in which case implementation runs as a single pass.
-    </Note>
+    Each lands on the issue for you to read. The orchestrator also reads the Acceptance Bar, which the review pass checks the diff against, and the Implementation Map's file list, which is what holds back a sibling issue whose work would overlap.
 
     When the planning workflow finishes successfully, these comments appear on the issue and its marker is updated:
     

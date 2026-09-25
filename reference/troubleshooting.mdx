@@ -24,7 +24,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     **⛔ AI-Implement parked this issue — the dispatch breaker.** After enough consecutive failed dispatches for the same issue and phase, the orchestrator *parks* the issue and skips it from then on. The comment names the phase, the failure count, the last conclusion, and links to the failed runs. Nothing marks it in the [Blockers](/reference/admin-ui#blockers) panel, because parking is not one of the reasons that panel reports. [Parked issues](/reference/admin-ui#parked-issues) covers how parking is counted and what unparking changes.
 
-    To release it, open **Platform → Runners**, find the issue in the Parked issues section, and click **Unpark**. Clearing the issue's dedup entry does nothing here, because parking is tracked apart from the dedup window, and re-applying the trigger does not help either, since the orchestrator re-checks the park on every poll.
+    To release it, open **Platform → Runners**, find the issue in the Parked issues section, and click **Unpark**. Clearing the issue's dedup entry does nothing here, because parking is tracked apart from the dedup ledger, and re-applying the trigger does not help either, since the orchestrator re-checks the park on every poll.
 
     **AI Implementation Stuck — Needs Human — the retry budget.** Once four runs for the same issue have failed or gone overdue, the orchestrator stops retrying and leaves the issue's dedup entry in place so no poll picks it up. This one does reach the Blockers panel, under `dedup` — reported as waiting for an in-flight job, though the run it refers to has already ended. [Overdue run recovery](/reference/run-statuses#overdue-run-recovery) covers how that budget is counted.
 
@@ -167,10 +167,10 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="The same issue is being picked up repeatedly">
     A dedup entry is written when an issue is dispatched and stays until something clears it, so an entry can persist indefinitely. The admin UI's [Audit log](/reference/admin-ui#audit-log) section lists every event that clears one.
 
-    If the same issue keeps being dispatched, check the dedup entries:
+    If the same issue keeps being dispatched, check the dedup ledger:
     - Open the admin UI and go to the Audit log, or call `GET /api/dedup`.
-    - If the issue is not in the dedup window, its entry was cleared and the orchestrator is treating the issue as new.
-    - If the issue should not be redispatched, clear its trigger — remove the `AI-Implement` label on Linear, or move `AI-Implement Status` away from `Ready` on Jira. Adding an issue back into the dedup window by hand is not supported through the UI, so clearing the trigger is the simpler path.
+    - If the issue has no entry, it was cleared and the orchestrator is treating the issue as new.
+    - If the issue should not be redispatched, clear its trigger — remove the `AI-Implement` label on Linear, or move `AI-Implement Status` away from `Ready` on Jira. Adding an entry back by hand is not supported through the UI, so clearing the trigger is the simpler path.
   </Accordion>
 
   <Accordion title="Fly Machine session stuck or not terminating">

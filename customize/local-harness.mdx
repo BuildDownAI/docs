@@ -160,7 +160,9 @@ Only `title` is required. The rest:
 </ParamField>
 
 <ParamField body="profiles" type="array">
-  Profile names carried into the run for custom steps to branch on. Set this only if your own steps expect it.
+  [Profile names](/customize/custom-steps#profiles) carried into the run for custom steps to branch on. Set this only if your own steps expect it.
+
+  They work here whichever ticketing system you use, because nothing reads a ticket. A dispatched run takes them from a Jira custom field instead, so a Linear project can exercise a profile here but never set one on a real issue.
 </ParamField>
 
 ## What a run leaves behind

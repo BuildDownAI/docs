@@ -1,13 +1,13 @@
 ---
 title: "Configure Slack and Teams notifications"
-description: "How to configure AI-Implement to send Slack or Microsoft Teams webhook notifications when issues are dispatched and when implementation runs complete or fail."
+description: "How to configure AI-Implement to send Slack or Microsoft Teams webhook notifications, and every event the orchestrator sends one for."
 ---
 
-AI-Implement can send notifications to Slack or Microsoft Teams when issues are dispatched and when runs complete. Notifications are optional — if you do not configure a webhook URL, the orchestrator continues to work normally and simply skips sending notifications.
+AI-Implement can send notifications to Slack or Microsoft Teams as work moves through the orchestrator, and as the orchestrator itself changes state.
 
 ## Configuration
 
-Two environment variables control notifications:
+These environment variables control notifications:
 
 | Variable | Values | Description |
 |---|---|---|
@@ -20,24 +20,33 @@ Set these on your orchestrator's Fly app (or in your `.env` file when running lo
 fly secrets set NOTIFY_TYPE=slack NOTIFY_WEBHOOK_URL=https://hooks.slack.com/services/... --app your-app
 ```
 
-<Note>
-If `NOTIFY_WEBHOOK_URL` is not set, notifications are silently skipped. No error is raised and the orchestrator continues to dispatch and poll normally.
-</Note>
-
 ## What triggers a notification
 
-AI-Implement notifies on two kinds of event.
+### Runs
 
-**Run lifecycle**
+- **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository, and says whether this is planning or implementation.
+- **Dispatch failed** — the workflow could not be started at all. Names the workflow file, and says when the cause looks like a target repo that has not re-synced its workflows.
+- **Completion** — a run finishes. Includes the outcome (`completed`, `review_failed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
 
-- **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
-- **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+A completion that did not finish cleanly also carries the explanation posted on the ticket — see [Outcome comments](/reference/run-statuses#outcome-comments).
+
+### Issues the orchestrator gives up on
+
+- **Parked** — dispatches for one issue and phase kept failing. Includes the phase, the failure count, the last conclusion, and where to unpark it.
 - **Stuck, needs human** — the orchestrator stops retrying an issue. Includes the attempt count, the last run status, and a link to the last run.
 
-**Orchestrator lifecycle**
+### Feature-branch grouping
+
+- **Child merged** — a child pull request was merged into its grouping branch.
+- **Conflict left for a human** — a child pull request conflicts with its grouping branch and the automatic resolution attempts are spent.
+
+### The orchestrator itself
 
 - **Restarting** — the orchestrator is shutting down, so dispatches are paused until it returns.
 - **Back up** — it is serving again, saying whether this is a new version or the same one.
+- **Deployment available** — a newer commit is ready to release.
+- **Reaper burst** — a single sweep destroyed more machines than the alert threshold.
+- **Runner mode changed** — someone switched execution mode from the admin interface.
 
 ## Deploy notifications
 
@@ -47,14 +56,16 @@ When the orchestrator restarts, it announces the fact itself, so a pause in disp
   This needs no configuration beyond the webhook you already set — the same `NOTIFY_TYPE` and `NOTIFY_WEBHOOK_URL`.
 </Tip>
 
-You get a matched pair. The outgoing process posts **Orchestrator restarting** as it shuts down — the only one of these that sends an `@channel`, since the message that follows answers it. The incoming process replies once it's serving again:
+You get a matched pair, sent wherever the orchestrator can identify its own image — in practice Fly.io, so running locally is silent. The outgoing process posts **Orchestrator restarting** as it shuts down — the only one of these that sends an `@channel`, since the message that follows answers it. The incoming process replies once it's serving again:
 
 - **Orchestrator redeployed** — a new version is live.
 - **Orchestrator back up** — the same version came back, so this was a restart rather than a deploy.
 
 Each message names the app, its region, and how long it was down. The restarting notice omits the version deliberately: it is sent by the process being replaced, so the only version it knows is the one going away.
 
-These are sent only where the orchestrator can identify its own image, which in practice means Fly.io — running locally is silent. The first deploy after enabling this is silent too, by design: the outgoing process is still running the older build and has no shutdown handler, while the incoming one has no previous version to compare against. Restart the app once afterwards to see the full pair.
+The first deploy after enabling this is silent, by design: the outgoing process is still running the older build and has no shutdown handler, while the incoming one has no previous version to compare against. Restart the app once afterwards to see the full pair.
+
+**Deployment available** stands outside the pair. It announces a commit you could release rather than one this machine is already running, so it arrives on any host. [Self-deployment](/setup/self-deployment) covers what to do with it.
 
 ## Setting up Slack
 

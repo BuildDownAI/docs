@@ -36,10 +36,10 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
 
     <Columns cols={2}>
       <Card title="Fly.io (recommended)" icon="cloud">
-        A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/setup/deploy) for instructions.
+        A Fly.io account lets you deploy the orchestrator as a managed app. The shipped configuration provisions a `shared-cpu-1x` machine with 512 MB of memory. See [Deploy the orchestrator](/setup/deploy) for instructions.
       </Card>
       <Card title="Any server running Node.js" icon="server">
-        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/setup/deploy).
+        You can run the orchestrator on any server or local machine that has Node.js 24 installed. The local development workflow is covered in [Deploy the orchestrator](/setup/deploy).
       </Card>
     </Columns>
   </Step>
@@ -58,8 +58,10 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
     </Note>
   </Step>
 
-  <Step title="Node.js 20 or later (for local development)">
-    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 20 or later installed on your machine. For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
+  <Step title="Node.js 24 (for local development)">
+    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 24 on your machine. The major version has to match exactly — every local start checks it first and stops with an explanation if it doesn't, because the project's native database bindings are built against one major and fail to load under another.
+
+    For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
   </Step>
 </Steps>
 

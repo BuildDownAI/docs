@@ -84,9 +84,13 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="skillsRepo" type="string">
-  Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or a full git URL. Cloned into the workspace before implementation begins.
+  Repository of skills to make available to Claude during this project's runs, as an `owner/repo` shorthand or an `https://github.com/...` URL. Cloned into the workspace before implementation begins.
 
   Leave unset to run without project skills. This setting covers `/ai-implement` comment-triggered runs as well.
+
+  <Warning>
+    Nothing else is accepted. An SSH remote, or a URL on any other host, is rejected when you save — the clone authenticates with a GitHub token, and that credential must never be sent elsewhere.
+  </Warning>
 </ParamField>
 
 <ParamField body="dependencyTokenScope" type="string">
@@ -181,13 +185,11 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 </ParamField>
 
 <ParamField body="autoMerge" type="boolean" default="false">
-  When `true`, the orchestrator merges this project's child pull requests into their shared grouping branch once checks pass, so a parent issue's children collect without manual merging.
+  <Warning>
+    Nothing reads this setting. It is stored on the mapping and offered in the admin interface, but no code path consults it, so turning it on or off changes nothing.
+  </Warning>
 
-  Applies only to issues that belong to a parent/child group — see [Feature-branch grouping](/reference/feature-branch-grouping). Ordinary single-issue runs are unaffected.
-
-  <Note>
-    This never merges into `defaultBranch`. The final pull request from the grouping branch into your default branch always waits for a human.
-  </Note>
+  Child pull requests are merged into their grouping branch whatever it is set to. [Merging child pull requests](/reference/feature-branch-grouping#merging-child-pull-requests) covers the conditions that do apply, and what still waits for a human.
 </ParamField>
 
 ## Capacity

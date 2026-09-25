@@ -5,7 +5,7 @@ description: "How parent and child issues are grouped onto shared branches, when
 
 When you mark a parent issue and its children for AI-Implement, they stop being independent runs. The children open pull requests into a **shared branch** owned by the parent instead of into your default branch, and when the whole tree is finished you get **one** pull request to review rather than one per issue.
 
-Nothing changes for ordinary work. An issue with no children behaves exactly as it always has.
+Nothing changes for ordinary work. An issue outside a parent/child group behaves exactly as it always has.
 
 ## How a tree becomes branches
 
@@ -57,15 +57,18 @@ You can mark the whole tree at once. The ordering rules below sequence it for yo
 
 | Situation | What happens |
 |---|---|
-| Issue has no children | Runs as soon as capacity allows; its pull request targets the nearest parent's grouping branch |
+| Issue has no children | Runs as soon as capacity allows; its pull request targets the nearest parent's grouping branch, or your default branch when it has no parent |
 | Parent still has children in flight | Waits |
 | Parent's children are all finished | The parent's own work runs, landing on its own grouping branch |
 | Issue is blocked by an open blocking relation | Waits |
+| Declared files overlap a sibling's on the same grouping branch | Waits for that sibling to merge |
+
+That last row needs both issues to have declared what they touch. The file list comes from the [Implementation Map](/customize/planning-md#implementation-map) planning comment, or from a `Files:` section in the issue description. An issue that declares nothing never waits and never makes a sibling wait, so two issues can still collide if neither says what it is changing.
 
 A parent can carry work of its own — a final cleanup, a piece of integration — that isn't part of any child. That work is deliberately held until every child is finished, so it builds on top of them rather than racing them.
 
 <Tip>
-  "Finished" includes cancelled. Cancelling a child you've decided against releases the parent instead of stalling it.
+  "Finished" includes canceled. Canceling a child you've decided against releases the parent instead of stalling it.
 </Tip>
 
 ## Rolling completed work back up
@@ -76,9 +79,13 @@ The exception is the top of the tree. That one becomes a **pull request into you
 
 Merge that final pull request however you like — merge commit, squash, or rebase all work. The orchestrator notices it merged, deletes the grouping branch, and marks the top issue done.
 
-## Merging child pull requests automatically
+**Closing it without merging reads as a deliberate veto, and the orchestrator respects that permanently.** It will not reopen the pull request or raise a replacement, however far ahead the grouping branch runs.
 
-By default every child pull request waits for a human, same as any other. Turning on **Auto Merge** for a project changes that: child pull requests are merged into their grouping branch once they're ready.
+If you change your mind, open a pull request from the grouping branch yourself. The orchestrator finds it by its branch pair, waits for you to merge it, and finalizes the tree as it would have done originally.
+
+## Merging child pull requests
+
+Child pull requests are merged into their grouping branch as soon as they are ready. The orchestrator does this on every poll, for every project that is not paused, and there is nothing to turn on.
 
 A child is merged only when all of the following hold:
 
@@ -90,14 +97,10 @@ A child is merged only when all of the following hold:
 Anything else is left alone. Pending checks are waited on, failures and change-requests are skipped, and a pull request that can't be merged cleanly is left for you.
 
 <Note>
-  A run whose automated review found blockers opens its pull request as a **draft**. Because auto-merge skips drafts, flagged work is never merged past you even with the setting on.
+  A run whose automated review found blockers opens its pull request as a **draft**. Because drafts are skipped, flagged work is never merged past you.
 </Note>
 
-<Warning>
-  Auto Merge never merges into your default branch. The final pull request out of the tree always waits for human review.
-</Warning>
-
-Turn it on per project — see [`autoMerge`](/configuration/team-repo-mappings#param-auto-merge) in the project mapping reference.
+A project mapping carries an [**Auto Merge**](/configuration/team-repo-mappings#param-auto-merge) setting that looks like it governs this. It does not — nothing reads it.
 
 ## Naming the grouping branch
 

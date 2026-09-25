@@ -140,10 +140,6 @@ This guide walks you through running AI-Implement for the first time. By the end
     Creating the project mapping opens a pull request in your target repo containing `claude-implement.yml`, `claude-plan.yml`, and starter `WORKFLOW.md` and `PLANNING.md` files.
 
     Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
-
-    <Warning>
-      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
-    </Warning>
   </Step>
 
   <Step title="Create the trigger in your ticketing system">
@@ -205,7 +201,7 @@ Now that you have a working end-to-end flow, here is where you can go next.
     Give Claude repo-specific instructions, and set the model it runs.
   </Card>
   <Card title="Enable planning" icon="list-check" href="/configuration/planning">
-    Have Claude post an architecture analysis and test plan to your ticketing system before it implements.
+    Have Claude post an implementation map, an acceptance bar, and the risks it found to your ticketing system before it implements.
   </Card>
   <Card title="Project mappings" icon="folder-gear" href="/configuration/team-repo-mappings">
     Connect additional projects to repos, and tune how each one dispatches.
