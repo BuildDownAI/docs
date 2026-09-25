@@ -1,36 +1,52 @@
 ---
 title: "Install BuildDown skills"
-description: "Add the BuildDown skills to Claude Code or Codex, and choose between the stable and development release channels."
+description: "Add the BuildDown skills to Claude Code or claude.ai, and choose between the stable and dev release channels."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
-Both the marketplace and the plugin are named `builddown`. Installing gives you every `bd-` skill — see [BuildDown skills](/latest/skills/introduction) for what each one does.
+BuildDown ships from the `BuildDownAI/skills` marketplace. Installing gives you every `bd-` skill — see [BuildDown skills](/latest/skills/introduction) for what each one does.
+
+The marketplace offers one plugin per release channel:
+
+- `builddown` — the **Stable** channel, pinned to the most recent released version.
+- `builddown-dev` — the **Dev** channel, which tracks ongoing development.
+
+Install only one.
 
 <Note>
-  The plugin manager needs [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working. Installing for Codex uses the script instead — skip to [installing without the plugin system](#install-without-the-plugin-system).
+  Codex doesn't use the plugin system. To install for Codex, use the script instead — skip to [installing without the plugin system](#install-without-the-plugin-system).
 </Note>
 
 ## Installation
 
+### In Claude Code
+
 <Steps>
-  <Step title="Add and install the plugin">
+  <Step title="Add the marketplace and install the plugin">
     The plugin manager accepts two command forms:
 
     - `claude plugin …` — works in the Claude Code app **or** a terminal, and is the form to use in scripts.
     - `/plugin …` — the slash form, available in the Claude Code CLI. Some options exist only here.
 
-    Add the marketplace, then install the plugin from it:
+    Add the marketplace, then install the plugin for the channel you want.
+
+    For **Stable**:
 
     ```bash
     claude plugin marketplace add BuildDownAI/skills
     claude plugin install builddown@builddown
     ```
 
-    <Info>
-      With no branch or tag appended, this gives you the **stable** channel — the most recent released version. Append `@testing` instead to track ongoing development.
+    For **Dev**:
 
+    ```bash
+    claude plugin marketplace add BuildDownAI/skills
+    claude plugin install builddown-dev@builddown
+    ```
+
+    <Info>
       Both channels are covered in [Versions and channels](#versions-and-channels) below.
     </Info>
   </Step>
@@ -49,26 +65,53 @@ Both the marketplace and the plugin are named `builddown`. Installing gives you 
     ```
 
     <Check>
-      `builddown` appears in the list, and the `bd-` skills are available in your session.
+      Your plugin — `builddown` or `builddown-dev` — appears in the list, and the `bd-` skills are available in your session.
     </Check>
   </Step>
 </Steps>
 
-## Versions and channels
+### On claude.ai
 
-Which version you get depends on how you added the marketplace:
+<Steps>
+  <Step title="Add the marketplace from the repository">
+    Open **Customize › Plugins › Add › Add marketplace › Add from a repository**.
 
-| How you added it | Channel | What you get |
-|---|---|---|
-| `BuildDownAI/skills` (no ref) | **Stable** | the most recent released version — see [Releases](/latest/skills/releases) |
-| `BuildDownAI/skills@testing` | **Development** | whatever has landed on the `testing` branch, released or not |
-| `./install.sh --from-git <url>@v1.4.0` | pinned | exactly that tag, without using the plugin system |
-| `./install.sh` from a local checkout | unversioned | whatever that checkout happens to contain |
+    Enter `BuildDownAI/skills`, keep **Sync automatically** on, and click **Sync**.
+  </Step>
 
-Stable changes only when a new version ships. Development follows `testing` and can change at any time, including in ways that haven't been through a release.
+  <Step title="Add the plugin">
+    Add `builddown` for the **Stable** channel, or `builddown-dev` for **Dev**. Add only one.
+
+    <Note>
+      A Team or Enterprise organization marketplace needs a private repository. Because `BuildDownAI/skills` is public, each member adds it to their own account rather than sharing an organization marketplace.
+    </Note>
+  </Step>
+</Steps>
 
 <Note>
-  Two separate references decide what you end up with. The marketplace reference picks which catalog you read; the catalog then names which version of the skills to install. On the stable channel the catalog pins that to the release tag, which is why refreshing the marketplace doesn't move your skills until a new version is out.
+  If you uploaded the plugin zip before, you have a `builddown` plugin under **Created by you** on claude.ai. Remove it there so the marketplace copy loads instead.
+</Note>
+
+<Info>
+  The `builddown-dev` catalog entry lands when the next version ships. Until then, claude.ai lists only `builddown`, and in Claude Code you reach Dev through the `BuildDownAI/skills#testing` marketplace ref (then install `builddown@builddown`).
+</Info>
+
+## Versions and channels
+
+Which version you get depends on the plugin you install:
+
+| Plugin | Channel | How you get it |
+|---|---|---|
+| `builddown` | **Stable** — pinned to the latest release tag | Add the `BuildDownAI/skills` marketplace, then install `builddown@builddown` |
+| `builddown-dev` | **Dev** — tracks the `testing` branch | Add the `BuildDownAI/skills` marketplace, then install `builddown-dev@builddown` |
+| `builddown` | **Dev** — via direct ref | Add the `BuildDownAI/skills#testing` marketplace, then install `builddown@builddown` |
+| pinned | a specific tag, without the plugin system | `./install.sh --from-git <url>@v1.4.0` |
+| unversioned | whatever a local checkout contains | `./install.sh` from that checkout |
+
+A version changes only when the plugin's `version` changes. Stable changes only when a new version ships. Dev follows `testing` and can change at any time, including in ways that haven't been through a release.
+
+<Note>
+  Two separate references decide what you end up with. The marketplace reference picks which catalog you read; the catalog then names which version of the skills to install. On the Stable channel the catalog pins that to the release tag, which is why refreshing the marketplace doesn't move your skills until a new version is out.
 </Note>
 
 ### Check which version you have
@@ -87,7 +130,7 @@ The slash form also accepts a state filter, which the terminal form does not:
 
 Your channel is recorded **on your machine** when you first add the marketplace. A new release cannot move you — switching is something you do locally.
 
-To move from development to stable:
+To move to **Stable**:
 
 ```bash
 claude plugin marketplace remove builddown
@@ -95,7 +138,13 @@ claude plugin marketplace add BuildDownAI/skills
 claude plugin install builddown@builddown
 ```
 
-Append `@testing` to the middle command to go the other way.
+To move to **Dev**, install `builddown-dev@builddown` in the third command instead:
+
+```bash
+claude plugin marketplace remove builddown
+claude plugin marketplace add BuildDownAI/skills
+claude plugin install builddown-dev@builddown
+```
 
 <Warning>
   Removing a marketplace uninstalls every plugin installed from it. The third command is not optional — without it you are left with no skills installed.
@@ -107,16 +156,18 @@ Refresh the marketplace, update the plugin, then reload:
 
 ```bash
 claude plugin marketplace update builddown
-claude plugin update builddown
+claude plugin update <plugin>@builddown
 ```
 
-Then run `/reload-plugins`.
+Replace `<plugin>` with `builddown` or `builddown-dev`. Then run `/reload-plugins`.
 
-What this actually picks up depends on your channel. On **stable** you move only if a new version has been released; running it between releases is a no-op. On **development** you get whatever has landed on `testing` since you last updated.
+What this actually picks up depends on your channel. On **Stable** you move only if a new version has been released; running it between releases is a no-op. On **Dev** you get whatever has landed on `testing` since you last updated.
 
 <Tip>
   Third-party marketplaces have automatic updates switched off by default. You can turn it on per marketplace from the **Marketplaces** tab of `/plugin` if you would rather not update by hand.
 </Tip>
+
+On claude.ai, choosing **Check for updates** on the plugin installs the new version immediately.
 
 ## Install without the plugin system
 
@@ -178,8 +229,8 @@ To pin a specific release instead of tracking a checkout:
 
 ## Next step
 
-With the skills installed, set up your project so the `bd-` skills know where your issues and repo live.
+With the skills installed, connect your orchestrator and ticketing system so the `bd-` skills know where your issues and repo live.
 
-<Card title="Project setup" icon="folder-gear" href="/latest/skills/project-setup">
-  Point the BuildDown skills at your ticketing system and repository.
+<Card title="Connect your orchestrator and tracker" icon="plug" href="/latest/skills/project-setup">
+  Add your orchestrator and ticketing system as claude.ai connectors.
 </Card>

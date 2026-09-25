@@ -1,128 +1,72 @@
 ---
-title: "Set up your project"
-description: "Run bd-project-setup once to point the BuildDown skills at your ticketing system and repository — it creates the connection, authorizes it, and records the bindings every other skill reads."
+title: "Connect your orchestrator and tracker"
+description: "Add your orchestrator and ticketing system as claude.ai connectors once per account — the BuildDown skills read every project binding from the orchestrator at session start."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
-`bd-project-setup` wires one project to its tools. It creates the connection to your ticketing system, authorizes it against your workspace, and writes down the bindings that every other `bd-` skill relies on to know where your issues and repository live.
+The `bd-` skills reach your issues and repositories through a pair of connectors: your **orchestrator** and your **ticketing system**. You add each one once per account at [claude.ai/settings/connectors](https://claude.ai/settings/connectors).
 
-You run it yourself, inside your Claude Code session, as a one-time step per project.
-
-## When to run it
-
-Run `bd-project-setup` **once per project**, right after you've installed the skills and reloaded your session. Until it's done, the other `bd-` skills have nothing pointing them at your issues.
+There is nothing to set up per project. Every skill reads its project mappings from the orchestrator at the start of each session, so a fresh checkout needs no `.mcp.json` entry and no binding file — signing in with the account that holds the connectors is enough.
 
 <Info>
-  This assumes the skills are already installed and your session reloaded. If not, [start with installation](/latest/skills/installation) first.
+  This assumes the skills are already installed. If not, [start with installation](/latest/skills/installation) first.
 </Info>
 
-## Running it
+## Connect your services
 
 <Steps>
-  <Step title="Invoke the skill">
-    From your project's Claude Code session, run:
+  <Step title="Allow the claude.ai callback origin on your orchestrator">
+    Before a custom connector can authenticate, the orchestrator has to allow the claude.ai callback origin:
 
     ```bash
-    /builddown:bd-project-setup
+    fly secrets set MCP_ALLOWED_REDIRECT_ORIGINS=https://claude.ai,https://claude.com --app <your-app>
     ```
 
-    Answer its prompts about which ticketing system you use and which workspace to bind. The skill handles the rest.
-  </Step>
-
-  <Step title="Let it detect what's already there">
-    Before writing anything, the skill checks whether the project is already wired up. If a connection, pre-approval, or bindings already exist, it works around them rather than duplicating or clobbering your setup.
-
-    <Tip>
-      This makes the skill safe to re-run. If you're unsure whether setup finished, just invoke it again.
-    </Tip>
-  </Step>
-
-  <Step title="Authorize your workspace">
-    The skill starts the sign-in from within the session. When the grant screen appears, **you pick the workspace** you want this project bound to.
-
     <Warning>
-      The workspace you choose in the grant is the one this project will file and read issues in. Pick deliberately — if you have more than one, make sure it's the right one.
+      Set this first. A connector rejected with `invalid_redirect_uri` before the sign-in screen appears is missing this origin.
     </Warning>
   </Step>
 
-  <Step title="Confirm it finished">
-    When the skill is done, your project has a connection, it's pre-approved so the other skills can use it without prompting each time, and the bindings are recorded for the rest of the suite to read.
+  <Step title="Add the connectors">
+    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), add a custom connector for each service:
+
+    - your **orchestrator** — the AI-Implement service that holds your project mappings and picks up marked issues to open pull requests
+    - your **ticketing system** — Linear or Jira, where your issues live
+
+    Add each one once per account, from the web. Connectors are added and removed from the web, and enabled or disabled per session from the mobile app.
+  </Step>
+
+  <Step title="Sign in to Claude Code">
+    The connectors load automatically in Claude Code when you sign in with the same account.
+
+    No project `.mcp.json` entry is needed.
 
     <Check>
-      Setup is complete. The other `bd-` skills can now find your issues and repository.
+      At the start of a session, the skills print:
+
+      - the orchestrator they resolved
+      - the project binding they read
+      - the tracker they checked
+
+      Setup is complete once those lines name your services.
     </Check>
   </Step>
 </Steps>
 
-## What it changes
+## One tracker connector, one workspace
 
-Running the skill leaves your project with three things in place:
+A tracker connector is signed into one workspace at a time.
 
-- **A connection to your ticketing system** — the link between this project and Linear or Jira.
-- **A standing pre-approval** — so the other skills can reach it without asking for permission on every run.
-- **Recorded bindings** — a small record of your ticketing system, workspace, and repository that every `bd-` skill reads to orient itself.
+When a repository's mapping expects a different workspace, the session-start check names the connector to reconnect to.
 
-## Knowledge graph (optional)
-
-The skill has a second pass that binds this project to a **knowledge graph** — the shared project memory `bd-kg-search` queries, and that the planning and landing skills consult before they act.
-
-It never runs as part of the setup above. You invoke it deliberately, and it follows the same detect-then-confirm discipline: it reports what it finds and asks before changing anything.
+To work in another workspace, reconnect the tracker connector to it rather than editing any project file.
 
 <Note>
-  Skipping this is a valid end state, not an unfinished setup. Without a bound graph the knowledge-graph skills simply do nothing, and every other skill carries on unaffected.
+  Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [ticketing support](/latest/skills/introduction#ticketing-support) for which.
 </Note>
 
-<Steps>
-  <Step title="Point it at an orchestrator">
-    The graph is served by an orchestrator, so the skill asks which one and checks that it answers.
-
-    If your project doesn't have a graph yet, the skill can hand off to `bd-kg-create` to build one, then come back and finish the binding. Declining outright is also recorded, so it stops asking.
-  </Step>
-
-  <Step title="Register the sign-in callback URLs">
-    Signing in to the graph uses its own callback URLs, separate from the ones your orchestrator's admin sign-in uses. The skill checks them before asking anyone to sign in, and prints the exact URL to add.
-
-    <Warning>
-      Admin sign-in working does not mean these are registered — they are a different set of URLs on the same provider application. If they are missing, the next step fails in your browser with a redirect-mismatch error.
-    </Warning>
-
-    Add that URL verbatim under **Authorized redirect URIs** — in Google Cloud Console under APIs & Services → Credentials, or in Microsoft Entra under App registrations → Authentication.
-  </Step>
-
-  <Step title="Sign in">
-    Approve the sign-in in your browser. This is per person rather than per project, and your identity has to be one the orchestrator allows.
-
-    Signing in lasts as long as you keep using the connection: it refreshes itself in the background, and only sends you back to the browser after thirty days idle. The binding itself is unaffected either way.
-  </Step>
-
-  <Step title="Restart and verify">
-    Restart Claude Code so the new connection loads, then run a real search against the graph rather than checking only that it connects.
-
-    <Check>
-      A search for a term from your project comes back with results. Empty results mean the graph is reachable but isn't serving your project's content.
-    </Check>
-  </Step>
-</Steps>
-
-Keeping the graph's contents current isn't part of setup — that's `bd-kg-refresh`, run when the graph goes stale rather than when a project binds.
-
-## Key rules
-
-- **One ticketing system per project.** A project is bound to Linear **or** Jira, never both at once. Choose the one that owns this project's issues.
-
-  <Note>
-    Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [ticketing support](/latest/skills/introduction#ticketing-support) for which.
-  </Note>
-
-- **Give each connection a distinct name.** Claude Code stores one login per connection name,
-  and a login points at a single workspace. The name is only a label: a connection can reach the whole workspace you authorize it against, and the team it files into is a separate binding. The same holds for an orchestrator connection bound in the knowledge-graph pass.
-
-  <Warning>
-    If two projects share a name, they share a login under that name — so authorizing the connection for one project's workspace silently switches the other project onto it too.
-  </Warning>
-
-- **Run it once per project.** Setup is a one-time step. You don't repeat it for everyday work — only when you're onboarding a new project.
-
-- **Re-invoke after a mid-run reload.** If your session reloads partway through setup, run `bd-project-setup` again. It picks up from where it left off and finishes the parts that didn't complete.
+<Tip>
+  Running more than one orchestrator? Enable the connector for the one you want and disable the other. The session-start check uses whichever orchestrator is enabled.
+</Tip>
