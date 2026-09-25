@@ -14,14 +14,12 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
     If you did not install the GitHub App on all repositories during the [GitHub App setup](/latest/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
   </Step>
 
-  <Step title="Enable pull request creation in the target repo">
-    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
+  <Step title="Pull request creation setting (not required)">
+    The **Allow GitHub Actions to create and approve pull requests** setting is at **Settings → Actions → General** in the target repo.
 
-    Without this setting, the implementation workflow will fail when it attempts to open a PR.
+    This setting is **not required**. Every synced workflow opens pull requests with a GitHub App token, which this setting does not govern.
 
-    <Warning>
-      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
-    </Warning>
+    Leaving the setting on does no harm.
   </Step>
 
   <Step title="Set up the trigger in your ticketing system">
@@ -164,7 +162,7 @@ AI-Implement requires two custom select fields in your Jira instance: one for th
 
 Once the PR appears, you can:
 
-- Review the automated review comment that Claude posts automatically, showing whether the PR is ready to merge and what (if anything) still needs attention
+- Read the [post-push review](/latest/reference/post-push-review) on the PR — a GitHub review with a **Full reviewer report** link and a sticky status comment on merge readiness
 - Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch
 - Merge the PR to close the issue.
 
