@@ -67,6 +67,77 @@ To work in another workspace, reconnect the tracker connector to it rather than 
   Linear is supported across the whole suite. Jira works, but some skills describe it in terms projected from their Linear behavior rather than fully adapted — see [ticketing support](/latest/skills/introduction#ticketing-support) for which.
 </Note>
 
-<Tip>
-  Running more than one orchestrator? Enable the connector for the one you want and disable the other. The session-start check uses whichever orchestrator is enabled.
-</Tip>
+## Switch to a different orchestrator, workspace, or project
+
+Use these steps to point the skills at another orchestrator, another Linear workspace, or another project. You change connectors and orchestrator mappings only. No file in your repository changes.
+
+### Switch the orchestrator
+
+<Steps>
+  <Step title="Get access on the new orchestrator">
+    Ask an admin of that orchestrator to add your email to its allowlist, in the admin UI **Access** panel. The `user` role is enough for the skills. `bd-kg-refresh` and `bd-mega-kg-refresh` need the `admin` role. See [Single sign-on](/latest/setup/sso#how-access-is-decided).
+
+    The orchestrator must also allow the claude.ai callback origin (`MCP_ALLOWED_REDIRECT_ORIGINS`), as in [Connect your services](#connect-your-services).
+  </Step>
+
+  <Step title="Add the new orchestrator as a connector">
+    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), add a custom connector. Use the orchestrator's MCP address, which is its base URL followed by `/mcp`, for example `https://ai-implement-testing-orchestrator.fly.dev/mcp`. Do not use the admin page address (`/admin#projects`).
+
+    Sign in when the connector asks. Use the account that is on the allowlist.
+  </Step>
+
+  <Step title="Keep only one orchestrator enabled">
+    Disable the connector for the old orchestrator, or remove it. In Claude Code, run `/mcp` and disable the old one there too.
+
+    If two are enabled, each skill stops with this line:
+
+    ```
+    Two orchestrator connectors are enabled; disable one.
+    ```
+  </Step>
+
+  <Step title="Check the session-start lines">
+    Start a new session and run any skill, for example `bd-system-questions`. The first lines name the new orchestrator:
+
+    ```
+    orchestrator: <connector prefix>
+    builddown <version> · orchestrator <orchestrator URL> · project <team>/<owner>/<repo>
+    ```
+  </Step>
+</Steps>
+
+### Switch the Linear workspace
+
+<Steps>
+  <Step title="Reconnect Linear on claude.ai">
+    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), disconnect the Linear connector. Connect it again, and choose the new workspace on the Linear consent screen.
+  </Step>
+
+  <Step title="Reconnect Linear in Claude Code">
+    Run `/mcp`, select the Linear connector, and choose **Reauthenticate**. Choose the same workspace.
+  </Step>
+
+  <Step title="Check the tracker line">
+    Start a new session. The tracker line names the team keys that the orchestrator maps:
+
+    ```
+    tracker: Linear team <key> ✓
+    ```
+
+    If the workspace does not hold those teams, the skill stops with this line. Reconnect to the workspace that holds them:
+
+    ```
+    The Linear connector is signed into a workspace without team <keys>; this orchestrator's mappings expect it. Reconnect the connector to that workspace.
+    ```
+  </Step>
+</Steps>
+
+### Switch the project
+
+The orchestrator decides which Linear team and which repository go together. Each pair is a project mapping in the admin UI **Projects** panel, for example `https://ai-implement-testing-orchestrator.fly.dev/admin#projects`. To use another team or repository, add or change a mapping there. Only an orchestrator admin can do this.
+
+A skill that files issues or lands pull requests chooses its project in this order:
+
+1. A team key or repository that you name in the prompt, such as `BDS-87`.
+2. In Claude Code, the repository of the folder you work in. In a chat, the optional `repo: <owner>/<name>` line in the project instructions.
+3. Otherwise, the skill asks you once and lists the mappings.
