@@ -144,9 +144,18 @@ Those four segments are the entry's beats: each is one move the reader makes, so
 
 **Enumerate completely.** When listing a set — every command, every item in a suite — list the **whole** set, not a representative two or three. If the set differs by version, list each version's actual set on its own page. If you can't determine the full set, list what you can and say so rather than silently truncating.
 
-**Before finishing, name the page that owns the half you left out, and open it.** Some subjects are split across two pages by convention, so changing one leaves the other stale. The tell is a sentence you did not write because it belongs elsewhere: the admin UI reference lists endpoints and never their status codes, which the error-codes reference owns, and the two prompt-template pages are rendered by the same code, so a claim about one is usually true of both. Each page keeps its own half — what you are checking is whether the other half has to move with it.
+**Before finishing, check the pages your own edit's vocabulary points at.** Some subjects are split across two pages by convention, so changing one leaves the other stale, and the page owning the other half is rarely the one you were editing. Two moves cover it, and neither needs you to already know which pages are paired:
 
-**A count is not an enumeration, and a count in front of one ages.** Giving a set's size instead of its members refuses the reader the membership; giving both states one fact twice, and the number is the half that rots. Name the members, or name the set by its shape — *every planning and landing skill, plus `bd-project-setup`*. Keep a number only when it carries something the list cannot, such as a split the sentence is about.
+- **An exact term** — a status value, an error code, a configuration key — is searchable. Search every `.mdx` file for it. Where it already appears, check whether your change made that copy wrong or incomplete.
+- **A general one** — a notification, a label, a run status — is not. List the pages under `reference/` and open any whose name matches the thing you mentioned. Those pages are named after what they enumerate, so a sentence saying the orchestrator sends an alert has `reference/notifications.mdx` to answer to, whether or not you thought of that page.
+
+Where the term belongs on the page you open and is missing, that absence is the half you left out. Each page still keeps its own half — the admin UI reference lists endpoints and never their status codes, which the error-codes reference owns — so what you are checking is whether the other half has to move with your change, not whether to copy it across.
+
+**Delete the number in front of a list.** A count beside its own enumeration states one fact twice, and the number is the half that rots — the next edit that adds a member makes it false. Giving a size *instead* of the members is the same rule from the other side, and refuses the reader the membership entirely.
+
+Name the members, or name the set by its shape — *every planning and landing skill, plus `bd-project-setup`*. Keep a number only when it carries something the list cannot, such as a split the sentence is about.
+
+Before finishing, re-read each paragraph you wrote from scratch and check whether a number is sitting in front of a list. This rule misses far more often on new prose than on an edit to existing prose.
 
 **Don't scaffold examples.** In a `**term** — examples` list the dash already signals that what follows are examples, so list them directly: `**Cloud credentials** — an AWS credentials file, a GCP service-account JSON`, not `— for example an AWS credentials file …`.
 
@@ -161,6 +170,10 @@ Those four segments are the entry's beats: each is one move the reader makes, so
 - `<Check>` — a success state or confirmation
 
 **Callouts must earn their box, and adding one is often a swap.** Before adding a callout, count the components already in the enclosing step, tab, or section. If yours would make three or more, rank them by how *surprising* each is to a reader who has read the surrounding prose — keep the least predictable one boxed and write the rest as prose. Baseline prerequisites lose that ranking every time. The test for whether something belongs in a box at all: could a reader delete it and still follow the section? If not, it is the argument — write it as prose with bold for weight.
+
+**A fact that costs the reader a broken run goes in a box, and that half is easier to miss.** A value that fails the run, a permission the product cannot grant itself, a prerequisite whose absence breaks something later — each earns a `<Warning>` even where the prose around it reads fine. Weighing only whether a callout is *unnecessary* leaves the default on prose, which is the more common mistake.
+
+Keep the box to the hazard. Once a callout runs longer than the prose it annotates, the section has moved inside it — leave the blocking part boxed and put the rest back out.
 
 **`<ParamField>` defaults belong in the `default` prop**, not in body prose. Always quoted (`default="90"`), since the value may be conditional (`default="3 (Anthropic), 2 (Bedrock)"`), which `{}` cannot express.
 

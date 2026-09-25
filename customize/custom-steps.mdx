@@ -12,7 +12,7 @@ The `custom/` mechanism has two extension points:
 - `custom/steps/` for step modules
 - `custom/pipelines/` for pipeline definitions.
 
-Both are covered below, followed by the repo-level config file.
+Both are covered below.
 
 ## custom/steps/ — override or add a step
 
@@ -199,6 +199,38 @@ Your YAML only needs to declare `id`, `type`, and optional `moduleId`. No other 
 
 A step whose `id` isn't one of the built-ins always receives an empty `inputs` object, so a genuinely new custom step must read what it needs from the pipeline's shared context data rather than from step-level YAML config.
 
+## Profiles
+
+<Note>
+  **Profiles come from a Jira custom field.** A run dispatched from a Linear issue never carries any.
+</Note>
+
+A run can carry a list of **profile names**. No built-in step reads them — they exist so your own steps can branch on the issue that started the run.
+
+Where they come from depends on how the run started:
+
+- **From the ticket** — the `AI-Implement Profiles` multi-select field, whose selected options become the names, spelled exactly as they appear there. [Jira: manual custom-field setup](/setup/target-repo#jira-manual-custom-field-setup) covers creating the field.
+- **From a task file** — the [`profiles` key](/customize/local-harness#the-task-file), which works whichever ticketing provider you use, since nothing reads a ticket.
+
+A step reads them from the pipeline's shared context data:
+
+```typescript
+// custom/steps/provision-database.ts
+import type { StepModule } from "../../src/pipeline/types.js";
+
+export default {
+  async run(context, _inputs, _reporter) {
+    if (!context.data.profiles?.includes("backend")) {
+      return { provisioned: false };
+    }
+    // …stand up a throwaway database for this run
+    return { provisioned: true };
+  },
+} satisfies StepModule;
+```
+
+A step guarded on a profile does nothing until that profile is set on an issue, so it is safe to write and deploy before anyone uses it.
+
 ## Repo-level configuration file
 
 Drop a YAML file at `.ai-implement/config.yml` in your target repo's root to override certain runtime behaviors without modifying `WORKFLOW.md` or any synced workflow files. The orchestrator's install step reads this file at the start of every run.
@@ -231,9 +263,13 @@ reviewCheckNames:
   - `yarn`
   - `pnpm`
   
-  When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
+  When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`. A value outside the three above is neither validated nor rejected — it runs `npm ci` whichever lockfile is present, so a typo quietly costs you the auto-detection rather than failing the run.
 
-  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside the three above isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here.
+
+  <Warning>
+    `none` is the one value that fails the run. It reads as a way to skip installation, but on a repo that has a `package.json` it aborts the install step instead.
+  </Warning>
 </ParamField>
 
 <ParamField body="models.implement" type="string">

@@ -260,7 +260,9 @@ Pick the tab that matches where you're configuring right now.
     ### Notifications
 
     <ParamField body="NOTIFY_TYPE" type="string" default="slack">
-      Notification provider to use when a dispatch succeeds or fails. Accepted values: `slack` (default) or `teams`. Has no effect if `NOTIFY_WEBHOOK_URL` is not also set.
+      Notification provider to use. Accepted values: `slack` (default) or `teams`. Has no effect if `NOTIFY_WEBHOOK_URL` is not also set.
+
+      Only `teams` selects Teams, and the match is case-insensitive. Any other value — a typo, or a plausible-looking `msteams` — falls back to Slack formatting without complaint, so a Teams webhook is sent Slack-shaped payloads.
     </ParamField>
 
     <ParamField body="NOTIFY_WEBHOOK_URL" type="string">
@@ -497,7 +499,11 @@ Pick the tab that matches where you're configuring right now.
     </ParamField>
 
     <ParamField body="AI_IMPLEMENT_LOG_LEVEL" type="string" default="summary">
-      Verbosity of runner logs. Set to `stream` to log the agent's activity as it happens — each tool call with a summary of its input, each result, and any text it writes — and to add verbose git tracing on the push step.
+      Verbosity of runner logs. Set to `stream` to log the agent's activity as it happens, and to add verbose git tracing on the push step.
+
+      A streamed run logs the model and working directory it started with, then each tool call with a truncated summary of its input, plus any text the agent writes between calls.
+
+      A tool's *result* appears only as a bare marker that one arrived, never its content — so the log tells you what the agent did, not what it saw.
 
       Any other value, including leaving it unset, logs only each run's closing totals.
     </ParamField>

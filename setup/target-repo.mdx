@@ -3,21 +3,13 @@ title: "Connect a GitHub repo to AI-Implement"
 description: "How to sync workflow templates into a target GitHub repo, map it to a Linear team in the admin UI, and label your first issue to trigger an AI-generated PR."
 ---
 
-Connecting a GitHub repository to AI-Implement comes down to adding a project mapping in the orchestrator's admin UI. Saving that mapping syncs the workflow templates into the repo so GitHub Actions knows how to run Claude, and starts the polling loop watching for issues. Follow the steps below in order.
+Connecting a GitHub repository to AI-Implement comes down to adding a project mapping in the orchestrator's admin UI.
+
+Saving it opens a pull request carrying the workflow templates, and starts the orchestrator polling for issues. Runs can only dispatch once that pull request is merged, so follow the steps below in order.
 
 <Steps>
   <Step title="Install the GitHub App on the target repo">
     If you did not install the GitHub App on all repositories during the [GitHub App setup](/setup/github-app), install it on this repo now. Go to your GitHub App's settings page, open the **Install App** tab, and add the target repo to the App's installation.
-  </Step>
-
-  <Step title="Enable pull request creation in the target repo">
-    In the target repo, go to **Settings → Actions → General** and enable **Allow GitHub Actions to create and approve pull requests**.
-
-    Without this setting, the implementation workflow will fail when it attempts to open a PR.
-
-    <Warning>
-      This setting must be enabled in every repo you connect to AI-Implement, even if it is already enabled at the organization level.
-    </Warning>
   </Step>
 
   <Step title="Set up the trigger in your ticketing system">
@@ -25,7 +17,13 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
       <Tab title="Linear">
         In your Linear workspace, create a label named `AI-Implement`.
 
-        You can create labels from **Settings → Labels** in your Linear workspace. The orchestrator auto-creates the in-progress labels (`AI-Working`, `AI-Planning`, `Plan-Complete`) on first use, plus `Ready for Review` workspace-wide.
+        You can create labels from **Settings → Labels** in your Linear workspace. The orchestrator makes the per-team labels it applies during a run — `AI-Working`, `AI-Planning` and `Plan-Complete` — the first time it needs them.
+
+        <Warning>
+          `Ready for Review` is the one label the orchestrator cannot create for you: it is workspace-level, and an application identity is not permitted to add one. Create it by hand before your first run — [Prepare the Ready for Review label](/setup/linear-app#prepare-the-ready-for-review-label) covers it.
+
+          Without it, a finished run leaves the issue holding `AI-Working`, with no `Ready for Review` and no pull-request comment, so the issue looks like it is still going.
+        </Warning>
       </Tab>
 
       <Tab title="Jira">
@@ -155,6 +153,12 @@ AI-Implement requires two custom select fields in your Jira instance: one for th
     To find a field's ID, hover over the field name in the custom-fields admin list and Jira shows the URL containing `customfield_NNNNN`. The Jira REST `GET /rest/api/3/field` endpoint also returns every field with its ID. You'll paste these into the optional **Status Field Override** / **Repo Field Override** inputs on the admin UI's Ticketing Config step.
   </Step>
 </Steps>
+
+<Tip>
+  One more field is available to you if you customize the pipeline. `AI-Implement Profiles` lets an issue carry names that your own [custom pipeline steps](/customize/custom-steps#profiles) branch on, and nothing built in reads it — so add it only once you have a step that wants it.
+
+  Create it as a **Select List (multiple choices)** named exactly that, add one option per name you want to select from, and put it on the same screens as the other two.
+</Tip>
 
 ## After your first run
 

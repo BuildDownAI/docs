@@ -41,7 +41,7 @@ The deletion arrives in the same pull request as the workflow updates, so a repo
 
 The synced workflow files use two defensive practices worth knowing about:
 
-- **Pinned action versions** — every third-party GitHub Action they call is pinned to a specific commit SHA rather than a version tag. Updates ship through the next `sync-workflow.yml` run rather than auto-applying when upstream releases a new tag.
+- **Pinned action versions** — every third-party GitHub Action they call is pinned to a specific commit SHA rather than a version tag. Updates ship through the next sync rather than auto-applying when upstream releases a new tag.
 - **Token masking** — when the orchestrator passes runner-callback tokens (`run_token` and `run_progress_token`) to a run, the workflow registers them with `::add-mask::` before the runner uses them. If a token accidentally surfaces in workflow output, GitHub displays it as `***`.
 
 ## Syncing templates to a repo
@@ -50,10 +50,10 @@ Within the admin UI, each project row has a **Sync workflows** action. This is t
 
 Either route opens a pull request in the target repo with the updated workflow files. It seeds `WORKFLOW.md` and `PLANNING.md` only if those files don't already exist.
 
-A command-line equivalent is available if you're scripting against a self-hosted orchestrator:
+A command-line equivalent is available if you're scripting against a self-hosted orchestrator. The workflow lives in your AI-Implement repository rather than the target repo, so dispatch it from there:
 
 ```bash
-gh workflow run sync-workflow.yml -f target_repo=your-org/your-repo
+gh workflow run sync-workflow.yml --repo your-org/AI-Implement -f target_repo=your-org/your-repo
 ```
 
 ## `WORKFLOW.md` front matter
@@ -113,7 +113,7 @@ A brace-less `$VAR` is left untouched.
 
 ## Variable substitution in `PLANNING.md`
 
-`PLANNING.md` is substituted the same way, and the rules above apply to it too. It takes the common issue fields, plus three describing the issue's place in the tree:
+`PLANNING.md` is substituted the same way, and the rules above apply to it too. Its full set, including the variables describing where the issue sits in a parent/child tree:
 
 | Variable | Description |
 |---|---|

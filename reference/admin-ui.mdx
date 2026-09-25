@@ -42,7 +42,7 @@ Environment-status checks (ticketing connection, runner callback, gap-fill trigg
 
 ### Issues
 
-The AI-Implement inbox. Shows every issue matched by the configured project mappings, its current state (started / completed / cancelled), and whether each is ready for implementation or still has planning pending.
+The AI-Implement inbox. Shows every issue matched by the configured project mappings, its current state (started / completed / canceled), and whether each is ready for implementation or still has planning pending.
 
 A second table breaks down in-progress counts by project mapping for real-time visibility into which scopes are currently working.
 
@@ -92,13 +92,22 @@ Lists every bot-opened pull request the orchestrator is tracking, with the follo
 
 ### Blockers
 
-Surfaces issues that are currently *not* being picked up despite being eligible.
+Surfaces issues that a project mapping matched but the last poll did not dispatch.
+
+An issue held back by an open blocking link never appears here. Both ticketing systems drop those while building the snapshot this panel is computed from.
+
+The reasons it reports:
+
+- **No mapping** — the issue's team or project has no project mapping.
+- **Dedup** — the issue already has a dedup entry, so the orchestrator treats it as in flight.
+- **Concurrency cap** — the mapping is at its limit of issues in progress.
+- **File overlap** — the issue declares files a sibling on the same grouping branch already claimed, so it waits for that sibling to merge.
 
 KPI cards show:
-- Total blocked issues
-- Teams affected (distinct teams with at least one blocked issue)
-- Count blocked by concurrency cap
-- Count blocked by dedup window
+- **Total blocked**
+- **Teams affected** — distinct teams with at least one blocked issue
+- **By concurrency cap**
+- **By dedup**
 
 Per-issue rows include:
 - Issue identifier
@@ -277,7 +286,7 @@ Each row shows:
 
 You can destroy a stuck session directly from this panel. Destroying a session also:
 - Removes the in-progress marker from the associated issue (the `AI-Working` label on Linear, or `Implementing` status on Jira)
-- Clears it from the deduplication window, so the orchestrator can pick it up again on the next poll
+- Clears its dedup entry, so the orchestrator can pick it up again on the next poll
 
 <Tip>
   If a Fly Machine appears stuck and is not progressing, destroying it from the sessions panel is the cleanest recovery path.
@@ -363,30 +372,30 @@ Both values can be overridden at the environment level via `FLY_SESSIONS_APP` an
 
 ### Audit log
 
-Shows the dispatch-deduplication ledger — every issue currently in the dedup window.
+Shows the dispatch-deduplication ledger — every issue that currently has an entry.
 
 Each row includes:
 - Issue identifier and title
 - When the issue was dispatched
-- A delete button to remove it from the dedup window
+- A delete button to remove the entry
 
 An issue gets an entry when it's dispatched, which stops the orchestrator from picking up the same issue again.
 
 Entries don't expire on a timer. They're cleared under any of these conditions:
-- The issue is completed or cancelled. The orchestrator notices on its next poll, which is how an entry normally clears once the issue's pull request merges and the issue closes.
+- The issue is completed or canceled. The orchestrator notices on its next poll, which is how an entry normally clears once the issue's pull request merges and the issue closes.
 - No configured tracker returns the issue anymore, because it was deleted or moved out of scope.
 - The dispatch attempt fails before a run starts.
 - A run fails or times out while the issue is within its retry budget. Once the budget is used up, the entry stays and the issue is left for a person to investigate.
 - A session is destroyed from the Sessions panel.
-- The reaper ends a session that ran past the maximum session age, or whose issue was already completed or cancelled.
+- The reaper ends a session that ran past the maximum session age, or whose issue was already completed or canceled.
 - An operator removes the entry with its delete button.
 
-If none of these happens, the entry stays. The usual case is a successful run on an issue that is never completed or cancelled.
+If none of these happens, the entry stays. The usual case is a successful run on an issue that is never completed or canceled.
 
 Remove an entry with its delete button so the orchestrator can pick the issue up again on the next poll.
 
 <Note>
-  The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup window.
+  The roadmap calls for richer audit-log content here over time; the current implementation is focused on the dedup ledger.
 </Note>
 
 ### Customizations
@@ -513,8 +522,8 @@ For scripting, mint a token with the access code and pass it as a bearer header.
 | `DELETE` | `/api/sessions/:machineId` | Destroy a session and reset the associated issue |
 | `GET` | `/api/reaper/summary` | 24-hour reaper destruction summary, broken down by rule |
 | `GET` | `/api/reaper/recent` | List recent reaper destruction actions |
-| `GET` | `/api/dedup` | List issues currently in the dedup window |
-| `DELETE` | `/api/dedup/:issueId` | Remove an issue from the dedup window |
+| `GET` | `/api/dedup` | List issues that currently have a dedup entry |
+| `DELETE` | `/api/dedup/:issueId` | Remove an issue's dedup entry |
 
 #### Dispatch breaker
 

@@ -66,7 +66,10 @@ Each stage shows up as a Linear label or a Jira status:
 
 AI-Implement comments on the issue it is working so you can follow a run from your issue tracker, without watching the admin UI or the GitHub Actions logs.
 
-There are two kinds: **progress comments** posted at each stage of a session run, and **outcome comments** posted when a run opens a PR or fails.
+- **Progress comments** — posted at each stage of a session run.
+- **Outcome comments** — posted when a run opens a pull request or fails.
+- **Run stats** — a per-pass breakdown, posted when the review approved the work.
+- **Run autopsy** — the same breakdown when it did not.
 
 ### Progress comments
 
@@ -95,6 +98,7 @@ These report how a run finished:
 - A pull-request link, posted when the run opens a PR.
 - A failure notice when a run errors out: `⚠️ Planning failed: {reason}` or `⚠️ Implementation failed: {reason}`.
 - A log excerpt, posted on a terminal failure or timeout and labeled with the context below.
+- An explanation of the outcome, posted whenever a run did not finish cleanly.
 
 <Note>
     `{reason}` is the underlying failure message from the run.
@@ -111,6 +115,31 @@ These report how a run finished:
 | pr_not_found | The run finished but did not open a PR |
 | session_failed | The session run failed |
 
+What the explanation says depends on how the run ended:
+
+| Outcome | What it tells you |
+|---|---|
+| `review_failed` | A pull request was opened but the automated review flagged it. Review that feedback before merging. |
+| `failed` | The phase failed, naming the runner's exit code or the fact that no pull request was opened. Check the run logs, then re-dispatch. |
+| `timed_out` | The run hit the time limit, and says so explicitly when a sweep ended it at the maximum session age. Likely over-scoped — split the ticket or raise the run limits. |
+
+Each one also links to the troubleshooting guide. A run that finished cleanly gets no explanation, and neither does a sweep that tidied up an issue already marked done — there is nothing to account for.
+
+### Run stats and autopsy
+
+An implementation run closes with a table of its passes, one row each:
+
+- The iteration number
+- What the implement pass did
+- How many turns it took
+- What it cost
+- Whether review approved it
+
+Which comment carries that table depends on how the run ended:
+
+- **Run stats**, when review approved the work. Adds the total cost across passes, and compares the files the plan declared against the files the run actually changed.
+- **Run autopsy**, when it did not. Names the reason the run stopped, quotes the reviewer's final feedback, and links the draft pull request holding the work — or says none could be opened, when the run produced no changes at all.
+
 ## Blocker reasons
 
 The orchestrator checks for eligible issues on a schedule. When it skips one, the Blockers view in the admin UI shows why.
@@ -121,6 +150,7 @@ Most reasons clear on their own once the condition changes — a slot frees up, 
 |---|---|---|
 | `concurrency` | {team} at concurrency cap ({current}/{max}). Waiting for a slot. | The team is at its maximum number of in-progress issues |
 | `dedup` | Already dispatched recently. Waiting for the in-flight job. | The issue was already dispatched and its dedup entry hasn't cleared yet |
+| `file-overlap` | Declared files overlap sibling {issue}: {files}. Deferred until it merges. | The issue declares files a sibling on the same grouping branch has already claimed |
 | `no-mapping` | No mapping for team {team}. Add one in Projects. | The issue's team has no project mapping |
 
 <Note>
@@ -152,7 +182,7 @@ A `timed_out` status carries one of these reasons:
 | `stuck_requeued` | Recovery requeued the issue for another attempt. See [Overdue run recovery](#overdue-run-recovery). |
 | `stuck_giveup` | Recovery gave up with the retry budget spent, and handed the issue back to a person. See [Overdue run recovery](#overdue-run-recovery). |
 | `machine_max_age_sweep` | The reconciliation sweep ended a Fly Machine session that had reached the 4-hour maximum session age. |
-| `issue_completed_sweep` | The reconciliation sweep ended a Fly Machine session whose issue was already completed or cancelled. |
+| `issue_completed_sweep` | The reconciliation sweep ended a Fly Machine session whose issue was already completed or canceled. |
 | `timed_out` | The GitHub Actions run itself reported a timeout. |
 
 For how completion statuses appear in Slack or Teams, see [Notifications](/reference/notifications).
