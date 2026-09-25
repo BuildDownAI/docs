@@ -6,7 +6,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
-The `bd-` skills reach your issues and repositories through a pair of connectors: your **orchestrator** and your **ticketing system**. You add each one once per account at [claude.ai/settings/connectors](https://claude.ai/settings/connectors).
+The `bd-` skills reach your issues and repositories through a pair of connectors: your **orchestrator** and your **ticketing system**. You add each one once per account at [claude.ai › Customize › Connectors](https://claude.ai/customize/connectors/yours).
 
 There is nothing to set up per project. Every skill reads its project mappings from the orchestrator at the start of each session, so a fresh checkout needs no `.mcp.json` entry and no binding file — signing in with the account that holds the connectors is enough.
 
@@ -30,10 +30,10 @@ There is nothing to set up per project. Every skill reads its project mappings f
   </Step>
 
   <Step title="Add the connectors">
-    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), add a custom connector for each service:
+    Open [claude.ai › Customize › Connectors](https://claude.ai/customize/connectors/yours). Add one connector for each service:
 
-    - your **orchestrator** — the AI-Implement service that holds your project mappings and picks up marked issues to open pull requests
-    - your **ticketing system** — Linear or Jira, where your issues live
+    - your **orchestrator** — the AI-Implement service that holds your project mappings and picks up marked issues to open pull requests. Click **Add › Add custom connector** and enter its MCP address: the orchestrator's base URL followed by `/mcp`.
+    - your **ticketing system** — Linear or Jira, where your issues live. Find it on the **Discover** tab and click **Connect**.
 
     Add each one once per account, from the web. Connectors are added and removed from the web, and enabled or disabled per session from the mobile app.
   </Step>
@@ -81,7 +81,7 @@ Use these steps to point the skills at another orchestrator, another Linear work
   </Step>
 
   <Step title="Add the new orchestrator as a connector">
-    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), add a custom connector. Use the orchestrator's MCP address, which is its base URL followed by `/mcp`, for example `https://ai-implement-testing-orchestrator.fly.dev/mcp`. Do not use the admin page address (`/admin#projects`).
+    Open [claude.ai › Customize › Connectors](https://claude.ai/customize/connectors/yours) and click **Add › Add custom connector**. Use the orchestrator's MCP address, which is its base URL followed by `/mcp`, for example `https://ai-implement-testing-orchestrator.fly.dev/mcp`. Do not use the admin page address (`/admin#projects`).
 
     Sign in when the connector asks. Use the account that is on the allowlist.
   </Step>
@@ -110,7 +110,7 @@ Use these steps to point the skills at another orchestrator, another Linear work
 
 <Steps>
   <Step title="Reconnect Linear on claude.ai">
-    In [claude.ai/settings/connectors](https://claude.ai/settings/connectors), disconnect the Linear connector. Connect it again, and choose the new workspace on the Linear consent screen.
+    In [claude.ai › Customize › Connectors](https://claude.ai/customize/connectors/yours), disconnect the Linear connector. Connect it again, and choose the new workspace on the Linear consent screen.
   </Step>
 
   <Step title="Reconnect Linear in Claude Code">
