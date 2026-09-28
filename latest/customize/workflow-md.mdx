@@ -44,6 +44,8 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
     ```yaml
     setup: scripts/ai-setup.sh
     ```
+
+    To replace the built-in install with your own command, see [Install dependencies from your setup hook](#install-dependencies-from-your-setup-hook).
   </Accordion>
 
   <Accordion title="verify">
@@ -64,6 +66,67 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
     ```
   </Accordion>
 </AccordionGroup>
+
+## Install dependencies from your setup hook
+
+AI-Implement runs a built-in install before the agent starts, using the package manager your lockfile selects. Some repos need something the built-in step can't do — extra flags, a different command, or a private registry it can't reach.
+
+Turn the built-in install off and install from your `setup:` hook instead.
+
+<Steps>
+  <Step title="Turn off the built-in install">
+    Add `packageManager: none` to `.ai-implement/config.yml`:
+
+    ```yaml
+    packageManager: none
+    ```
+
+    The built-in install step then skips the install — its step log shows `skipped: packageManager none` — and the retry install does not run.
+
+    The rest of `config.yml` is still read, so your model and reviewer settings keep working.
+  </Step>
+
+  <Step title="Install from the hook">
+    Point the `setup:` front-matter key in `WORKFLOW.md` at a script:
+
+    ```yaml
+    setup: scripts/ai-setup.sh
+    ```
+
+    Install your dependencies from that script:
+
+    ```bash
+    #!/usr/bin/env bash
+    npm install --no-save --no-audit --no-fund
+    ```
+
+    The hook runs with `bash -euo pipefail` from the repository root.
+
+    A non-zero exit stops the run before the agent starts.
+  </Step>
+</Steps>
+
+### Pitfalls
+
+<Warning>
+  The pipeline commits every change in the workspace, so a lockfile your hook rewrites lands in every PR.
+
+  A plain `npm install` can rewrite `package-lock.json`. Install with `--no-save` or `--no-package-lock` (npm), or the frozen-lockfile flag for your package manager, to leave it untouched.
+</Warning>
+
+<Warning>
+  With `packageManager: none`, the checks that run after the agent go through `npm run` and `npm test`, whatever package manager your repo uses.
+
+  On a yarn or pnpm repo, make sure those scripts work under npm — or leave `packageManager` set and add your own flags through a custom [`install` step](/latest/customize/custom-steps) instead.
+</Warning>
+
+### Installing from a private registry
+
+The built-in install writes a temporary registry config for its own command only, and removes it before your hook runs.
+
+A hook that installs from a private registry must write its own config — an `.npmrc`, or an `NPM_CONFIG_USERCONFIG` pointing at one — from `NPM_TOKEN` and `AI_IMPLEMENT_NPM_REGISTRY`.
+
+Both are present in the hook's environment. `NPM_TOKEN` is removed from the agent's own environment, so your hook can read it but the implementation run cannot.
 
 ## Variables available in the body
 
