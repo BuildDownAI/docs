@@ -54,8 +54,15 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="install">
-    Runs your repo-specific install/setup script(s) before Claude starts. Also reads `.ai-implement/config.yml` (when present) for the [repo-level settings](#repo-level-configuration-file) documented below.
-    
+    Detects the package manager from the target repo's lockfile — or from `packageManager` in `.ai-implement/config.yml` when set — and runs its frozen install:
+    - `npm ci`
+    - `yarn install --frozen-lockfile`
+    - `pnpm install --frozen-lockfile`
+
+    A failing install does **not** stop the run. The step records the failure with the tail of the install output, the pipeline continues into `setup` and the agent run, and the agent is told that dependencies are missing.
+
+    Also reads `.ai-implement/config.yml` (when present) for the [repo-level settings](#repo-level-configuration-file) documented below.
+
     Override to add cache management, dependency precompilation, or other setup not expressible as a `setup:` script in `WORKFLOW.md`.
   </Accordion>
 
@@ -71,8 +78,18 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
     The `implement` and `review` sub-steps run **inside** this loop and are not separately overridable as top-level pipeline steps; overriding `feedback-loop` is the way to change either of them.
   </Accordion>
 
+  <Accordion title="install-retry">
+    Runs the install a second time, reusing the package manager the first attempt detected. It runs only when the first `install` attempt failed, and it runs after the agent has finished — so a change the agent made to the lockfile can take effect on this attempt.
+
+    It is skipped when the first install succeeded.
+
+    A `custom/steps/install.ts` override runs for this second attempt too, since it reuses the same install module.
+  </Accordion>
+
   <Accordion title="preflight">
     Runs the target repo's own `typecheck`/`lint`/`test` package-manager scripts against Claude's finished diff, immediately before push. Automatically skipped when the `feedback-loop` did not approve the diff — so it validates a reviewer-approved change, not the pre-implementation workspace.
+
+    It is also skipped when both dependency install attempts failed — its checks would fail for missing dependencies rather than for the change.
 
     A failing preflight check does not block push; the diff is pushed either way. Override to make preflight failures blocking, or to run additional checks.
   </Accordion>
@@ -84,7 +101,12 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="verify">
-    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`. Automatically skipped when `verify:` is not declared, or when the feedback loop did not approve the change.
+    Runs the `verify:` shell script declared in your repo's `WORKFLOW.md` front matter, if any. Runs **after** a successful push, with `set -euo pipefail`.
+
+    Automatically skipped when:
+    - `verify:` is not declared
+    - the feedback loop did not approve the change
+    - both dependency install attempts failed
 
     <Warning>
       The matching `teardown:` script (also declared in `WORKFLOW.md`) is handled by the runner inside a `finally` block — it always executes, even on failure, and is **not** a pipeline step you can override here.
@@ -93,6 +115,8 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
 
   <Accordion title="post-push-review">
     Reviews the pull request after it is opened — reading the diff, posting what it finds, and running fix passes that force-push corrections to the branch.
+
+    It is skipped when both dependency install attempts failed — an unverified run's PR is left for a human rather than run through a review cycle.
 
     Before the review runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own findings are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
 
@@ -234,10 +258,13 @@ reviewCheckNames:
   - `npm`
   - `yarn`
   - `pnpm`
+  - `none`
   
   When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
 
-  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside the three above isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
+  `none` turns off the built-in install entirely — the repo installs its dependencies itself from a `setup:` hook instead.
+
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside the four above isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
 </ParamField>
 
 <ParamField body="models.implement" type="string">
