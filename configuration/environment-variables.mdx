@@ -27,7 +27,9 @@ Pick the tab that matches where you're configuring right now.
 
     ### Required
 
-    The orchestrator needs the **GitHub App credentials plus at least one ticketing provider's credentials** to start.
+    The orchestrator needs only the **GitHub App credentials** to start.
+
+    Without a ticketing provider's credentials it still starts and serves, but skips that provider's project mappings, so no issues from it are picked up. Configure at least one provider below.
 
     <ParamField body="GITHUB_APP_ID" type="string" required>
       Numeric ID of the GitHub App the orchestrator uses to authenticate with GitHub and dispatch workflows. Find this on the app's settings page under **General → App ID**.
