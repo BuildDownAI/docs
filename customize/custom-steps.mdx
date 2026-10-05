@@ -285,10 +285,11 @@ reviewCheckNames:
 <ParamField body="reviewProviders" type="string[]">
   Controls whether the `post-push-review` step waits for an external GitHub Actions review check on the same PR and folds its findings into its own review.
 
-  This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The three cases each do something different:
+  This is opt-**out**: external coordination is on by default, and supplying an empty list is how you turn it off. The cases each do something different:
   - **Omitted** — the step waits for an external review check and merges its findings in, auto-detecting the check by name (see [`reviewCheckNames`](#param-review-check-names) for the names recognized by default and how to override them).
   - **Empty list** — the step skips the external wait entirely and runs only its own review.
-  - **Populated** — the step waits, the same as omitting the field. Currently the only recognized value is `github-claude-code-review` (matches the Claude Code Review GitHub Action); unknown values are silently filtered out.
+  - **Includes `github-claude-code-review`** — the step waits, the same as omitting the field. This is the only recognized value, and it matches the Claude Code Review GitHub Action. Unknown entries beside it are silently ignored.
+  - **Only unknown entries** — the step skips the external wait, the same as an empty list. A misspelled `github-claude-code-review` turns the wait off without any warning.
 </ParamField>
 
 <ParamField body="reviewCheckNames" type="string[]">
