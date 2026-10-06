@@ -10,7 +10,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 The admin UI at `/admin` is the control panel for your AI-Implement orchestrator. It is enabled when either `ADMIN_ACCESS_CODE` or a sign-in provider is configured — with neither, the UI is disabled and all `/admin` and `/api/*` routes return `503`, with a response body naming the missing configuration. Every panel below is also reachable programmatically through the JSON API at the bottom of this page.
 
 The sidebar organizes panels into groups:
-- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports
+- **Work** — Overview, Issues, Pipelines, Pull requests, Blockers, Reports, Knowledge Graph Pipelines
 - **Configure** — Projects, Pipelines & steps, Models & providers, Triggers & channels, Policies & risk
 - **Platform** — Runners, Sessions, Deployments, Reaper, Access, Secrets, Settings
 - **Developer** — Webhooks, Audit log, Customizations, Updates
@@ -123,6 +123,26 @@ The **Cost (USD)** column, and the average cost in the **Planning A/B** card, ar
 
 <Note>
   The figure takes no account of how a run authenticated, so a subscription-authenticated run that bills nothing per run still reports a cost here.
+</Note>
+
+### Knowledge Graph Pipelines
+
+Everything about refreshing the orchestrator's knowledge graph, in one place. Admins only — this panel
+cannot be granted to users, because it starts refreshes.
+
+The **Knowledge graph** card shows:
+- The refresh stage (checking, running, landing, staging, serving, reverted, failed, degraded, or stale)
+- The served graph stamp, and whether the knowledge-graph sidecar is answering
+- The last refresh outcome, or the last dry-run's verdict with its per-part table
+- **Refresh graph now**, **Dry-run refresh**, and **Accept new baseline & refresh**
+- The **Materialize** setting (rdflib or direct), which applies to the next refresh
+
+Below the card, **Runs** lists the knowledge-graph refresh runs from the dispatch log, with the same
+time filter as [Pipelines](/latest/reference/admin-ui#pipelines-jobs), a **Logs** link, and **Stop** for
+a run that is still in flight.
+
+<Note>
+  The same runs also appear on the Pipelines panel, which stays the complete dispatch log.
 </Note>
 
 ## Configure
