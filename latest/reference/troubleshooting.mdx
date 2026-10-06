@@ -67,7 +67,7 @@ This page covers the most common issues you may encounter when running AI-Implem
 
     When a run fails without producing a pull request, the orchestrator retries on its own rather than waiting for you: the failure clears the issue's dedup entry, so the next poll dispatches a fresh job. An issue that keeps failing can spend several attempts this way before anyone looks at it.
 
-    A run that fails but still pushes a draft pull request — [Reached max turns](#reached-max-turns), or a review that did not approve — is left alone deliberately, since the work is already on a branch waiting for a person.
+    A run that fails but still pushes a draft pull request — [Reached max turns](#reached-max-turns), a review that did not approve, or [dependencies that did not install](#dependencies-did-not-install) — is left alone deliberately, since the work is already on a branch waiting for a person.
 
     Once four runs for the same issue have failed or gone overdue, the budget is spent and the entry is kept instead — see [An eligible issue stopped being dispatched](#an-eligible-issue-stopped-being-dispatched) for how to clear it.
   </Accordion>
@@ -97,11 +97,12 @@ This page covers the most common issues you may encounter when running AI-Implem
   </Accordion>
 
   <Accordion title="PR opened but no automated review comment appears">
-    The post-push review is skipped by design in three cases, so check these before treating it as a failure:
+    The post-push review is skipped by design in these cases, so check these before treating it as a failure:
 
     - **The run's own review never approved the diff.** The pull request still opens, but as a draft — or, on a repo whose plan does not allow drafts, as a normal pull request titled `[NEEDS REVIEW — unapproved]`. Either way no post-push review follows, because the review budget was already spent.
     - **The run was a gap-fill.** A `/ai-implement` pass updates a pull request that has already been through this, and never starts a second review cycle.
     - **No pull request was opened.** If Claude pushed commits without opening one, there is nothing for the review to run against.
+    - **Dependencies did not install.** The run is not verified — build and tests never ran — so its draft pull request is left for a person rather than reviewed automatically. See [Dependencies did not install](#dependencies-did-not-install).
 
     If none of those apply, confirm the run actually reached the review step — check the GitHub Actions logs for the `claude-implement.yml` workflow, and fix any earlier failure first.
   </Accordion>
@@ -201,5 +202,16 @@ This page covers the most common issues you may encounter when running AI-Implem
     <Tip>
       If runs keep hitting the cap after you raise it, the issue is likely too big for a single run — split it into smaller issues. A higher budget also means longer, costlier runs, so raise it deliberately rather than setting it very high by default.
     </Tip>
+  </Accordion>
+
+  <Accordion title="Dependencies did not install">
+    A run finished, but its pull request opened as a draft, and both the issue and the PR body say dependencies did not install and that build and tests never ran. See [Dependencies did not install](/latest/reference/run-statuses#dependencies-did-not-install) for what the run reports.
+
+    The common causes each have their own fix:
+
+    - **`package.json` and the lockfile are out of sync.** The install prints `Missing: … from lock file`. Run `npm install` and commit the updated lockfile, or file an issue asking the agent to do it — the agent is told the install failed and may fix it within scope.
+    - **A peer-dependency conflict, or a dependency behind a private registry the install can't reach.** Set `packageManager: none` in `.ai-implement/config.yml` to turn off the built-in install, then run the real install from a `setup:` hook. See [the repo-level configuration file](/latest/customize/custom-steps#repo-level-configuration-file).
+
+    Re-dispatching without changing anything runs the same install and fails the same way — the fix has to land in the repo first.
   </Accordion>
 </AccordionGroup>
