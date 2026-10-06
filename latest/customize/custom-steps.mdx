@@ -234,10 +234,11 @@ reviewCheckNames:
   - `npm`
   - `yarn`
   - `pnpm`
+  - `none` — turns off the built-in install entirely, so nothing is installed before the agent starts. Use it to [install from your `setup:` hook](/latest/customize/workflow-md#install-dependencies-from-your-setup-hook) instead.
   
   When omitted, the install step auto-detects by lockfile presence: `yarn.lock` → `yarn`, `pnpm-lock.yaml` → `pnpm`, otherwise `npm`.
 
-  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside the three above isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
+  A repo with no `package.json` skips installation entirely, so a non-Node project needs no setting here. A value outside these four isn't validated or rejected — it's silently treated the same as omitting the setting, falling back to `npm ci`, so a typo goes unnoticed rather than failing the run.
 </ParamField>
 
 <ParamField body="models.implement" type="string">
