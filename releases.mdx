@@ -5,16 +5,89 @@ description: "Release history for AI-Implement — what shipped in each version.
 
 **What these numbers track.** An AI-Implement version marks a release — a body of work cut and shipped together, rather than an individual change.
 
-The BuildDown skills plugin's versions measure something different. Neither product's number says anything about the other's, so the two cannot be read side by side as a comparison.
+The BuildDown skills plugin's versions measure something different, and [its releases page](/skills/releases) covers what they track. Neither product's number says anything about the other's, so the two cannot be read side by side as a comparison.
 
-Most skills work with any AI-Implement version, or with none at all. The knowledge-graph skills are the exception: they query a graph served by an orchestrator, so they need one configured to serve it. [The skills releases page](/skills/releases) covers what the plugin's numbers track.
+Most skills work with any AI-Implement version, or with none at all. Two groups are the exception, because both call an orchestrator's `/mcp` endpoint, which arrived in v1.1.0: the knowledge-graph skills, which query the graph it serves, and `bd-system-questions`, which calls its diagnostic tools.
+
+**Which pages you are reading.** These document the current release — what you get by deploying a released version.
+
+The **latest** entry in the version selector documents the development line instead: changes that have landed there but have not been cut into a release. What it describes can still change before it ships.
+
+<Update label="v1.1.0" description="Released 26 August 2026" tags={["Release"]}>
+  Admin sign-in, project memory your team can query, and an orchestrator that releases itself.
+
+  **Before you upgrade**
+
+  If your runs execute on Fly Machines or local Docker **and** fetch a private sibling repository while installing dependencies, this release breaks them until you act. The token those runners receive is now scoped to the target repository alone, matching what GitHub Actions mode always did. Turn on [Dependency Token Scope](/configuration/team-repo-mappings#param-dependency-token-scope) on the project mapping to restore that access through a separate read-only token. Runs on GitHub Actions are unaffected.
+
+  **Admin sign-in**
+
+  - The admin interface supports **Google and Microsoft sign-in**, with the shared access code kept as a deprecated fallback. See [Admin sign-in](/setup/sso).
+  - Access is an allowlist matched against the verified email address or its domain, and it fails closed — an unverified or missing address is refused before the allowlist is consulted.
+
+  **Knowledge graph and the `/mcp` endpoint**
+
+  - An orchestrator can **serve a project knowledge graph** — shared memory of past issues, pull requests and decisions — over an authenticated endpoint that Claude clients and the BuildDown skills connect to. See [Knowledge graph](/setup/knowledge-graph).
+  - Connecting uses the same identity providers as admin sign-in, and a client in regular use stays signed in rather than re-authenticating on a schedule. See [The `/mcp` endpoint](/reference/mcp-tools).
+  - The same endpoint answers questions about the orchestrator itself — why an issue isn't running, what is in flight, how a project is configured — through read-only diagnostic tools.
+
+  **Self-deployment**
+
+  - An orchestrator can **build and release its own next version**, which is also the only way to change the knowledge graph it serves. See [Self-deployment](/setup/self-deployment).
+  - Releasing pauses new dispatches and waits for running work to finish first, so nothing is dispatched into a version about to be replaced.
+  - A **Deployments** panel reports what is running, what is available to deploy, and how the last release went.
+
+  **Admin interface**
+
+  - A **Reports** panel summarizes activity by repository, run outcomes, planned-versus-actual comparisons, and runaway runs over a window you choose. See [Admin interface](/reference/admin-ui).
+  - A **Parked issues** card lists issues the orchestrator has stopped picking up, each with an Unpark button.
+  - The runner-mode switch moved to the Runners panel, alongside the rest of the runner controls.
+  - **Report cards** are readable per issue and across the fleet from a connected client, covering every dispatch, its cost, and whether the work was approved, merged, and later edited.
+
+  **Feature-branch grouping**
+
+  - A child pull request that conflicts with its grouping branch is **recovered automatically**, within a bounded number of attempts, before it is left for a person. See [Feature-branch grouping](/reference/feature-branch-grouping).
+  - A grouping parent is held while its roll-up pull request awaits your review, rather than being dispatched again underneath it.
+  - An issue whose declared files overlap a sibling's on the same grouping branch waits for that sibling to merge.
+
+  **Dispatch and recovery**
+
+  - An issue whose dispatches keep failing is **parked** rather than retried indefinitely, and stops being picked up until someone unparks it. See [Troubleshooting](/reference/troubleshooting).
+  - A GitHub Actions run that never reports back is now **canceled and re-dispatched** against a bounded attempt budget, and the issue gets a comment asking for a person once that budget is spent. See [Run statuses and failures](/reference/run-statuses).
+
+  **Planning**
+
+  - The planning phase now posts an **Implementation Map**, an **Acceptance Bar**, and **Risks & Open Questions**, replacing the four comments it used to write. See [AI planning phase](/configuration/planning).
+  - Two of those are read by the run and not only by you: the review pass checks the diff against the Acceptance Bar, and the Implementation Map's file list holds back a sibling issue whose declared work would overlap.
+  - Planning context can be read from **Jira comments**, fetched newest-first and across pages, so a late re-plan on a busy issue is not missed.
+
+  **Review**
+
+  - The post-push review matches your external review check by name, and which names it matches is configurable per repository. See [Customize pipeline behavior](/customize/custom-steps#repo-level-configuration-file).
+  - That reviewer's blocking findings are folded into the step's own passes, so a pull request is not approved while any of them stand.
+  - Only a check concluding `success`, `failure`, or `stale` counts as a review at all. Every other conclusion fails closed rather than approving, including any GitHub adds in future.
+  - Reviews run against pushed commits rather than only against the pull request as it was opened, so a fix pass is no longer merged unreviewed.
+
+  **Local development**
+
+  - The pipeline can be run **against a checkout on your own machine** from a task file, with no ticketing system, no orchestrator and no pull request. See [Run the pipeline on your machine](/customize/local-harness).
+
+  **For operators**
+
+  - Fifteen environment variables are new, and none were removed or renamed. `.env.example` carries every one with grouped comments, and [Environment variables](/configuration/environment-variables) documents the ones you set.
+  - The default runner image is rebuilt from this release, so a target repo that has not pinned its own image picks the new one up on its next run.
+
+  **Removed**
+
+  - `gap_analysis_model` is no longer read from `WORKFLOW.md` front matter. Set `models.implement` and `models.review` in `.ai-implement/config.yml` to run implementation and review on different models.
+</Update>
 
 <Update label="v1.0.0" description="Released 27 July 2026" tags={["Release"]}>
   The first stable release. It consolidates roughly a hundred changes that had been accumulating on the development line, so an operator moving from a pre-release deployment gets all of the following at once.
 
   **Ticketing**
 
-  - The orchestrator now authenticates to Linear as an **application** rather than with a personal API key. `LINEAR_API_KEY` is retired in favour of `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, and Linear activity is attributed to the app rather than to a person. See [Create a Linear app](/setup/linear-app).
+  - The orchestrator now authenticates to Linear as an **application** rather than with a personal API key. `LINEAR_API_KEY` is retired in favor of `LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, and Linear activity is attributed to the app rather than to a person. See [Create a Linear app](/setup/linear-app).
   - **Jira supports Basic authentication** with a long-lived API token, which needs no refresh. The OAuth path remains available. See [Environment variables](/configuration/environment-variables).
   - **Issues are marked done when their pull request merges**, driven by a poll that runs regardless of webhook configuration.
   - Runners no longer hold ticketing credentials at all — the orchestrator applies every tracker update itself.

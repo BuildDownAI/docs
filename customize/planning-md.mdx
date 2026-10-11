@@ -1,9 +1,11 @@
 ---
-title: "Customize PLANNING.md for architecture analysis"
-description: "How to customize PLANNING.md: control what Claude explores and what architecture, test plan, work units, and cross-story comments it posts to your ticketing system before each implementation run."
+title: "Customize PLANNING.md for your codebase"
+description: "How to customize PLANNING.md: control what Claude explores before each implementation run, and what the planning comments it posts to your ticketing system contain."
 ---
 
-`PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis, test plan, work units, and cross-story comments back to your ticketing system. When the planning workflow (`claude-plan.yml`) runs for an issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
+`PLANNING.md` controls what Claude does during the planning phase. When the planning workflow (`claude-plan.yml`) runs for an issue, it renders this file and sends the result to Claude as the prompt.
+
+Claude explores the repo read-only and writes planning comments back to the issue, without creating any branches, files, or pull requests.
 
 ## File structure
 
@@ -55,66 +57,59 @@ The variables below are substituted into the body by a regular expression, not b
 
 ## Comment types Claude must post
 
-Claude posts up to four structured comments to your ticketing issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
+Claude writes every one of the following as its own comment on your ticketing issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
 
-<Steps>
-  <Step title="Architecture Analysis">
-    Header: `## 🏗️ AI Planning: Architecture Analysis`
+### Implementation Map
 
-    Required sections in this comment:
+Header: `## 🗺 AI Planning: Implementation Map`
 
-    - **Approach** — 1–3 sentences describing the implementation strategy
-    - **Files to Create/Modify** — specific file paths with a one-line description of each change
-    - **Key Decisions** — architectural choices and rationale
-    - **Risks & Open Questions** — edge cases, unknowns, potential problems
-  </Step>
+Written for whoever implements the issue, and capped at 60 lines.
 
-  <Step title="Test Plan">
-    Header: `## 🧪 AI Planning: Test Plan`
+Required sections in this comment:
 
-    Required sections in this comment:
+- **Approach** — at most three sentences describing the implementation strategy
+- **Files** — one bullet per file, each opening with `Create:`, `Modify:`, `Test:` or `Delete:` followed by a backtick-quoted path
+- **Constraints & Hazards** — load-bearing tests, generated files, migration ordering, and integration seams the implementer must not break
 
-    - **Unit Tests** — individual components or functions to test
-    - **Integration Tests** — end-to-end or cross-component scenarios
-    - **Manual Verification** — step-by-step human verification checklist
-  </Step>
+Cross-story coordination belongs in **Constraints & Hazards** when `${DEPENDENCIES}`, `${SIBLINGS}` or `${PARENT}` is not `None`, rather than in a comment of its own.
 
-  <Step title="Work Units">
-    Header: `## 🔧 AI Planning: Work Units`
+<Warning>
+  The **Files** bullets are parsed, not just read — the orchestrator uses them to hold back a sibling issue whose declared files overlap this one's.
 
-    Decompose the issue into work units that subagents can implement in parallel during the implementation phase.
-    
-    Required sections in this comment:
+  A bullet counts only when it uses one of those four verbs and quotes its path in backticks. Anything else parses to nothing, and an empty result fails open: the run dispatches anyway, silently without that protection.
+</Warning>
 
-    - **Independent (can be implemented in parallel)** — units with no dependencies on other units.
-    - **Sequential (must follow independent units)** — units that depend on the independent ones completing first.
+The comment ends with a machine-readable block:
 
-    Each unit must specify a name, description, files touched, and dependencies (or `No dependencies`), formatted as follows:
+```markdown
+<!-- ai-implement-planning
+v: 1
+files: ["src/a.ts", "src/b.ts"]
+risk: low|medium|high
+-->
+```
 
-    ```markdown
-    - **WU-1: Add the user-export endpoint** — Files: `src/api/export.ts`. No dependencies.
-    - **WU-2: Update the schema migration** — Files: `migrations/0042-export.sql`. No dependencies.
-    - **WU-3: Update the frontend to reflect new schema** — Files: `src/app/export/page.tsx`. Depends on: WU-2.
+### Acceptance Bar
 
-    ```
+Header: `## ✅ AI Planning: Acceptance Bar`
 
-    <Note>
-      Claude may omit this comment when the issue doesn't naturally decompose — for example, when all the work is sequential or tightly coupled across files. Implementation falls back to a single-pass run in that case.
-    </Note>
-  </Step>
+Written for the reviewer, and handed to the review pass so it has something falsifiable to check the diff against.
 
-  <Step title="Cross-Story Context (conditional)">
-    Header: `## 🔗 AI Planning: Cross-Story Context`
+A numbered list of claims, each one checkable against the diff or by running a named command. A generic enumeration doesn't qualify — "all tests pass" is not a claim.
 
-    Claude only posts this comment when `${DEPENDENCIES}` or `${SIBLINGS}` is not `None` **and** there is meaningful coordination needed between stories.
+```markdown
+1. `parseDeclaredFiles` returns a non-empty set for a Modify bullet.
+2. `npm test` exits 0 with at least six passing cases for the planning fetch.
+3. `src/pipeline/steps/implement.ts` contains no reference to `WorkUnit`.
+```
 
-    Required sections when posted:
+### Risks & Open Questions
 
-    - **Upstream Dependencies** — what must be completed before this story
-    - **Downstream Impact** — stories or systems that will depend on this work
-    - **Coordination Notes** — specific actions needed to coordinate with other teams or stories
-  </Step>
-</Steps>
+Header: `## ⚠️ AI Planning: Risks & Open Questions`
+
+Written for the implementer and the reviewer both.
+
+Edge cases, unknowns, and problems found while exploring the codebase, grounded in what Claude actually found rather than generic boilerplate.
 
 ## Customizing the "Repo context" section
 

@@ -104,7 +104,9 @@ This guide walks you through running AI-Implement for the first time. By the end
     The orchestrator starts polling for new issues and serving HTTP on port 8080. You should see log output confirming both.
 
     <Tip>
-      Want to run the entire loop on your own machine? `npm run dev:local` executes each job locally instead of on GitHub Actions. See [Local development](/latest/setup/deploy#local-development) for what it needs and when to use it.
+      Want to run the entire loop on your own machine? `npm run dev:local` executes each job locally instead of on GitHub Actions — the orchestrator still polls your ticketing system and opens pull requests. See [Local development](/latest/setup/deploy#local-development) for what it needs and when to use it.
+
+      `npm run dev:run` is the smaller one: a single task read from a file, with no ticketing system and no orchestrator involved. See the [local harness](/latest/customize/local-harness).
     </Tip>
   </Step>
 

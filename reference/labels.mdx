@@ -17,6 +17,10 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `Plan-Complete` | Orchestrator (auto) | When planning succeeds | Not removed automatically |
     | `Ready for Review` | Orchestrator (auto) | When a PR is opened after implementation | When the PR merges, unless the issue was already closed |
 
+    Dispatching a run also moves the issue's workflow state, not just its labels. When either phase starts, the orchestrator moves the issue into your team's **In Progress** state.
+
+    It only does this from Triage, Backlog, or an unstarted state such as Todo. An issue you have already moved into a started, completed, or canceled state stays where you put it.
+
     ## Label details
 
     ### AI-Implement
@@ -25,12 +29,14 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     An issue must be **unblocked** to be picked up. An issue is considered blocked if it has any open blocking issues linked to it in Linear. Blocked issues are skipped on each poll cycle until their blockers are resolved.
 
+    Nothing takes the label off afterwards, so it doubles as a record of which issues were AI-implemented. Clear it yourself if you would rather not keep that.
+
     ### AI-Working
 
     The orchestrator applies `AI-Working` as soon as it dispatches a run for an issue. It acts as a live indicator that a run is in progress. The label is removed at the end of the run — whether the run succeeds, fails, or times out.
 
     <Note>
-    If `AI-Working` remains on an issue after a run should have finished, the run may have stalled. Check the dispatch log in the admin UI at `/api/log` and the active sessions panel. You can destroy a stuck session from the sessions panel, which also removes `AI-Working` and clears the issue from the dedup window.
+    If `AI-Working` remains on an issue after a run should have finished, the run may have stalled. Check the dispatch log in the admin UI at `/api/log` and the active sessions panel. You can destroy a stuck session from the sessions panel, which also removes `AI-Working` and clears the issue's dedup entry.
     </Note>
 
     ### AI-Planning
@@ -53,7 +59,6 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
       If something else closed the issue first — Linear's own GitHub integration, or someone moving it to Done by hand — the orchestrator leaves it untouched, so `Ready for Review` can remain on a completed issue. It's cosmetic: the run is finished either way, and the issue won't be picked up again.
     </Note>
 
-    The `AI-Implement` label is never removed automatically. Leave it in place as a record of which issues were AI-implemented, or clear it yourself.
   </Tab>
 
   <Tab title="Jira">
@@ -69,7 +74,7 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
     | `Implementing` | Orchestrator (auto) | When the implementation run is dispatched | When the run completes or fails |
     | `PR Ready` | Orchestrator (auto) | When a PR is opened after implementation | Not changed automatically |
     | `Planning Failed` | Orchestrator (auto) | When the planning run errors | Not changed automatically |
-    | `Implementation Failed` | Orchestrator (auto) | When the implementation run errors | Not changed automatically |
+    | `Implementation Failed` | Orchestrator (auto) | When the implementation run errors | Moved back to `Plan Approved` for a retry, unless the run left a draft PR |
     | `Merged` | Orchestrator (auto) | When the PR merges | Not changed automatically |
 
     <Warning>
@@ -90,16 +95,12 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
       The blocker skip only recognizes Jira's default "Blocks" link type. An instance that renamed it silently loses the check. See [A Jira issue ran despite an open blocker](/reference/troubleshooting#a-jira-issue-ran-despite-an-open-blocker) for what that looks like and how to restore it.
     </Warning>
 
-    ### Planning / Plan Approved
-
-    The orchestrator sets `Planning` while the planning workflow is running, then transitions to `Plan Approved` on success. It is changed when planning completes and execution moves to the implementation phase.
-
     ### Implementing
 
     Set automatically when the orchestrator dispatches the implementation run. It acts as a live indicator that a run is in progress.
 
     <Note>
-      If `Implementing` lingers on an issue after a run should have finished, the run may have stalled. Check the dispatch log in the admin UI and the active sessions panel; you can destroy a stuck session from there, which also clears the issue from the dedup window.
+      If `Implementing` lingers on an issue after a run should have finished, the run may have stalled. Check the dispatch log in the admin UI and the active sessions panel; you can destroy a stuck session from there, which also clears the issue's dedup entry.
     </Note>
 
     ### PR Ready
@@ -116,7 +117,14 @@ AI-Implement tracks runs using **Linear labels** or **Jira custom status fields*
 
     ### Planning Failed / Implementation Failed
 
-    Set when the corresponding run errors out. The orchestrator posts a comment on the issue describing the failure. Neither status is cleared automatically — review the failure and either re-run by moving the status back to `Ready` (for planning) or `Plan Approved` (for implementation), or close out the issue.
+    Set when the corresponding run errors out, with a comment on the issue describing the failure.
+
+    `Planning Failed` stays until you change it. Re-run by moving the status back to `Ready`, or close the issue out.
+
+    `Implementation Failed` depends on what the run left behind:
+
+    - **A draft pull request was opened** — the status stays, and the work waits for you to review it.
+    - **Nothing was pushed** — the orchestrator moves the status back to `Plan Approved` itself and the next poll dispatches again, until the [retry budget](/reference/run-statuses#overdue-run-recovery) is spent.
   </Tab>
 </Tabs>
 

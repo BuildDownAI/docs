@@ -10,6 +10,8 @@ Apply these criteria when categorizing drift between source and the docs:
 - **MEDIUM** — Coverage gaps or outdated phrasing where the reader can mostly still succeed but the docs lag the code. New optional features, additions to existing tables, renamed fields with backward-compat shims.
 - **LOW** — Polish, structure, internal-only changes that don't affect reader behavior. Refactoring, code-comment improvements, dependency bumps.
 
+**Troubleshooting instructions outrank their subject matter.** An instruction on the troubleshooting page that no longer works is HIGH whatever it concerns, because a reader reaches that page with something already broken and acts on it verbatim — a fix that does not apply costs them a second failure on top of the first. The same sentence elsewhere in the corpus may only be MEDIUM.
+
 ### Tier → action
 
 **This table is the single source of truth for which tiers produce edits.** Both prompts and the report templates derive from it and deliberately do not restate it — changing it here changes the whole pipeline.
@@ -122,8 +124,9 @@ Grep the docs for these shapes directly, then verify each hit against current so
 | Specific default | a version, model ID, timeout, or cap stated as a value | changes independently of the prose around it |
 | Negation | `does not support`, `cannot be`, `is not` | the cheapest thing for a release to falsify |
 | Collapsed states | a state word — `omitted`, `unset`, `blank`, `empty`, `absent`, `missing` — joined to another by `or` | a guard is usually written that way *because* the two states differ |
+| Operator instruction | `re-apply`, `re-trigger`, `re-run by`, `remove and re-`, `manually` | automation removes the step without the entry noticing |
 
-Real instances: "this is the only branch that currently supports plugin installation" — true when written, false once the default branch gained a catalog. "Two endpoints sit outside the namespace" — there were three. A documented default that existed only in test fixtures.
+Real instances: "this is the only branch that currently supports plugin installation" — true when written, false once the default branch gained a catalog. "Two endpoints sit outside the namespace" — there were three. A documented default that existed only in test fixtures. Three troubleshooting steps told operators to remove and re-apply the trigger to re-dispatch an issue: the orchestrator never removes the trigger, so two were rituals with no effect, and the third contradicted the same page's account of the retry budget, where the orchestrator had already retried on its own.
 
 Of one manual pass's thirteen highest-priority findings, **seven were false rather than missing**. Nothing in the source announces that a doc sentence became wrong, so only a docs-first pass surfaces them.
 

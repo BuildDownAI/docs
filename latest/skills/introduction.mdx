@@ -18,7 +18,6 @@ Running a ticket-to-pull-request pipeline surfaces a handful of recurring questi
 
 <Note>
   A few sit outside that sequence:
-  - `bd-project-setup` runs once to wire a project to its tools
   - `bd-kg-create` and `bd-kg-refresh` stand up and update the project memory that `bd-kg-search` reads
   - `bd-belay-on` formalizes handing a question to a different tool at any point along the way
 </Note>
@@ -29,7 +28,6 @@ Running a ticket-to-pull-request pipeline surfaces a handful of recurring questi
 
 ```mermaid
 graph TD
-    setup(["bd-project-setup<br/>run once per project"])
     high["bd-high-plan<br/>settle the shape"]
     up["bd-build-up<br/>plan the work"]
     mega["bd-mega-build-up<br/>plan, grilled harder"]
@@ -39,7 +37,6 @@ graph TD
     sdown["bd-super-build-down<br/>drive to merge, at volume"]
     smoke["bd-smoke-jumper<br/>verify the preview"]
 
-    setup --> high
     high --> up
     high --> mega
     up --> push
@@ -51,7 +48,7 @@ graph TD
     sdown --> smoke
 
     classDef external stroke-width:3px
-    class agent,setup external
+    class agent external
 ```
 
 ### Knowledge graph
@@ -77,7 +74,7 @@ graph TD
 
 The skills share one autonomy model, so a skill either acts or asks for the same reasons throughout.
 
-They also read the same recorded project bindings rather than each asking you where your issues live — which is what `bd-project-setup` exists to write.
+They also read the same project bindings from the orchestrator at the start of each session, rather than each asking you where your issues live.
 
 They assume a common setup: a connected ticketing system, a connected GitHub account, browser automation for preview testing, and a coding agent that responds to pull request comments.
 
@@ -92,14 +89,12 @@ A bound knowledge graph changes the picture more softly. Every planning and land
 `bd-summit-push` and `bd-super-build-down` describe Jira behavior projected from their Linear behavior rather than fully adapted to it, so **Linear assumptions may show through on Jira projects**.
 
 <Note>
-  `bd-project-setup` binds either ticketing system. `bd-smoke-jumper` needs one too — to read issue context and file the failures it finds — but treats Linear and Jira identically rather than branching its behavior. `bd-belay-on` is the only skill with no ticketing dependency at all.
+  `bd-smoke-jumper` needs a ticketing system too — to read issue context and file the failures it finds — but treats Linear and Jira identically rather than branching its behavior. `bd-belay-on` is the only skill with no ticketing dependency at all.
 </Note>
 
 ### Feature-branch grouping
 
 Every planning and landing skill understands feature-branch grouping. When a parent issue and its children are marked together, they treat the tree as one unit that rolls up to a single reviewable pull request rather than as unrelated issues.
-
-`bd-project-setup` knows about it too, for a different reason — it re-syncs a target repo's workflow so grouped runs are accepted in the first place.
 
 ## Available skills
 
@@ -129,11 +124,10 @@ Every planning and landing skill understands feature-branch grouping. When a par
 | `bd-mega-kg-refresh` | A local, interactive `bd-kg-refresh` — interrogates the served graph, tests ingest changes with you, opens a PR on the knowledge-graph repo, then hands off to the rail. Admin-only: needs an allowlist entry with role admin on the orchestrator; see [MCP tools](/latest/reference/mcp-tools). |
 | `bd-kg-search` | Asks the project's knowledge graph what past issues, pull requests, and decisions already cover a question. |
 
-### Setup and support
+### Support
 
 | Skill | What it does |
 | --- | --- |
-| `bd-project-setup` | Wires a project to its tools once — creates the ticketing connection, authorizes it, and **records the settings every other skill reads**. |
 | `bd-system-questions` | Asks the orchestrator why a ticket isn't running, what's in flight, and how the system is configured. |
 | `bd-belay-on` | Coordinates handing a task off to another tool and folding the results back in cleanly. |
 

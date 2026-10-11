@@ -37,7 +37,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
     |---|---|
     | `AWS_BEDROCK_ROLE_ARN` | The ARN of the IAM role that trusts the GitHub OIDC provider and grants `bedrock:InvokeModel` on your inference profiles |
 
-    The role must be created in the same AWS account as your Bedrock inference profiles.
+    The role must be created in the same AWS account as your Bedrock inference profiles. [IAM role configuration](#iam-role-configuration) below has the trust policy and permissions it needs.
   </Step>
 
   <Step title="Set the model in WORKFLOW.md (and PLANNING.md)">
@@ -50,13 +50,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
     ---
     ```
 
-    Or use an inference-profile ARN:
-
-    ```yaml
-    ---
-    model: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-sonnet-4-6-20250805-v1:0
-    ---
-    ```
+    A cross-region inference-profile ARN works here too — [Model IDs](#model-ids) covers both forms and the pattern they follow.
 
     <Warning>
       `model:` is required for Bedrock — the IDs include date stamps and are specific to your account and region, so there is no safe default.

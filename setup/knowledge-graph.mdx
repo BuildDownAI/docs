@@ -79,6 +79,12 @@ With admin sign-in working, `200` means the release came up with its query serve
 
 A `200` confirms only that the query server started with this release — not that the graph holds anything, or that sign-in works. A real search, like the one `bd-kg-create` runs when it binds a project, checks both.
 
+<Warning>
+  One cause of a `503` never clears by redeploying. A graph repository created from the BuildDown template before 2026-08-07 carries a query server that predates the mode the orchestrator uses to reach it, so it never starts listening however many times you rebuild.
+
+  Merging the template's later changes into the repository is what fixes that one.
+</Warning>
+
 ## Keeping it current
 
 Run `bd-kg-refresh` whenever the graph should reflect newly landed work. Each run commits a fresh snapshot and redeploys the orchestrator, so it needs someone with permission to deploy.

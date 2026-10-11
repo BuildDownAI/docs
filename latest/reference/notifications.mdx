@@ -36,6 +36,7 @@ AI-Implement notifies on two kinds of event.
 
 - **Dispatch** — the orchestrator picks up an issue and dispatches a run. Includes the issue identifier, title, and target repository.
 - **Completion** — a run finishes. Includes the outcome (`completed`, `failed`, or `timed_out`), a link to the pull request if one was opened, a link to the GitHub Actions run, and the duration.
+- **Stuck, needs human** — the orchestrator stops retrying an issue. Includes the attempt count, the last run status, and a link to the last run.
 
 **Orchestrator lifecycle**
 

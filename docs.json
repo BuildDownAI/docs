@@ -35,7 +35,7 @@
           {
             "version": "stable",
             "default": true,
-            "tag": "v1.0.0",
+            "tag": "v1.1.0",
             "groups": [
               {
                 "group": "Get Started",
@@ -85,7 +85,8 @@
                   "customize/workflow-md",
                   "customize/planning-md",
                   "customize/custom-steps",
-                  "customize/runner-image"
+                  "customize/runner-image",
+                  "customize/local-harness"
                 ]
               },
               {
@@ -98,6 +99,7 @@
                   "reference/feature-branch-grouping",
                   "reference/notifications",
                   "reference/troubleshooting",
+                  "reference/run-statuses",
                   "reference/error-codes",
                   "releases"
                 ]
@@ -155,7 +157,8 @@
                   "latest/customize/planning-md",
                   "latest/customize/custom-steps",
                   "latest/customize/external-reviewers",
-                  "latest/customize/runner-image"
+                  "latest/customize/runner-image",
+                  "latest/customize/local-harness"
                 ]
               },
               {
@@ -168,6 +171,7 @@
                   "latest/reference/feature-branch-grouping",
                   "latest/reference/notifications",
                   "latest/reference/troubleshooting",
+                  "latest/reference/run-statuses",
                   "latest/reference/error-codes",
                   "latest/releases"
                 ]
