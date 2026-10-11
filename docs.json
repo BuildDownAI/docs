@@ -156,6 +156,7 @@
                   "latest/customize/workflow-md",
                   "latest/customize/planning-md",
                   "latest/customize/custom-steps",
+                  "latest/customize/external-reviewers",
                   "latest/customize/runner-image",
                   "latest/customize/local-harness"
                 ]
