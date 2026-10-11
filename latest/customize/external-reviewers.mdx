@@ -54,15 +54,17 @@ Two kinds of author are trusted:
 - `github-actions[bot]` — a workflow that posts with its `GITHUB_TOKEN`.
 - One of these logins: `ai-implement`, `ai-implement[bot]`, `claude`, `claude[bot]`, `claude-code[bot]`.
 
+A trusted author can approve a pull request.
+
 <Warning>
-  A reviewer that posts as its own GitHub App or user is not read. Post the block from `github-actions[bot]` or one of the five listed logins, or AI-Implement ignores it.
+  A reviewer that posts as its own GitHub App or user is not read. To trust that login, add it to [Trusted Review Authors](/latest/configuration/team-repo-mappings#param-trusted-review-authors).
 </Warning>
 
 ## When AI-Implement reads the block
 
 The post-push review reads the newest eligible comment while the run waits for the review check.
 
-A contract comment posted after the run ends does not start a fix run by itself.
+A review posted after the run ends still counts. A finding from a trusted author queues a review-fix run.
 
 ## The review check
 
@@ -86,6 +88,38 @@ AI-Implement waits up to five minutes for the check to finish. What it does depe
 | Still running after 5 minutes | Fails closed: "external review did not complete" |
 | No matching check on two probes in a row | Fails open: review continues without it, with a warning |
 | Check runs cannot be read (permission) | Run stops with `CHECKS_PERMISSION_DENIED` (see [GitHub App setup](/latest/setup/github-app)) |
+
+## Review process
+
+Each project sets a **Review process**. It selects who reviews a pull request and how AI-Implement reads the verdict.
+
+The Review process has these values:
+
+- **AI-Implement** — the default. AI-Implement's own reviewers review the pull request.
+- **Claude Code Review** — Claude Code Review reviews the pull request.
+
+An unknown or empty value means **AI-Implement**.
+
+### Claude Code Review verdict
+
+Under **Claude Code Review**, AI-Implement reads the verdict from the strongest source it finds. It trusts `claude[bot]` and `claude`.
+
+AI-Implement matches a review check by its name and the app that posts it. A same-named check from another app does not count.
+
+It reads these sources in order:
+
+1. A `json review-findings` block from a trusted author. See [The findings block](#the-findings-block).
+2. The hosted Claude Code Review check. This check is named `Claude Code Review` and comes from the `claude` app. AI-Implement reads its severity line. A normal finding requests changes. No normal finding approves the pull request.
+3. The repository's own Claude workflow. This review check comes from `github-actions`, with a name from the project's review check names. AI-Implement also reads Claude's inline comments on the pull-request head. A failed check is not a verdict.
+
+In source 3, AI-Implement reads the marker at the start of each inline comment:
+
+- 🔴 — blocking.
+- 🟡 — minor.
+- 🟣 — ignored.
+- No marker — minor.
+
+A comment on a resolved or outdated review thread does not count.
 
 ## Which findings gate the merge
 

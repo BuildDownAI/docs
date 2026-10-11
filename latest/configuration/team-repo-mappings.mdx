@@ -193,6 +193,29 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   </Note>
 </ParamField>
 
+## Review
+
+<ParamField body="reviewProcess" type="string" default="ai-implement">
+  Who reviews this project's pull requests and how AI-Implement reads the verdict. Accepted values:
+
+  - `ai-implement` — AI-Implement's own reviewers review the pull request.
+  - `claude-code-review` — Claude Code Review reviews the pull request.
+
+  An unknown or empty value means `ai-implement`.
+
+  See [External code reviewers](/latest/customize/external-reviewers#review-process) for the Claude Code Review verdict rules.
+</ParamField>
+
+<ParamField body="trustedReviewAuthors" type="array">
+  Extra GitHub logins whose review findings count, in addition to the review process's built-in authors.
+
+  A trusted author can approve a pull request.
+
+  Each login uses lowercase letters, digits, and hyphens, with an optional `[bot]` suffix. Example: `topia-ai-implement-bot[bot]`.
+
+  The list holds up to 20 logins. The orchestrator refuses a duplicate login.
+</ParamField>
+
 ## Capacity
 
 <ParamField body="maxInProgressAiIssues" type="number" default="3">
