@@ -90,6 +90,8 @@ A child is merged only when all of the following hold:
 - It isn't a draft
 - Its checks have finished, and passed
 - No reviewer has requested changes
+- Its run's review approved it
+- Under the **Claude Code Review, repository auto-fix** review process, Claude's review of its newest commit finished with `success` and reported no 🔴 finding
 
 Anything else is left alone. Pending checks are waited on, failures and change-requests are skipped, and a pull request that can't be merged cleanly is left for you.
 
