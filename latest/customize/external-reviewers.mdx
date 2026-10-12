@@ -121,6 +121,80 @@ In source 3, AI-Implement reads the marker at the start of each inline comment:
 
 A comment on a resolved or outdated review thread does not count.
 
+## Switch a project to Claude Code Review
+
+Switch a project to Claude Code Review when you want Claude to review its pull requests instead of AI-Implement's built-in reviewers.
+
+Test the change on one pull request before you rely on it.
+
+<Steps>
+  <Step title="Check the prerequisites">
+    Confirm these before you switch:
+
+    - The project settings show a **Review process** select. If they do not, update AI-Implement.
+    - The runner image is built from `testing` on or after 2026-10-11. An earlier image does not post the approval message for a review that passes after the run ends.
+    - The repository runs a Claude review workflow that:
+      - runs on the pull request as a GitHub Actions job, so its check run comes from `github-actions`
+      - posts inline comments as `claude[bot]`, which needs the Claude GitHub App
+      - uses a check name AI-Implement recognizes — a default review check name, or one you set in [`reviewCheckNames`](/latest/customize/custom-steps#param-review-check-names)
+    - Alternatively, the repository posts the hosted Claude Code Review check. See [Claude Code Review verdict](#claude-code-review-verdict).
+  </Step>
+
+  <Step title="Set the Review process to Claude Code Review">
+    Open the project drawer in the project settings. Set **Review process** to **Claude Code Review**, then save.
+
+    Under Claude Code Review, an empty internal-reviewer selection does not stop the run.
+  </Step>
+
+  <Step title="Add Trusted Review Authors (optional)">
+    Add extra comment authors in [Trusted Review Authors](/latest/configuration/team-repo-mappings#param-trusted-review-authors). Add an author here when a workflow posts its verdict as a login other than `claude[bot]` or `claude`.
+
+    <Warning>
+      Only `claude[bot]` and `claude` inline comments count toward the verdict. Trusted Review Authors does not change this. It adds authors whose [`json review-findings` block](#the-findings-block) counts, not authors whose inline comments count. A workflow that posts as `github-actions[bot]` must post a findings block, or AI-Implement does not read its inline comments.
+    </Warning>
+  </Step>
+
+  <Step title="Test on one pull request">
+    Add the pickup label to one small issue. AI-Implement opens a pull request and runs the review.
+
+    Watch the pull request for the review result. AI-Implement posts one of these comments.
+
+    The review passed in time:
+
+    ```
+    ✅ Approved (N iteration…)
+    ```
+
+    Let the pull request merge.
+
+    A 🔴 comment blocked the review:
+
+    ```
+    ⚠️ Reviewer found issues — starting fix pass …
+    ```
+
+    AI-Implement pushes a fix, then reviews again. Wait for the next result.
+
+    Claude took longer than the run's wait:
+
+    ```
+    ⚠️ Internal review passed, but the external review did not complete within the wait budget. Not auto-approving.
+    ```
+
+    AI-Implement then rechecks the pull request once a minute for up to 30 minutes. When the review passes on the same commit with no open blocking finding, it posts:
+
+    ```
+    The external review passed on `<commit>` after the run ended, with no open blocking finding. The run's approval mark is written, so auto-merge can proceed.
+    ```
+
+    Wait for this message, then let the pull request merge.
+  </Step>
+
+  <Step title="Switch back, if needed">
+    To return to AI-Implement's own reviewers, set **Review process** to **AI-Implement** in the project settings, then save.
+  </Step>
+</Steps>
+
 ## Which findings gate the merge
 
 Merge gating depends on where a finding comes from:
