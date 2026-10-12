@@ -39,7 +39,7 @@ Open to every allowlisted user. Served by the orchestrator:
 |---|---|
 | `get_session_identity` | The caller's email, provider, and role (`user`, `admin`, or none for an identity with no allowlist entry), as the allowlist resolves them now. Admin-only skills call this first. |
 | `get_tenant_health` | Runner mode, in-flight job count, pending gap-fill count, project count, the knowledge-graph degraded flag, and the KG-refresh credential preflight rows. |
-| `get_kg_status` | Knowledge-graph refresh state: stage, served stamp, materialize path, and the last refresh's outcome and gate. |
+| `get_kg_status` | Knowledge-graph refresh state: stage, served stamp, materialize path, effective backend, and the last refresh's outcome and gate. |
 | `get_runner_mode` | The global runner mode and where it came from. |
 | `list_projects` | Every project mapping with its settings. Runner environment values are never included. |
 | `list_in_flight_jobs` | Dispatching or running jobs, each with elapsed time since dispatch. |

@@ -135,7 +135,58 @@ The **Knowledge graph** card shows:
 - The served graph stamp, and whether the knowledge-graph sidecar is answering
 - The last refresh outcome, or the last dry-run's verdict with its per-part table
 - **Refresh graph now**, **Dry-run refresh**, and **Accept new baseline & refresh**
-- The **Materialize** setting (rdflib or direct), which applies to the next refresh
+- The **Backend**, **Materialize**, and **Fly machine** settings for the next refresh, explained below
+
+#### Refresh settings
+
+The rows under the refresh buttons control where and how the next refresh runs. Each shows its current value and where that value came from.
+
+**Backend** sets where the next refresh runs — on **GitHub Actions** (the knowledge-graph source repo's), or on **Fly machines** (a kept machine reused between runs).
+
+The global [runner mode](#runner-mode) overrides this setting:
+- `gha` forces GitHub Actions
+- `fly` forces Fly
+- `local` forces local Docker
+- `default` uses this setting
+
+With nothing saved, the backend defaults to Fly when Fly is configured (`FLY_SESSIONS_TOKEN` and the sessions app both set), otherwise GitHub Actions.
+
+A deployment with no Fly configuration therefore refreshes on GitHub Actions with no action needed, and the backend reads `Fly not configured`.
+
+The `next run:` line names the effective backend and why it was chosen, such as:
+- `KG setting`
+- `runner mode gha overrides the KG setting`
+- `Fly not configured`
+
+<Tip>
+  For a knowledge-graph-only change, prefer this setting over runner mode `gha`. Runner mode is global, so setting it to `gha` also forces every project otherwise set to Fly onto GitHub Actions.
+</Tip>
+
+The GitHub Actions backend needs:
+- a project mapping for the knowledge-graph source repo
+- that repo's synced `claude-implement.yml` workflow
+- available Actions minutes
+
+Measured on 2026-10-10 in a small sample, a refresh took about 40–47 minutes on GitHub Actions' default runner, against about 35 minutes on a 2-CPU / 8 GB performance Fly machine.
+
+**Materialize** controls how the orchestrator turns the pushed snapshot into the graph it serves. This step runs inside the orchestrator after either backend finishes, so it does not change where the refresh runs.
+
+- **rdflib** re-serializes every snapshot part into one combined graph — about 99 MB peak memory at 31k triples.
+- **direct** copies the snapshot parts and serves them unchanged, with no re-serialization — about 29 MB peak.
+
+Prefer **direct**. Choose **rdflib** only when the knowledge-graph source repo is built on a base that does not support the direct path: the direct step then fails and the refresh reverts safely to the graph it was already serving.
+
+The setting applies to the next refresh, with no restart.
+
+**Fly machine** sets the size of the kept Fly machine the refresh reuses between runs. This row appears only when the effective backend is Fly.
+
+It covers:
+- CPU kind — **shared** or **performance**
+- **CPUs**
+- **Memory (MB)**
+- **Idle (hours)** — how long the machine may sit unused before it is destroyed
+
+After the idle time passes with no refresh (7 days by default), the machine is destroyed, so an unused Fly backend stops costing anything.
 
 Below the card, **Runs** lists the knowledge-graph refresh runs from the dispatch log, with the same
 time filter as [Pipelines](/latest/reference/admin-ui#pipelines-jobs), a **Logs** link, and **Stop** for
