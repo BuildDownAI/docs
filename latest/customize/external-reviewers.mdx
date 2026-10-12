@@ -97,7 +97,7 @@ The Review process has these values:
 
 - **AI-Implement** — the default. AI-Implement's own reviewers review the pull request.
 - **Claude Code Review** — Claude Code Review reviews the pull request. AI-Implement fixes Claude's findings.
-- **Claude Code Review, repository auto-fix** — Claude Code Review reviews the pull request. The repository's own auto-fix workflow fixes Claude's findings, and AI-Implement does not. See [Let the repository's auto-fix fix Claude's findings](#let-the-repositorys-auto-fix-fix-claudes-findings).
+- **Claude Code Review, repository auto-fix** — Claude Code Review reviews the pull request. The repository's own auto-fix workflow fixes Claude's findings, and AI-Implement does not. See [Repository auto-fix](#repository-auto-fix).
 
 An unknown or empty value means **AI-Implement**.
 
@@ -124,7 +124,7 @@ A comment on a resolved or outdated review thread does not count.
 
 AI-Implement also reads the section headings in Claude's summary comment. A heading that starts with 🔴 is blocking. It stops approval even when the review check passes and Claude posts no inline comment. A heading that starts with 🟡 is minor.
 
-## Let the repository's auto-fix fix Claude's findings
+## Repository auto-fix
 
 Use **Claude Code Review, repository auto-fix** when the repository runs its own workflow that fixes Claude's review comments. Under **Claude Code Review**, AI-Implement and that workflow can both push fixes to one pull request, and each push starts another review.
 
