@@ -227,6 +227,22 @@ Pick the tab that matches where you're configuring right now.
       </Warning>
     </ParamField>
 
+    ### Knowledge graph refresh
+
+    Both variables below seed a setting on the Knowledge Graph Pipelines page on first boot only, when no stored value exists. The page's control wins afterward, so changing the variable later has no effect.
+
+    <ParamField body="KG_EXECUTION_MODE" type="string">
+      Seeds the **Backend** setting — where a refresh runs. Accepted values: `github-actions` (the knowledge-graph source repo's GitHub Actions) or `fly-machines` (a kept Fly machine).
+
+      Leave it unset and the backend defaults to `fly-machines` when Fly is configured, otherwise `github-actions`.
+    </ParamField>
+
+    <ParamField body="KG_MATERIALIZE_DIRECT" type="string" default="false">
+      Seeds the **Materialize** setting — how a refresh turns the pushed snapshot into the served graph. `true` selects the direct path; `false` selects rdflib.
+
+      The direct path requires the knowledge-graph source repo to be built on a base that supports it; against an image that predates it, the refresh reverts safely to the graph it was already serving.
+    </ParamField>
+
     ### Self-deploy
 
     <ParamField body="FLY_DEPLOY_TOKEN" type="string">
