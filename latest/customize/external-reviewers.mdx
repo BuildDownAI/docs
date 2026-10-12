@@ -128,6 +128,23 @@ Switch a project to Claude Code Review when you want Claude to review its pull r
 Test the change on one pull request before you rely on it.
 
 <Steps>
+  <Step title="Switch the project to the Restate lifecycle">
+    A review that posts findings after the run hands them to the Restate fix coordinator. A Restate workflow then owns the fix run with a deadline, so the fix survives an orchestrator restart. Claude Code Review was built and tested on this path.
+
+    Open the project drawer in the project settings. Set **Review-fix & Planning Lifecycle** to **Restate (pilot)**, then save.
+
+    The save is refused unless all of these hold:
+
+    - The execution mode is GitHub Actions.
+    - The Restate endpoint is healthy and registered.
+    - The project's workflow file is current.
+    - No run started by an older orchestrator version is still in flight.
+
+    To bring the workflow file up to date, use **Sync workflows** and merge the pull request it opens.
+
+    Claude Code Review also works on the Legacy lifecycle, but these steps assume Restate. See [`reviewFixLifecycle`](/latest/configuration/team-repo-mappings#param-review-fix-lifecycle).
+  </Step>
+
   <Step title="Check the prerequisites">
     Confirm these before you switch:
 
@@ -192,6 +209,8 @@ Test the change on one pull request before you rely on it.
 
   <Step title="Switch back, if needed">
     To return to AI-Implement's own reviewers, set **Review process** to **AI-Implement** in the project settings, then save.
+
+    This does not change the lifecycle. The project stays on the lifecycle you selected.
   </Step>
 </Steps>
 

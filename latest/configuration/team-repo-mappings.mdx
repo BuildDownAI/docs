@@ -206,6 +206,28 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   See [External code reviewers](/latest/customize/external-reviewers#review-process) for the Claude Code Review verdict rules.
 </ParamField>
 
+<ParamField body="reviewFixLifecycle" type="string" default="Legacy">
+  The lifecycle that owns this project's automatic review-fix runs and its planning runs. The project drawer labels it **Review-fix & Planning Lifecycle**. Accepted values:
+
+  - **Legacy** — the default. AI-Implement writes review findings to its own queue, and a drain loop picks them up.
+  - **Restate (pilot)** — a Restate workflow owns the review-fix run and the planning run. Each workflow has a deadline and survives an orchestrator restart.
+
+  Under **Restate (pilot)**, a review posted after the run hands its findings to the Restate fix coordinator, keyed by the GitHub delivery id. A repeated delivery does nothing twice. If Restate is unavailable, the webhook answers with an error, and AI-Implement redelivers the failed deliveries newer than 24 hours once Restate registers again.
+
+  The save is refused unless all of these hold:
+
+  - The execution mode is `github-actions`.
+  - The Restate endpoint is healthy and registered.
+  - The project's workflow file is current — use **Sync workflows** and merge the pull request it opens.
+  - No run started by an older orchestrator version is still in flight.
+
+  The setting does not move every run to Restate:
+
+  - Local review-fix runs stay on Legacy.
+  - Human comment-triggered gap-fill runs stay on Legacy.
+  - A run already dispatched keeps the lifecycle it started with.
+</ParamField>
+
 <ParamField body="trustedReviewAuthors" type="array">
   Extra GitHub logins whose review findings count, in addition to the review process's built-in authors.
 
