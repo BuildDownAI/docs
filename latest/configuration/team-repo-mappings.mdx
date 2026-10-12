@@ -199,7 +199,8 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   Who reviews this project's pull requests and how AI-Implement reads the verdict. Accepted values:
 
   - `ai-implement` — AI-Implement's own reviewers review the pull request.
-  - `claude-code-review` — Claude Code Review reviews the pull request.
+  - `claude-code-review` — Claude Code Review reviews the pull request. AI-Implement fixes Claude's findings.
+  - `claude-code-review-repository-fix` — Claude Code Review reviews the pull request. The repository's own auto-fix workflow fixes Claude's findings, and AI-Implement does not.
 
   An unknown or empty value means `ai-implement`.
 

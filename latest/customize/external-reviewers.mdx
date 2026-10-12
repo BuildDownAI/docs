@@ -96,13 +96,14 @@ Each project sets a **Review process**. It selects who reviews a pull request an
 The Review process has these values:
 
 - **AI-Implement** — the default. AI-Implement's own reviewers review the pull request.
-- **Claude Code Review** — Claude Code Review reviews the pull request.
+- **Claude Code Review** — Claude Code Review reviews the pull request. AI-Implement fixes Claude's findings.
+- **Claude Code Review, repository auto-fix** — Claude Code Review reviews the pull request. The repository's own auto-fix workflow fixes Claude's findings, and AI-Implement does not. See [Let the repository's auto-fix fix Claude's findings](#let-the-repositorys-auto-fix-fix-claudes-findings).
 
 An unknown or empty value means **AI-Implement**.
 
 ### Claude Code Review verdict
 
-Under **Claude Code Review**, AI-Implement reads the verdict from the strongest source it finds. It trusts `claude[bot]` and `claude`.
+Under both Claude Code Review processes, AI-Implement reads the verdict from the strongest source it finds. It trusts `claude[bot]` and `claude`.
 
 AI-Implement matches a review check by its name and the app that posts it. A same-named check from another app does not count.
 
@@ -120,6 +121,43 @@ In source 3, AI-Implement reads the marker at the start of each inline comment:
 - No marker — minor.
 
 A comment on a resolved or outdated review thread does not count.
+
+AI-Implement also reads the section headings in Claude's summary comment. A heading that starts with 🔴 is blocking. It stops approval even when the review check passes and Claude posts no inline comment. A heading that starts with 🟡 is minor.
+
+## Let the repository's auto-fix fix Claude's findings
+
+Use **Claude Code Review, repository auto-fix** when the repository runs its own workflow that fixes Claude's review comments. Under **Claude Code Review**, AI-Implement and that workflow can both push fixes to one pull request, and each push starts another review.
+
+This process reads Claude's verdict the same way as **Claude Code Review**. It changes who fixes. When Claude's review of the newest commit is done, AI-Implement does this:
+
+| AI-Implement's review | Claude's review | What AI-Implement does |
+| -- | -- | -- |
+| Passes | Blocking finding | Starts no fix. Waits for the repository's auto-fix |
+| Blocking finding | Passes | Pushes a fix, the same as under the other processes |
+| Blocking finding | Blocking finding | Starts no fix. Asks for a person |
+| Passes | Passes | Approves |
+
+When AI-Implement waits for the auto-fix, it posts:
+
+```
+⏳ Internal review passed. Claude's review found blocking issues; waiting for the repository's auto-fix. No AI-Implement fix pass will run.
+```
+
+AI-Implement then checks the pull request once a minute for up to 30 minutes. It follows each commit that the auto-fix pushes. It approves the newest commit only when all of these hold:
+
+- Claude's review check on that commit finished with `success`. A skipped review check is not a review.
+- The other checks on that commit passed.
+- Claude reported no 🔴 finding on that commit.
+
+A commit that still has a 🔴 finding keeps AI-Implement waiting, because the auto-fix can push again. If no commit passes in 30 minutes, AI-Implement does not approve, and a person reviews the pull request. Closing the pull request ends the wait.
+
+AI-Implement never starts a fix run for Claude's findings on this process, after the run or during it, on either lifecycle.
+
+<Warning>
+  If the repository's review workflow skips commits pushed by a bot, the auto-fix commit gets no review. AI-Implement then does not approve it, and the pull request waits for a person.
+</Warning>
+
+To use this process, follow [Switch a project to Claude Code Review](#switch-a-project-to-claude-code-review), and select **Claude Code Review, repository auto-fix** in the Review process step.
 
 ## Switch a project to Claude Code Review
 
@@ -224,7 +262,8 @@ Merge gating depends on where a finding comes from:
 | A GitHub review with "Request changes" | yes |
 | An inline review thread | only when that reviewer's latest review requests changes |
 | AI-Implement's internal reviewers | per the reviewer's **Gates** checkbox in the project settings |
-| Prose findings in a comment with no block | advisory only |
+| A 🔴 heading in Claude's summary comment, under both Claude Code Review processes | yes |
+| Other prose findings in a comment with no block | advisory only |
 
 AI-Implement splits the two kinds in the pull-request comment. Gating findings go under "Unresolved external review findings:". Advisory findings go under "Advisory external review findings (do not block merge):".
 
