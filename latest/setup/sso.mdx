@@ -61,22 +61,23 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             </Step>
 
             <Step title="Configure the consent screen">
-                Open **Google Auth Platform**. What you see depends on the project.
+                Open **Google Auth Platform**. Depending on the project, it opens either a **Get started** wizard or the **Overview** page.
 
-                A fresh project opens a **Get started** wizard. Work through its screens:
+                Work through the **Get started** wizard's screens:
 
                 1. **App information** — an app name and a user support email.
                 2. **Audience** — choose **Internal** or **External**, below.
                 3. **Contact information** — an email for Google's notices.
                 4. **Finish** — accept the user-data policy and click **Create**.
 
-                A project configured before opens on the **Overview** page instead. Its left menu is where each part of the setup lives:
+                On the **Overview** page, the left menu is where each part of the setup lives:
 
                 - **Branding** — the app name and support email.
                 - **Audience** — the user type, below.
                 - **Clients** — the OAuth client, created in a later step.
                 - **Data Access** — the scopes, declared in a later step.
-                - **Overview**, **Verification Center**, and **Settings** — not part of this setup.
+                - **Overview** — has the **Create OAuth client** button, used in a later step.
+                - **Verification Center** and **Settings** — not part of this setup.
 
                 Set the **Audience** to match how your operators sign in — the choice follows their email domain, not the orchestrator's URL. Operators at `example.com` reached through an orchestrator at `ai-implement.example-dev.com` choose on `example.com`.
 
