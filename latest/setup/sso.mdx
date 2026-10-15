@@ -13,20 +13,31 @@ The admin UI supports per-user sign-in through **Google** or **Microsoft**, so e
 
 Two things must both be true for someone to reach the admin UI:
 - Their provider authenticates them
-- Their verified email matches your **allowlist**
+- Their verified email matches the **allowlist**
 
-The **allowlist** is set through two variables, and an address matching either one is admitted:
+The allowlist is stored in the orchestrator's database and edited on the [Access page](/latest/reference/admin-ui) at `/admin#access`.
 
-- `OAUTH_ALLOWED_DOMAINS` — comma-separated domains, admitting anyone with an address at them
-- `OAUTH_ALLOWED_EMAILS` — comma-separated individual addresses
+`OAUTH_ALLOWED_EMAILS` and `OAUTH_ALLOWED_DOMAINS` only **seed** that list. They apply until the first **Save changes** on the Access page, and from then on the stored list is the only authority.
+
+Both are comma-separated. Each entry is trimmed and lowercased, and empty entries are dropped.
+
+Every entry carries a role:
+
+- An address seeded from `OAUTH_ALLOWED_EMAILS` gets the **admin** role.
+- A domain seeded from `OAUTH_ALLOWED_DOMAINS` admits people only as **user**.
+- Only a listed address can be **admin** — a domain never confers it.
+
+A save is refused if the result would lock out the person saving it, or if it would leave no **admin** address.
 
 <Warning>
-    The allowlist is **fail-closed**. If both variables are empty, every sign-in is denied — including yours. Configure at least one before you switch operators over.
+    The allowlist is **fail-closed**. With nothing seeded and nothing stored, every sign-in is denied — including yours. Seed at least one address before you switch operators over.
 </Warning>
 
 <Tip>
-    Prefer listing individual addresses over a whole domain. A domain entry admits **everyone** who has an address there.
+    Prefer listing individual addresses over a whole domain. A domain entry admits **everyone** who has an address there, and only ever as a **user**.
 </Tip>
+
+If nobody can sign in, an operator with host access runs `node dist/access-recovery.js --email <address>` to restore it.
 
 ## Create a provider application
 
@@ -50,23 +61,39 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             </Step>
 
             <Step title="Configure the consent screen">
-                Find **Google Auth Platform** and click **Get started**. A fresh project shows nothing else until this wizard is finished.
+                Open **Google Auth Platform**. What you see depends on the project.
 
-                Work through its four steps:
+                A fresh project opens a **Get started** wizard. Work through its screens:
 
                 1. **App information** — an app name and a user support email.
-                2. **Audience** — choose **External**.
+                2. **Audience** — choose **Internal** or **External**, below.
                 3. **Contact information** — an email for Google's notices.
                 4. **Finish** — accept the user-data policy and click **Create**.
 
+                A project configured before opens on the **Overview** page instead. Its left menu is where each part of the setup lives:
+
+                - **Branding** — the app name and support email.
+                - **Audience** — the user type, below.
+                - **Clients** — the OAuth client, created in a later step.
+                - **Data Access** — the scopes, declared in a later step.
+                - **Overview**, **Verification Center**, and **Settings** — not part of this setup.
+
+                Set the **Audience** to match how your operators sign in — the choice follows their email domain, not the orchestrator's URL. Operators at `example.com` reached through an orchestrator at `ai-implement.example-dev.com` choose on `example.com`.
+
+                **Internal** fits when every operator signs in with an account in your Google Workspace organization. Google admits only accounts in that organization, so a domain check runs ahead of the orchestrator's allowlist, and no **Publish app** step or test users are needed.
+
+                Internal has one condition: the Cloud project must belong to that organization. Create the project while signed in with a Workspace account and choose the organization as its **Location**, or the console leaves **Internal** disabled.
+
                 <Note>
-                    **Internal** restricts sign-in to addresses in your Workspace domain, which locks out any operator who doesn't have one.
-                    
-                    External lets your allowlist be the gate instead, which is where you want that decision made.
+                    With **Internal**, the Google error "restricted to users within its organization" means the operator signed in with an account outside the Workspace organization.
                 </Note>
+
+                **External** fits when some operators sign in with addresses outside a single Workspace organization. The orchestrator's allowlist is then the only gate, and the consent screen needs the **Publish app** step below.
             </Step>
 
             <Step title="Publish the consent screen">
+                This step applies to the **External** audience only — an **Internal** app needs no publishing.
+
                 On the **Audience** page, click **Publish app** to move the consent screen from testing to production.
 
                 The three scopes this app requests are non-sensitive (`openid`, `email`, `profile`), so Google requires no verification and the publish takes effect immediately.
@@ -76,7 +103,7 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
                 - The 100-account cap on who can authenticate
                 - The "unverified app" interstitial shown at sign-in
 
-                Your allowlist (`OAUTH_ALLOWED_EMAILS` / `OAUTH_ALLOWED_DOMAINS`) stays the real access gate. Publishing widens who Google will authenticate, but the orchestrator still admits only allowlisted addresses, fail-closed — so it does not weaken access control.
+                Your orchestrator's allowlist stays the real access gate. Publishing widens who Google will authenticate, but the orchestrator still admits only allowlisted addresses, fail-closed — so it does not weaken access control.
             </Step>
 
             <Step title="Declare the scopes">
@@ -90,7 +117,11 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             </Step>
 
             <Step title="Create the OAuth client">
-                On the **Clients** page, click **Create client** and choose application type **Web application**. Give it an internal name — this one isn't shown to operators.
+                **Create OAuth client** on the **Overview** page and **Create client** on the **Clients** page open the same form.
+
+                The form asks for the application type first. The name and redirect URI fields appear only after you choose **Web application**.
+
+                Give the client an internal name — this one isn't shown to operators.
 
                 Under **Authorized redirect URIs**, add two entries per orchestrator — one for admin sign-in and one for the MCP client flow:
 
@@ -167,7 +198,7 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
 
 ## Wire the orchestrator
 
-Alongside the provider credentials above, every orchestrator needs the callback base URL and the allowlist:
+Alongside the provider credentials above, every orchestrator needs the callback base URL and the allowlist seed:
 
 ```bash
 fly secrets set \
@@ -175,6 +206,8 @@ fly secrets set \
   OAUTH_ALLOWED_EMAILS=operator@example.com,other@example.com \
   --app your-app
 ```
+
+After your first SSO sign-in, click **Save changes** on `/admin#access` to adopt this seed as the stored list, then add any later operators there rather than in Fly secrets.
 
 <Warning>
     `OAUTH_REDIRECT_BASE_URL` must match the redirect URI you registered — the orchestrator builds the callback from it, so a mismatch produces the same failure as a mistyped URI.

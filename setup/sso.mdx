@@ -46,23 +46,39 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             </Step>
 
             <Step title="Configure the consent screen">
-                Find **Google Auth Platform** and click **Get started**. A fresh project shows nothing else until this wizard is finished.
+                Open **Google Auth Platform**. What you see depends on the project.
 
-                Work through its four steps:
+                A fresh project opens a **Get started** wizard. Work through its screens:
 
                 1. **App information** — an app name and a user support email.
-                2. **Audience** — choose **External**.
+                2. **Audience** — choose **Internal** or **External**, below.
                 3. **Contact information** — an email for Google's notices.
                 4. **Finish** — accept the user-data policy and click **Create**.
 
+                A project configured before opens on the **Overview** page instead. Its left menu is where each part of the setup lives:
+
+                - **Branding** — the app name and support email.
+                - **Audience** — the user type, below.
+                - **Clients** — the OAuth client, created in a later step.
+                - **Data Access** — the scopes, declared in a later step.
+                - **Overview**, **Verification Center**, and **Settings** — not part of this setup.
+
+                Set the **Audience** to match how your operators sign in — the choice follows their email domain, not the orchestrator's URL. Operators at `example.com` reached through an orchestrator at `ai-implement.example-dev.com` choose on `example.com`.
+
+                **Internal** fits when every operator signs in with an account in your Google Workspace organization. Google admits only accounts in that organization, so a domain check runs ahead of the orchestrator's allowlist, and no **Publish app** step or test users are needed.
+
+                Internal has one condition: the Cloud project must belong to that organization. Create the project while signed in with a Workspace account and choose the organization as its **Location**, or the console leaves **Internal** disabled.
+
                 <Note>
-                    **Internal** restricts sign-in to addresses in your Workspace domain, which locks out any operator who doesn't have one.
-                    
-                    External lets your allowlist be the gate instead, which is where you want that decision made.
+                    With **Internal**, the Google error "restricted to users within its organization" means the operator signed in with an account outside the Workspace organization.
                 </Note>
+
+                **External** fits when some operators sign in with addresses outside a single Workspace organization. The orchestrator's allowlist is then the only gate, and the consent screen needs the **Publish app** step below.
             </Step>
 
             <Step title="Publish the consent screen">
+                This step applies to the **External** audience only — an **Internal** app needs no publishing.
+
                 On the **Audience** page, click **Publish app** to move the consent screen from testing to production.
 
                 The three scopes this app requests are non-sensitive (`openid`, `email`, `profile`), so Google requires no verification and the publish takes effect immediately.
@@ -86,7 +102,11 @@ Pick the provider you want to sign in with. Configuring both is fine — operato
             </Step>
 
             <Step title="Create the OAuth client">
-                On the **Clients** page, click **Create client** and choose application type **Web application**. Give it an internal name — this one isn't shown to operators.
+                **Create OAuth client** on the **Overview** page and **Create client** on the **Clients** page open the same form.
+
+                The form asks for the application type first. The name and redirect URI fields appear only after you choose **Web application**.
+
+                Give the client an internal name — this one isn't shown to operators.
 
                 Under **Authorized redirect URIs**, add two entries per orchestrator — one for admin sign-in and one for the MCP client flow:
 
