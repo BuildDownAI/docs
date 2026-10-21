@@ -1,27 +1,29 @@
 ---
 title: "Customize WORKFLOW.md for your codebase"
-description: "How to customize WORKFLOW.md: set the model, repo context, quality checklist, and lifecycle hooks Claude follows for every implementation run in your repo."
+description: "Customize implementation prompts, repository guidance, and hooks for Claude or Codex, with legacy model selection explained."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
 
-`WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up an issue from your ticketing system (Linear or Jira), it renders this file and sends the result to Claude as its implementation instructions. You control the model, the repo context Claude reads, and every detail of how Claude approaches your codebase.
+`WORKFLOW.md` is your prompt template — it is seeded into your repo once by the sync workflow and is entirely yours to customize from that point on. Every time AI-Implement picks up an issue from your ticketing system (Linear or Jira), it renders this file and sends the result to the implementation agent. You control the prompt, repository context, and hooks.
+
+For configured projects, choose the agent, model, account, and timeout in [Agent settings per stage](/latest/configuration/agents). Prompt front matter and repository model overrides select models only for legacy projects.
 
 ## File structure
 
 `WORKFLOW.md` has two parts separated by a YAML front matter block:
 
-**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. This block is stripped before Claude sees anything; Claude never receives it.
+**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. This block is stripped before the agent receives the prompt.
 
-**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it (see [Variables available in the body](#variables-available-in-the-body)), and the result is sent to Claude as the prompt.
+**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it (see [Variables available in the body](#variables-available-in-the-body)), and the result is sent to the implementation agent.
 
 ## Front matter keys
 
 <AccordionGroup>
   <Accordion title="model">
-    The model ID passed to `claude-code --model`. Accepts any ID your configured provider supports.
+    Selects the implementation model for a legacy project. A configured stage model takes precedence; see [Agent settings per stage](/latest/configuration/agents).
 
     ```yaml
     # Anthropic API or OAuth
@@ -31,7 +33,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
     model: anthropic.claude-sonnet-4-6-20250805-v1:0
     ```
 
-    This key is **required when using Bedrock**. There is no Bedrock-specific default — the model resolves from a single provider-agnostic chain that ends in `claude-sonnet-5-5`.
+    For a legacy project, this key is **required when using Bedrock**. There is no Bedrock-specific default — the model resolves from a single provider-agnostic chain that ends in `claude-sonnet-5-5`.
 
     Omit it on a Bedrock-mapped repo and that Anthropic model ID is substituted silently. It is invalid on Bedrock, so the run fails when the model is invoked rather than up front.
 
@@ -39,7 +41,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
   </Accordion>
 
   <Accordion title="setup">
-    Path to a shell script to run **before** Claude starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
+    Path to a shell script to run **before** the implementation agent starts. Use this to install dependencies, generate code, or set up fixtures your implementation run needs.
 
     ```yaml
     setup: scripts/ai-setup.sh
@@ -59,7 +61,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
   </Accordion>
 
   <Accordion title="teardown">
-    Path to a shell script that **always runs at the end**, whether or not Claude succeeded. Use this for cleanup tasks.
+    Path to a shell script that **always runs at the end**, whether or not the agent succeeded. Use this for cleanup tasks.
 
     ```yaml
     teardown: scripts/ai-teardown.sh
@@ -148,20 +150,20 @@ The variables below are substituted into the body by a regular expression, not b
 
 Planning context is appended to the prompt automatically whenever a planning run produced it, so it is not a variable you place in the body.
 
-Writing `${PLANNING_CONTEXT}` yourself inserts the block a second time through substitution, so the planning context reaches Claude twice.
+Writing `${PLANNING_CONTEXT}` yourself inserts the block a second time through substitution, so the planning context reaches the agent twice.
 
 ## New implementation vs gap-fill runs
 
 AI-Implement uses this single file for two scenarios:
 
-- **When `${PR_NUMBER}` is empty** — Claude implements the issue in the current checkout and leaves the changes uncommitted. The AI-Implement pipeline commits the changes, pushes an issue-scoped branch, and opens the pull request.
-- **When `${PR_NUMBER}` is set** — Claude addresses the review feedback on the existing pull request and leaves the changes uncommitted. The AI-Implement pipeline commits and pushes to that pull request branch. A `/ai-implement` comment on a pull request starts this run.
+- **When `${PR_NUMBER}` is empty** — The agent implements the issue in the current checkout and leaves the changes uncommitted. The AI-Implement pipeline commits the changes, pushes an issue-scoped branch, and opens the pull request.
+- **When `${PR_NUMBER}` is set** — The agent addresses the review feedback on the existing pull request and leaves the changes uncommitted. The AI-Implement pipeline commits and pushes to that pull request branch. A `/ai-implement` comment on a pull request starts this run.
 
 The starter template handles both cases with a conditional section. Read `${PR_NUMBER}` in your own template body to change the instructions for each case.
 
 ## Starter template
 
-The sync workflow seeds this file into your repository, front matter included. Use it as your starting point:
+The example below includes legacy model settings. Configured projects still use its prompt and hooks, but stage settings select the model. The synced workflow filename remains `claude-implement.yml`.
 
 ````markdown
 ---
@@ -180,7 +182,8 @@ model: claude-sonnet-5-5
 # To run a cheaper model for the automated review pass than for implementation,
 # set models.implement / models.review in .ai-implement/config.yml. Those take
 # precedence over the model: above, and are the only supported way to split the
-# two — there is no per-phase model key in this front matter.
+# two for a legacy run. Configured stage models take precedence instead.
+# There is no per-phase agent-selection key in this front matter.
 ---
 
 <!--
@@ -273,7 +276,7 @@ model: claude-sonnet-5-5
   1. Add repository-specific context, validation commands, and conventions.
   2. Adjust the quality checklist to match your standards.
   3. Add any repo-specific constraints (e.g. "never modify migration files directly").
-  4. Change the model in the front matter if this repo needs more (opus) or less (haiku).
+  4. For legacy projects, change the model in front matter. Configured projects use stage settings.
   5. Remove these HTML comments once you're done — Claude won't see them anyway.
 
 -->
@@ -346,7 +349,7 @@ Before reporting completion:
 
 ## Customizing the "Repo context" section
 
-Add a `## Repo context` section to teach Claude about your codebase. Fill it with specifics so Claude doesn't have to guess:
+Add a `## Repo context` section to explain your codebase to the implementation agent:
 
 ```markdown
 ## Repo context
@@ -362,12 +365,12 @@ Add a `## Repo context` section to teach Claude about your codebase. Fill it wit
 ```
 
 <Tip>
-  If your repo has a `CLAUDE.md` file with codebase conventions, point Claude at it explicitly. The starter template already includes a `Read CLAUDE.md if present` line at the top — keep that line in place so Claude picks up your conventions automatically.
+  If your repo has a `CLAUDE.md` file with codebase conventions, point the agent at it explicitly. The starter template already includes a `Read CLAUDE.md if present` line at the top — keep that line in place so the agent reads your conventions.
 </Tip>
 
 ## Adding repo-specific constraints
 
-You can add a `## Constraints` section with any rule Claude should follow throughout the run:
+You can add a `## Constraints` section with any rule the implementation agent should follow throughout the run:
 
 ```markdown
 ## Constraints

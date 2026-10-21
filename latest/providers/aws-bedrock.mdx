@@ -6,6 +6,8 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
+This page describes the mapping-based provider settings for legacy projects. Configured projects select their agent, provider, model, and account through [Agent settings per stage](/latest/configuration/agents).
+
 
 AI-Implement supports AWS Bedrock as a provider, letting you invoke Claude models through your AWS account using GitHub OIDC — no static AWS credentials required. When Bedrock is configured, the orchestrator passes `provider=bedrock` and your chosen AWS region to the workflow at dispatch time, and the workflow assumes an IAM role via OIDC before invoking Claude. This page walks through the full setup.
 
@@ -45,7 +47,7 @@ The workflow uses GitHub OIDC to assume an IAM role — there is no static AWS k
   </Step>
 
   <Step title="Set the model in WORKFLOW.md (and PLANNING.md)">
-    Update the `model:` key in your repo's `WORKFLOW.md` to a Bedrock model ID or inference-profile ARN. If planning is enabled, update `PLANNING.md` as well.
+    For a legacy project, update the `model:` key in your repo's `WORKFLOW.md` to a Bedrock model ID or inference-profile ARN. If planning is enabled, update `PLANNING.md` as well.
 
     ```yaml
     ---

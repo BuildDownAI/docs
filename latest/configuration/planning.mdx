@@ -1,36 +1,39 @@
 ---
 title: "AI planning phase: architecture analysis"
-description: "How the AI planning phase works, what structured architecture, test plan, work units, and cross-story comments it posts to your ticketing system, and how to enable, disable, or configure it per project mapping."
+description: "Configure planning with Claude or Codex and use the Implementation Map, Acceptance Bar, and risk comments."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
 
-When `planningEnabled=true` (the default), AI-Implement runs a planning pass before handing an issue to the implementation workflow. Claude reads your codebase in read-only mode and posts structured analysis directly to the originating issue (Linear comments or Jira comments, depending on the project mapping's provider). That analysis is then fetched by the implementation workflow and injected into the Claude prompt, giving the implementation run a head start on architectural decisions, files to change, and known risks.
+When `planningEnabled=true`, AI-Implement runs planning before implementation. The planning agent reads your source and writes structured comments. The orchestrator posts them to the originating issue in Linear or Jira.
+
+Planning can use Codex while implementation uses Claude, or the reverse. Select the planning agent, model, account, and timeout in [Agent settings per stage](/latest/configuration/agents).
 
 ## How the planning phase works
 
 <Steps>
   <Step title="Orchestrator dispatches the planning workflow">
-    When the orchestrator picks up an eligible issue, it dispatches `claude-plan.yml` in the target repo with the issue details as workflow inputs.
+    The orchestrator dispatches `claude-plan.yml` for an eligible issue with its issue context. The filename stays the same when you select Codex.
   </Step>
 
-  <Step title="Claude explores the codebase read-only">
-    Claude uses `Read`, `Glob`, and `Grep` to explore the codebase. It does not create any branches, files, or commits during this phase.
+  <Step title="The planning agent reads the codebase">
+    The agent reads and searches the repository without changing source files. It writes planning comments under `ai-output/comments/`.
+
+    Codex planning can read and search repository text and write these comments. It cannot run shell commands, delegate work, or use network tools.
   </Step>
 
-  <Step title="Claude posts structured planning comments">
-    Claude posts up to four comments on the issue, each with a fixed header that the implementation workflow can locate later:
+  <Step title="AI-Implement posts the plan">
+    The supplied `PLANNING.md` template asks for:
 
-    - **Architecture Analysis** (`## 🏗️ AI Planning: Architecture Analysis`) — approach, specific files to create or modify, key architectural decisions, and risks or open questions.
-    - **Test Plan** (`## 🧪 AI Planning: Test Plan`) — unit tests, integration tests, and a manual verification checklist.
-    - **Work Units** (`## 🔧 AI Planning: Work Units`) — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must follow. Skipped when the issue is too small or too tightly coupled to decompose.
-    - **Cross-Story Context** (`## 🔗 AI Planning: Cross-Story Context`) — posted only when the issue has dependencies or sibling stories with meaningful coordination needs, covering upstream dependencies, downstream impact, and coordination notes.
+    - **Implementation Map** — approach, files, and constraints for the implementer.
+    - **Acceptance Bar** — testable claims for the reviewer.
+    - **Risks & Open Questions** — uncertainties and prerequisites.
 
-    <Info>
-      When eligible for **Work Units**, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time.
-    </Info>
+    See [Planning comment format](/latest/customize/planning-md#planning-comment-format) for the filenames and headers.
+
+    Planning output does not automatically start subagents. Existing repositories keep their own prompt templates until you edit them.
   </Step>
 
   <Step title="Issue marker is updated">
@@ -55,7 +58,7 @@ When `planningEnabled=true` (the default), AI-Implement runs a planning pass bef
   </Step>
 
   <Step title="Implementation workflow injects planning context">
-    `claude-implement.yml` fetches the planning comments from the issue, sanitizes them, and prepends them to the Claude prompt. Claude is instructed to follow the planning decisions unless it discovers a concrete reason not to, and to explain any deviations in the PR description.
+    The implementation run uses the map as reference context. Review uses the acceptance bar to check the result. Planning context does not override the issue or repository instructions.
   </Step>
 </Steps>
 
@@ -65,7 +68,9 @@ To skip planning for a specific project mapping, set `planningEnabled=false` on 
 
 ## Choosing a planning model
 
-Set the `model:` key in `PLANNING.md` front matter to control which model Claude uses during planning:
+For a configured project, use the planning stage's [agent settings](/latest/configuration/agents). Its selected model and elapsed timeout take precedence over prompt front matter.
+
+For a legacy project, set `model:` in `PLANNING.md`:
 
 ```yaml
 ---
@@ -73,12 +78,14 @@ model: claude-sonnet-4-6
 ---
 ```
 
-For `provider=bedrock`, this field is required and must be a valid Bedrock model ID or inference-profile ARN. For `provider=anthropic`, it defaults to `claude-sonnet-4-6` when omitted.
+For a legacy Bedrock project, supply a compatible Bedrock model ID or inference-profile ARN.
+
+Codex uses an elapsed-time limit. Claude's native turn cap is separate; see [Timeouts and limits](/latest/configuration/agents#timeouts-and-limits).
 
 ## Customizing the planning prompt
 
-`PLANNING.md` in the target repo is your planning prompt template. After the initial sync, AI-Implement never overwrites it. Edit the **Repo context** section to focus Claude on the directories, patterns, and conventions that matter most for your codebase.
+`PLANNING.md` supplies the planning prompt for either agent. Sync preserves existing copies. Add repository context without removing the output instructions.
 
 <Tip>
-  Well-written planning output directly improves implementation quality. Customize `PLANNING.md` to point Claude at the areas of your codebase where architectural decisions are most consequential — for example, schema migration directories, shared API contracts, or modules with strict backward-compatibility requirements.
+  Point the planner at the directories where decisions matter, such as migrations or shared API contracts.
 </Tip>

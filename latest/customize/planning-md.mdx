@@ -1,27 +1,29 @@
 ---
 title: "Customize PLANNING.md for architecture analysis"
-description: "How to customize PLANNING.md: control what Claude explores and what architecture, test plan, work units, and cross-story comments it posts to your ticketing system before each implementation run."
+description: "Customize planning prompts and structured comments for Claude or Codex without changing stage settings."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
 
-`PLANNING.md` controls what Claude does during the planning phase — it reads the codebase and posts structured architecture analysis, test plan, work units, and cross-story comments back to your ticketing system. When the planning workflow (`claude-plan.yml`) runs for an issue, it renders this file and sends the result to Claude. Claude then explores the repo and writes structured planning comments back to the issue — without creating any branches, files, or pull requests.
+`PLANNING.md` supplies the planning prompt for Claude or Codex. The planning run renders it, reads the codebase, and writes comments for the orchestrator to post to your issue.
+
+Choose the agent and execution settings in [Agent settings per stage](/latest/configuration/agents). Changing prompt text does not switch agents. The workflow remains `claude-plan.yml`.
 
 ## File structure
 
 Like `WORKFLOW.md`, `PLANNING.md` has two parts:
 
-**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. Stripped before Claude sees anything.
+**YAML front matter** (between the `---` lines at the top) — read by the workflow to configure the run. Stripped before the agent sees the prompt.
 
-**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it, and the result is sent to Claude as the prompt.
+**Markdown body** — everything after the front matter. A fixed list of variables is substituted into it, and the result is sent to the planning agent.
 
 ## Front matter keys
 
 <AccordionGroup>
   <Accordion title="model">
-    The model ID passed to `claude-code --model`. Accepts any ID your configured provider supports.
+    Selects the planning model for legacy projects. Configured projects use the planning stage model instead; see [Agent settings per stage](/latest/configuration/agents).
 
     ```yaml
     # Anthropic API or OAuth
@@ -31,11 +33,7 @@ Like `WORKFLOW.md`, `PLANNING.md` has two parts:
     model: anthropic.claude-sonnet-4-6-20250805-v1:0
     ```
 
-    This key is **required when using Bedrock**. There is no Bedrock-specific default — the model resolves from a single provider-agnostic chain that ends in `claude-sonnet-4-6`.
-
-    Omit it on a Bedrock-mapped repo and that Anthropic model ID is substituted silently. It is invalid on Bedrock, so the run fails when the model is invoked rather than up front.
-
-    For the Anthropic provider, `claude-sonnet-4-6` is the intended default and omitting the key is safe.
+    For a legacy Bedrock project, supply a compatible Bedrock model ID or inference-profile ARN. Omitting it can fall back to an Anthropic model ID that Bedrock cannot use.
   </Accordion>
 </AccordionGroup>
 
@@ -57,72 +55,60 @@ The variables below are substituted into the body by a regular expression, not b
 | `${SIBLINGS}` | Sibling stories (other children of the same parent), newline-separated, or `None` |
 | `${DEPENDENCIES}` | Related issues as `- [type] IDENTIFIER: Title`, newline-separated, or `None` |
 
-## Comment types Claude must post
+## Planning comment format
 
-Claude posts up to four structured comments to your ticketing issue. The headers are exact strings the implementation workflow uses to locate planning context later, so do not change them.
+The supplied template asks the planner to write the files below. Keep their exact headers so implementation and review can find the right context.
 
-<Steps>
-  <Step title="Architecture Analysis">
-    Header: `## 🏗️ AI Planning: Architecture Analysis`
+### Implementation Map
 
-    Required sections in this comment:
+File: `ai-output/comments/01-implementation-map.md`
 
-    - **Approach** — 1–3 sentences describing the implementation strategy
-    - **Files to Create/Modify** — specific file paths with a one-line description of each change
-    - **Key Decisions** — architectural choices and rationale
-    - **Risks & Open Questions** — edge cases, unknowns, potential problems
-  </Step>
+Header: `## 🗺 AI Planning: Implementation Map`
 
-  <Step title="Test Plan">
-    Header: `## 🧪 AI Planning: Test Plan`
+Keep the map within 60 lines. Include:
 
-    Required sections in this comment:
+- **Approach** — a short description of the existing pattern and the change.
+- **Files** — paths with the verbs Create, Modify, Test, or Delete.
+- **Constraints** — relevant ordering or shared-file constraints.
 
-    - **Unit Tests** — individual components or functions to test
-    - **Integration Tests** — end-to-end or cross-component scenarios
-    - **Manual Verification** — step-by-step human verification checklist
-  </Step>
+For example:
 
-  <Step title="Work Units">
-    Header: `## 🔧 AI Planning: Work Units`
+```markdown
+- Modify: `src/api/export.ts`
+- Test: `tests/export.test.ts`
+```
 
-    Decompose the issue into work units that subagents can implement in parallel during the implementation phase.
-    
-    Required sections in this comment:
+Keep the template's instructions for the planning metadata at the end of the map. It lists the complete file set and the change's risk level. The implementation run uses the map as reference context.
 
-    - **Independent (can be implemented in parallel)** — units with no dependencies on other units.
-    - **Sequential (must follow independent units)** — units that depend on the independent ones completing first.
+### Acceptance Bar
 
-    Each unit must specify a name, description, files touched, and dependencies (or `No dependencies`), formatted as follows:
+File: `ai-output/comments/02-acceptance-bar.md`
 
-    ```markdown
-    - **WU-1: Add the user-export endpoint** — Files: `src/api/export.ts`. No dependencies.
-    - **WU-2: Update the schema migration** — Files: `migrations/0042-export.sql`. No dependencies.
-    - **WU-3: Update the frontend to reflect new schema** — Files: `src/app/export/page.tsx`. Depends on: WU-2.
+Header: `## ✅ AI Planning: Acceptance Bar`
 
-    ```
+List testable claims covering the acceptance criteria. For each claim, name the behavior and how to check it. Include material edge cases. The reviewer uses this comment to assess the result.
 
-    <Note>
-      Claude may omit this comment when the issue doesn't naturally decompose — for example, when all the work is sequential or tightly coupled across files. Implementation falls back to a single-pass run in that case.
-    </Note>
-  </Step>
+### Risks & Open Questions
 
-  <Step title="Cross-Story Context (conditional)">
-    Header: `## 🔗 AI Planning: Cross-Story Context`
+File: `ai-output/comments/03-risks.md`
 
-    Claude only posts this comment when `${DEPENDENCIES}` or `${SIBLINGS}` is not `None` **and** there is meaningful coordination needed between stories.
+Header: `## ⚠️ AI Planning: Risks & Open Questions`
 
-    Required sections when posted:
+Record material uncertainties, prerequisites, and easily missed behavior. If none exist, say so in one sentence.
 
-    - **Upstream Dependencies** — what must be completed before this story
-    - **Downstream Impact** — stories or systems that will depend on this work
-    - **Coordination Notes** — specific actions needed to coordinate with other teams or stories
-  </Step>
-</Steps>
+<Note>
+  Sync preserves existing `PLANNING.md` files. Older templates can still ask for Architecture Analysis or Test Plan comments. Edit an existing template deliberately; a workflow sync does not replace its output instructions.
+</Note>
+
+## Codex planning limits
+
+Codex planning can read and search repository text. It can write planning comments under `ai-output/comments/`. It cannot change source files, run commands, delegate work, or use network tools.
+
+Keep instructions within those capabilities. Put executable setup and validation in the implementation workflow's [hooks](/latest/customize/workflow-md#front-matter-keys).
 
 ## Customizing the "Repo context" section
 
-The `## Repo context` section is where you point Claude at the right parts of your codebase and establish the conventions that matter for architectural decisions.
+The `## Repo context` section is where you point the planning agent at the right parts of your codebase and establish the conventions that matter for architectural decisions.
 
 ```markdown
 ## Repo context
@@ -136,12 +122,12 @@ The `## Repo context` section is where you point Claude at the right parts of yo
 ```
 
 <Tip>
-  Use the **Areas to always check** field to direct Claude to the directories most likely to be relevant for any given issue. This reduces analysis time and keeps the architecture comments grounded in your actual code structure rather than generic advice.
+  Use the **Areas to always check** field to direct the planning agent to the directories most likely to be relevant for any given issue. This reduces analysis time and keeps the architecture comments grounded in your actual code structure rather than generic advice.
 </Tip>
 
 ## Example: adding analysis prompts
 
-You can add repo-specific analysis instructions anywhere in the body. For example, to always have Claude check the migration directory when database changes are involved:
+You can add repo-specific analysis instructions anywhere in the body. For example, to always have the planner check the migration directory when database changes are involved:
 
 ```markdown
 ## Repo context
