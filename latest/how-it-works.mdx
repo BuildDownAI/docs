@@ -215,7 +215,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     | A run is already active on the issue | Waits. The queued run starts after the active run finishes. |
     | The team is at its capacity limit | Waits. |
     | The PR reached its [PR Dispatch Budget](/latest/configuration/team-repo-mappings#param-pr-dispatch-budget) | Parks the PR and posts the **AI-Implement: Needs Human.** notice. |
-    | A person comments `/ai-implement` on a parked PR | Queues one more run. A person's comment does not count against the limit. |
+    | A person comments `/ai-implement` on a parked PR | Queues one more run even at the limit. The run still counts against the budget. |
 
     A review-fix run does not start a new post-push review. See [Post-push review](/latest/reference/post-push-review#when-the-post-push-review-does-not-run).
 
