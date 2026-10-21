@@ -48,7 +48,7 @@ A runner reports the final outcome of a dispatch: success with a PR, or failure 
 | 400 | `invalid_comment_shape` | A comment entry is not an object with a string `body` |
 | 400 | `invalid_comments` | `comments` is missing or not an array |
 | 400 | `invalid_outcome` | `outcome` is not `success` or `failure` |
-| 400 | `invalid_phase` | `phase` is not `planning`, `implementation`, or `gap-analysis` |
+| 400 | `invalid_phase` | `phase` is not `planning`, `implementation`, `gap-analysis`, or `kg-refresh` |
 | 400 | `missing_prUrl` | A successful implementation result did not include a PR URL |
 | 400 | `phase_mismatch` | The token's phase does not match the body |
 | 401 | `bad_signature`, `expired`, `malformed`, `wrong_audience` | The run token has a bad signature, is expired, is malformed, or is for the wrong endpoint |

@@ -7,7 +7,13 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 <Note>
-  Version numbers skip. The plugin's version changes on every skill change so the development channel has something to deliver, but only some of those versions are released. Numbers missing below were never published, and no stable-channel install ever ran them.
+  After each release, the first change that ships plugin content sets the next release number. Later changes to shipped content add a patch increment.
+
+  A release ships the number the development channel carries at that moment. It can be tagged 1.5.2 without 1.5.0 or 1.5.1 ever reaching the stable channel.
+
+  Before v1.5.0, each skill change increased the minor version, so earlier releases have wider gaps.
+
+  Skills and [AI-Implement](/latest/releases) have independent version numbers. You cannot compare them to judge which product is ahead.
 </Note>
 
 <Update label="v1.4.0" description="Released 26 August 2026" tags={["Release"]}>
