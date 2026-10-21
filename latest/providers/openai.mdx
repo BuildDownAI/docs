@@ -1,0 +1,155 @@
+---
+title: "Use Codex with OpenAI"
+description: "Configure AI-Implement to run the Codex agent against OpenAI, authenticated with an OpenAI API key or your own connected ChatGPT plan."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+AI-Implement can run the Codex agent against OpenAI. Each OpenAI account profile authenticates one of two ways: an OpenAI API key, or a ChatGPT plan you connect from your own account.
+
+Both are configured per account profile on the **Models & providers** page of the admin UI. Set up the profile first, then add a key or connect a plan to it.
+
+## Account profiles
+
+An account profile pairs a set of credentials with the projects allowed to use them. Create one on **Models & providers** with **Add account profile** before you add a key or connect a plan.
+
+The form has these fields:
+
+- **Profile ID** — a stable, lowercase identifier for the profile. An uppercase letter makes **Set key** fail later, so keep it lowercase.
+- **Identity** — a label that identifies the account to operators.
+- **Agent** — `codex`.
+- **Provider** — `openai`.
+- **Authentication** — `openai-api-key` for an API key, or `codex-subscription` (shown as **ChatGPT plan**) to connect a ChatGPT plan.
+- **Permitted projects** — the exact project keys this profile may serve, comma-separated. A profile with no permitted project cannot be selected for any project.
+
+A new profile is created **active**. A ChatGPT plan can only be connected while the profile is active.
+
+<Note>
+  Readiness is checked against the profile's first permitted project. A profile with no permitted project shows **unknown** readiness. That is a missing probe target, not a rejected credential.
+</Note>
+
+## Use an OpenAI API key
+
+<Steps>
+  <Step title="Add a codex / openai profile">
+    Create an account profile as described in [Account profiles](#account-profiles), with **Authentication** set to `openai-api-key`.
+  </Step>
+  <Step title="Set the key">
+    In the profile's row, enter the key and click **Set key**.
+
+    The key is write-only: it is encrypted on save and never shown again. The **API key** column then reads **set**, and an empty profile reads **not set**.
+  </Step>
+  <Step title="Replace or remove the key">
+    To replace the key, enter a new value and click **Set key** again — the new value overwrites the old one.
+
+    To clear it, click **Remove key**.
+  </Step>
+</Steps>
+
+## Connect a ChatGPT plan
+
+Connecting a ChatGPT plan signs you in with your own ChatGPT account. **It is for personal and self-hosted use of your own plan** — do not use it to pool, share, or resell plan access. For customer-facing OpenAI runs, use an API key instead.
+
+Pairing is the normal path: the admin UI mints a code, and a helper on your laptop signs in and uploads the result. You will need:
+
+- **A laptop with a web browser.** Sign-in opens a browser and completes through a local `127.0.0.1` callback, so the browser and the command must run on the same machine. The orchestrator host has no browser and cannot receive the callback.
+- **An AI-Implement source checkout on that laptop, built with `npm run build`**, so the sign-in helper is available.
+
+<Steps>
+  <Step title="Add a ChatGPT plan profile">
+    Create an account profile as described in [Account profiles](#account-profiles), with **Authentication** set to `codex-subscription` (shown as **ChatGPT plan**). The profile must be **active**.
+  </Step>
+  <Step title="Start pairing">
+    In the profile's row, click **Connect ChatGPT plan**. The admin UI shows a single-use pairing code and the laptop command to run, both shown once.
+  </Step>
+  <Step title="Run the command on your laptop">
+    From your AI-Implement checkout, run the command the admin UI showed:
+
+    ```bash
+    node dist/chatgpt-plan-login.js connect --orchestrator https://<orchestrator-host> --record ~/.ai-implement/chatgpt-plan.json
+    ```
+
+    The command asks for the pairing code at a hidden prompt. Type it there, so it never goes on the command line.
+
+    It then opens your browser to sign in with ChatGPT and uploads the signed-in record to the orchestrator.
+
+    Once the upload succeeds, the helper removes the tokens from the laptop so the orchestrator holds the only copy. It does this without revoking them, so there is nothing to sign out on the laptop.
+
+    Do not revoke the hosted session to "sign out" the laptop after a successful pairing — that would break the orchestrator's copy too.
+  </Step>
+  <Step title="Confirm the connection">
+    Back in the admin UI, click **Check status** to see the connected account and the latest refresh result.
+  </Step>
+</Steps>
+
+<Warning>
+  The pairing code works once and expires 15 minutes after it is shown. A rejected upload — a bad record, the wrong profile state, or an oversize record — still spends the code, so if the command fails, click **Connect ChatGPT plan** again to mint a fresh one.
+</Warning>
+
+If the command uploads the record but you never see a confirmation — a dropped connection after the orchestrator accepted it — the orchestrator may already own the sign-in while the laptop still holds tokens.
+
+Clear those leftover tokens from the laptop. Delete the record file at `~/.ai-implement/chatgpt-plan.json`, or sign it out with `node dist/chatgpt-plan-login.js logout --record ~/.ai-implement/chatgpt-plan.json`.
+
+Do not sign in or refresh on the laptop again, which would make the orchestrator's copy look reused.
+
+Then click **Check status**. If it is not connected, click **Connect ChatGPT plan** again and run the command with a fresh code.
+
+### Manual import and host sign-out
+
+You can also sign in on the laptop and import the record to the orchestrator by hand, then sign a connected account out from the host.
+
+<Steps>
+  <Step title="Sign in on the laptop">
+    ```bash
+    node dist/chatgpt-plan-login.js login --record ~/.ai-implement/chatgpt-plan.json
+    ```
+
+    This opens your browser and saves a signed-in record to the path you give.
+  </Step>
+  <Step title="Import the record to the orchestrator">
+    Pipe in the same record file the previous step wrote:
+
+    ```bash
+    fly ssh console -a <orchestrator-app> -C "node dist/model-account-cli.js chatgpt-import --profile <profile-id>" < ~/.ai-implement/chatgpt-plan.json
+    ```
+
+    The record travels over stdin, never on the command line. Delete the laptop record file afterward.
+  </Step>
+</Steps>
+
+Sign a connected account out from the host, which revokes the token at OpenAI and stores a record with no tokens. It works even on a disabled or archived profile, so you can revoke a retired account's session:
+
+```bash
+fly ssh console -a <orchestrator-app> -C "node dist/model-account-cli.js chatgpt-logout --profile <profile-id>"
+```
+
+Read the connected account and the refresher's last outcome from the host — it never prints a token:
+
+```bash
+fly ssh console -a <orchestrator-app> -C "node dist/model-account-cli.js chatgpt-status --profile <profile-id>"
+```
+
+Inspect or sign out the laptop's own record with the local commands — `status` prints the account and time left, and `logout` revokes and clears the local tokens:
+
+```bash
+node dist/chatgpt-plan-login.js status --record ~/.ai-implement/chatgpt-plan.json
+node dist/chatgpt-plan-login.js logout --record ~/.ai-implement/chatgpt-plan.json
+```
+
+## How stored credentials are protected
+
+The orchestrator stores both API keys and connected ChatGPT plans encrypted, under a key derived from the `RUNNER_TOKEN_SECRET` that every hosted deployment already sets. No extra variable is involved.
+
+<Warning>
+  Rotating `RUNNER_TOKEN_SECRET` makes every stored credential unreadable, and nothing on the orchestrator can recover the old ones. After a rotation, set each API key again and reconnect or re-import each ChatGPT plan.
+</Warning>
+
+No token value should ever appear in a command argument, an example, a Git commit, or any published artifact:
+
+- The pairing code is typed at a hidden prompt and travels only in a request header, never on the command line.
+- API keys are write-only in the admin UI and are never shown after you save them.
+- The sign-in, status, and import commands never print a token.
+
+Connect a ChatGPT plan with the sign-in helper above — do not try to reuse a Codex `auth.json` file.
