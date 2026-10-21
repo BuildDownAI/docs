@@ -227,17 +227,20 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   </Step>
 
   <Step title="Step through the remaining configuration">
-    Runner, Provider, Capacity, Secrets, and Review steps follow. For a first run, defaults are reasonable.
+    Runner, Provider, Capacity, and Secrets steps follow, then a final **Review** step confirms your settings before you create the project. For a first run, defaults are reasonable.
 
-    The **Capacity** step exposes three optional run-cap fields:
+    The **Capacity** step exposes these optional fields:
 
     | Field | Default if blank | Purpose |
     |---|---|---|
     | `maxTurns` | 50 | Maximum Claude conversation turns per run |
     | `maxIterations` | Bedrock: 2, Anthropic: 3 | Maximum feedback-loop iterations per run |
     | `maxJobMinutes` | 90 | Wall-clock timeout before forced termination (minutes) |
+    | [`prDispatchBudget`](/latest/configuration/team-repo-mappings#param-pr-dispatch-budget) | 4 | Automatic fix runs AI-Implement starts on one PR in 24 hours |
 
     Leave any field blank to use the default. Setting these tighter than the defaults is the recommended way to control cost and reliability per project.
+
+    The project's **Reviewers** list is not in this stepper. Set it from the project's **Edit** dialog — see [`reviewers`](/latest/configuration/team-repo-mappings#param-reviewers).
 
     <Warning>
       Setting `provider` to `bedrock` requires `awsRegion` and is not compatible with `executionMode: fly-machines`.
@@ -439,6 +442,20 @@ Change the pickup label only for a planned migration, since issues on the old la
 <Note>
   Changes to settings that differ from the running process take effect after a restart. The pickup label is the exception: it takes effect at the next poll.
 </Note>
+
+#### Retry Policy
+
+The **Retry Policy** card sets the orchestrator's global retry and backoff policy, and the post-push reviewer turn cap. A blank field uses its default.
+
+- **Request Retries** — re-spawns of one Claude invocation on a transient failure. Default 2.
+- **Stage Retries** — re-runs of a whole implement/review stage. Default 1.
+- **Push Retries** — retries of a failed push. Default 2.
+- **Backoff Initial (ms)** — the first retry's backoff delay, in milliseconds. Default 30000.
+- **Backoff Max (ms)** — the largest backoff delay, in milliseconds. Default 300000.
+- **Backoff Jitter** — the fraction of each delay subtracted as jitter. Default 0.2.
+- **Review Max Turns** — the post-push reviewer turn cap, from 5 to 200. Default 30.
+
+**Review Max Turns** is the turn limit a reviewer uses when its project **Reviewers** row leaves **Max turns** blank and the reviewer has no default of its own. See [Turn limit](/latest/customize/reviewers#turn-limit).
 
 ## Developer
 

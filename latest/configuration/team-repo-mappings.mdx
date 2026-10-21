@@ -207,6 +207,33 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   See [External code reviewers](/latest/customize/external-reviewers#review-process) for the Claude Code Review verdict rules.
 </ParamField>
 
+<ParamField body="reviewers" type="array">
+  The reviewers AI-Implement runs on this project's pull requests. The admin UI labels this list **Reviewers**.
+
+  Each row holds:
+
+  - the reviewer id
+  - a **Runs** checkbox — whether the reviewer runs
+  - a **Gates** checkbox — whether the reviewer's findings block the merge
+  - **Max turns** — the reviewer's turn limit, an integer from 1 to 200
+
+  A blank **Max turns** inherits the reviewer's default turn limit. See [Turn limit](/latest/customize/reviewers#turn-limit).
+
+  **Add reviewer** adds a row by id. You cannot remove the built-in rows.
+
+  Leave the list blank to run the built-in reviewers. `gap-analysis` and `code-review` both run and gate.
+
+  A reviewer with **Gates** off still runs, but its findings do not block the merge.
+
+  See [Reviewers](/latest/customize/reviewers) for what each reviewer does and how to define one.
+</ParamField>
+
+<Warning>
+  Keep at least one of AI-Implement's own reviewers running. Under AI-Implement's own review process, a selection that leaves none makes review fail closed. AI-Implement then posts: "Project reviewer selection contains no internal reviewers; automated review is incomplete."
+</Warning>
+
+A review process that gates on an external verdict is the exception. It can run with none of AI-Implement's own reviewers.
+
 <ParamField body="reviewFixLifecycle" type="string" default="Legacy">
   The lifecycle that owns this project's automatic review-fix runs and its planning runs. The project drawer labels it **Review-fix & Planning Lifecycle**. Accepted values:
 
@@ -264,6 +291,18 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
 <Tip>
   These caps cover `/ai-implement` comment-triggered gap-fill runs as well — there is no separate per-repo setting to keep in step with them.
 </Tip>
+
+<ParamField body="prDispatchBudget" type="number" default="4">
+  The number of automatic fix runs AI-Implement starts on one pull request in 24 hours. The admin UI labels this **PR Dispatch Budget**.
+
+  At the limit, AI-Implement parks the pull request and posts:
+
+  > **AI-Implement: Needs Human.** This PR reached its limit of {n} automatic fix runs in 24 hours, so AI-Implement stopped starting new ones. Comment `/ai-implement` on the PR to run once more, or unpark the issue at /admin to resume automatic runs.
+
+  A person's `/ai-implement` comment does not count against the limit.
+
+  See [How AI-Implement works](/latest/how-it-works) for review-fix runs.
+</ParamField>
 
 ## Lifecycle
 
