@@ -10,6 +10,86 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 This page covers the most common issues you may encounter when running AI-Implement and how to resolve them. If your issue is not listed here, check the dispatch log in the admin UI at `/api/log` and the GitHub Actions run logs in the target repo for additional detail.
 
 <AccordionGroup>
+  <Accordion title="A configured stage cannot resolve">
+    Project opt-in or the next configured run stops before model work. A required stage value or usable profile is missing.
+
+    Defaults may be off, a stage may be incomplete, or the selected profile may be missing, disabled, incompatible, or not permitted. Planning must resolve even when planning runs are disabled.
+
+    Check **Models & providers → Orchestrator stage defaults** and **Settings → Orchestrator Agent Defaults → Defaults mode**. Then check every stage under **Projects → Edit → Agents**. Select an active, compatible, permitted **Account profile**. If none exists, create one with the correct **Permitted projects** using [Add account profile](/latest/providers/openai#account-profiles).
+
+    Editing `WORKFLOW.md` or disabling planning does not repair an unresolved configured stage. See [Agent settings per stage](/latest/configuration/agents).
+  </Accordion>
+
+  <Accordion title="Account readiness is unknown or the API key is not set">
+    On **Models & providers**, a profile does not show **ready**, or its **API key** column shows **not set**.
+
+    An empty **Permitted projects** list leaves no project to probe, so readiness is **unknown**. **Not set** in the **API key** column means the profile has no saved API key.
+
+    Select or create a profile permitted for your project. For an API-key profile, enter the key and click **Set key**. Follow [OpenAI account setup](/latest/providers/openai#use-an-openai-api-key).
+
+    Setting a key does not grant project permission. Adding a key to **Extra Env** does not configure the managed account.
+  </Accordion>
+
+  <Accordion title="A ChatGPT plan needs sign-in again">
+    The profile shows **sign-in required**, or **Check status** reports `reauth_required`. A managed run cannot use that sign-in.
+
+    The saved session is no longer usable. A changed encryption secret can also make an existing record unreadable.
+
+    On **Models & providers**, use **Connect ChatGPT plan** on an active plan profile and complete a new sign-in. Use the [OpenAI guide](/latest/providers/openai#connect-a-chatgpt-plan) for pairing and status checks.
+
+    Copying Codex's `auth.json` does not repair the account. Do not refresh a laptop copy of a sign-in already held by the orchestrator.
+  </Accordion>
+
+  <Accordion title="ChatGPT plan refresh failed transiently">
+    The profile shows **refresh failed (transient)** instead of requiring a new sign-in.
+
+    A temporary provider, storage, or service problem prevented refresh. The refresher schedules another attempt.
+
+    Wait for the retry, then use **Check status**. If the failure persists, check orchestrator connectivity, storage, and that `RUNNER_TOKEN_SECRET` is still set to its existing value. See [Stored credentials](/latest/providers/openai#how-stored-credentials-are-protected).
+
+    Rotating the secret is not a refresh fix. It makes stored credentials unreadable and requires new keys or sign-ins.
+  </Accordion>
+
+  <Accordion title="The ChatGPT pairing code is not valid">
+    The laptop helper cannot upload its sign-in record, or reports that the pairing code is not valid.
+
+    A code is single-use and expires after 15 minutes. A rejected upload also consumes it, and a newly generated code replaces the previous one.
+
+    Click **Connect ChatGPT plan** again for a fresh code, then follow [Connect a ChatGPT plan](/latest/providers/openai#connect-a-chatgpt-plan). Check that the profile is active and uses ChatGPT plan authentication.
+
+    Reusing the old code cannot work. If the upload response was lost, follow the guide's cleanup instructions; local `logout` can revoke a sign-in the orchestrator already received.
+  </Accordion>
+
+  <Accordion title="GitHub Actions agent opt-in is refused">
+    Saving **Opt in to stage agent configuration** fails with a runner, workflow, or delivery-readiness message.
+
+    The workflow may be stale, or AI-Implement cannot confirm credential delivery and runner compatibility. An `unsupported_backend` response can mean GHA delivery readiness could not be confirmed; it does not establish that every GHA configuration is unsupported.
+
+    Use **Sync workflows** on the project, merge its target-repository PR, and retry opt-in. Check GitHub App access and the selected profiles if readiness remains unavailable. See [Readiness](/latest/configuration/agents#when-opt-in-is-refused-for-readiness).
+
+    Changing a prompt model or adding model secrets to **Extra Env** does not update workflow capabilities.
+  </Accordion>
+
+  <Accordion title="A Codex invocation reached its elapsed timeout">
+    A Codex stage stops before producing its required result, even though it has no Claude turn cap.
+
+    Its invocation exhausted the configured elapsed time, or the remaining job deadline shortened that time.
+
+    Narrow the task, or change **Invocation timeout (ms)** under **Projects → Edit → Agents**. Inherited defaults use **Elapsed time limit (ms)** on **Models & providers**. Check the job timeout too. See [Timeouts and limits](/latest/configuration/agents#timeouts-and-limits).
+
+    Raising **Max Turns** or **Review Max Turns** does not increase a Codex timeout.
+  </Accordion>
+
+  <Accordion title="Managed Restate review-fix is refused on Fly or local Docker">
+    An ordinary Codex run succeeds, but the project cannot enable the Restate review-fix lifecycle on that backend.
+
+    Managed Restate review-fix currently admits GitHub Actions only. Ordinary Legacy Fly and standalone local runs are separate paths.
+
+    Use GitHub Actions for this managed path, or leave **Review-fix & Planning Lifecycle** on **Legacy**. Check the [managed review-fix prerequisites](/latest/reference/post-push-review#managed-review-fix-with-codex).
+
+    An ordinary run does not prove live restart, cancellation, retry, or expired-token recovery for managed Restate review-fix.
+  </Accordion>
+
   <Accordion title="An issue is triggered but no PR appears">
     The orchestrator polls for eligible issues every 60 seconds (configurable via `POLL_INTERVAL_MS`). If a triggered issue does not produce a PR after a few minutes, check the following in order:
 
@@ -75,9 +155,10 @@ This page covers the most common issues you may encounter when running AI-Implem
   <Accordion title="The run hit the time limit">
     This is a wall-clock limit, and it is not the same as [Reached max turns](#reached-max-turns) — that one is a cap on how many steps Claude takes, not how long the run lasts. A run can hit either bound independently.
 
-    Two wall-clock bounds exist:
+    Wall-clock bounds include:
     - **The job timeout**, which limits a GitHub Actions run. The default is 90 minutes. A run that passes it without finishing is [detected as overdue and recovered](/latest/reference/run-statuses#overdue-run-recovery), not left to hang.
     - **The machine timeout**, which ends a Fly Machine session 60 minutes after it is dispatched. This bound is fixed and cannot be configured.
+    - **A configured invocation timeout**, which can stop a stage before the whole job ends. See [Codex elapsed timeout](#a-codex-invocation-reached-its-elapsed-timeout).
 
     Hitting either usually means the ticket was over-scoped for one run rather than that anything is broken. Splitting the ticket is the more reliable fix — a narrower issue finishes inside the budget and produces a reviewable diff.
 

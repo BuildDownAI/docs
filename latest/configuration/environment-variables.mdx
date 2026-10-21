@@ -7,10 +7,10 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-The AI-Implement orchestrator is configured entirely through environment variables.
+Environment variables configure the orchestrator process and legacy workflow authentication. Project settings, stage selections, and managed account profiles also have saved admin UI configuration.
 Where each one goes depends on what reads it:
 - On the orchestrator service itself
-- As GitHub Actions secrets on each **target repo** (read by the synced workflow files when Claude runs).
+- As GitHub Actions secrets on each **target repo** (read by the synced workflow files).
 
 A few credentials are needed in more than one context, though only one pair changes names between contexts:
 - On the **orchestrator**: `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY`
@@ -21,6 +21,12 @@ These both refer to the same GitHub app's credentials. Nothing else is renamed a
 The variables are read at startup; restart the app after changing them.
 
 Pick the tab that matches where you're configuring right now.
+
+## Managed Codex accounts
+
+Configure Codex credentials through [OpenAI account profiles](/latest/providers/openai), then select them in [stage settings](/latest/configuration/agents). An all-Codex configured project does not require a legacy Anthropic credential.
+
+Do not put `OPENAI_API_KEY`, `CHATGPT_PLAN_ACCESS_TOKEN`, or copied session data in project **Extra Env**. Managed runs deliver the selected credential through their protected account path; credential-bearing overrides can be refused.
 
 <Tabs>
   <Tab title="Orchestrator runtime">
@@ -326,6 +332,12 @@ Pick the tab that matches where you're configuring right now.
 
         <ParamField body="RUNNER_TOKEN_SECRET" type="string">
           Secret used to mint and validate short-lived runner-callback tokens. Required when `RUNNER_CALLBACK_BASE_URL` is set.
+
+          It also protects stored API keys and ChatGPT plan records.
+
+          <Warning>
+            Rotation makes existing stored credentials unreadable. Set API keys again and reconnect or re-import plans afterward. See [Stored credentials](/latest/providers/openai#how-stored-credentials-are-protected).
+          </Warning>
         </ParamField>
       </Accordion>
 
@@ -364,7 +376,7 @@ Pick the tab that matches where you're configuring right now.
       </Accordion>
 
       <Accordion title="Claude provider forwarding (Fly Machines / local Docker only)">
-        These are read by the orchestrator and forwarded to runner sessions when `RUNNER_MODE` is `fly` or `local`.
+        Legacy Claude runs read these from the orchestrator and forward them when `RUNNER_MODE` is `fly` or `local`. Configured runs use their selected account profiles.
         
         For GitHub Actions runner mode, the synced workflow uses its own repo secrets directly (see the **Target-repo workflow secrets** tab); these runtime values are unused.
 
@@ -380,7 +392,7 @@ Pick the tab that matches where you're configuring right now.
   </Tab>
 
   <Tab title="Target-repo workflow secrets">
-    GitHub Actions secrets on **each target repo** (the repos Claude opens PRs in, not the orchestrator repo). Read by `claude-implement.yml` and `claude-plan.yml` when the workflows run.
+    GitHub Actions secrets on **each target repo**, not the orchestrator repo. Read by `claude-implement.yml` and `claude-plan.yml` when the workflows run.
     
     Configure under **Settings → Secrets and variables → Actions** on each target repo (or at the organization level so all target repos inherit them).
 
@@ -402,7 +414,9 @@ Pick the tab that matches where you're configuring right now.
       GitHub App RSA private key (PEM, with newlines escaped as `\n`). Same value as the orchestrator's `GITHUB_APP_PRIVATE_KEY`.
     </ParamField>
 
-    ### Claude provider (one provider required)
+    ### Legacy Claude authentication
+
+    The credentials below apply to the legacy provider route. Configured projects authenticate with their selected account profiles instead.
 
     <ParamField body="CLAUDE_CODE_OAUTH_TOKEN" type="string">
       Claude Code OAuth token. Preferred over the API key when present.

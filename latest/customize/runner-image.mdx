@@ -38,6 +38,18 @@ The default base image is:
 ghcr.io/builddownai/ai-implement-runner:latest
 ```
 
+## Codex compatibility
+
+Configured Codex runs need a compatible shared runner with the Codex CLI and the selected-agent execution support. The published runner includes a pinned Codex CLI.
+
+A custom image must retain that support and the runner entrypoint. Installing a Codex binary alone does not make an older runner compatible.
+
+Use **Sync workflows** on the project and merge its target-repository PR when workflow readiness reports incompatibility. Then retry [project opt-in](/latest/configuration/agents#opt-a-project-in).
+
+Check the image and selected agent in the actual run evidence. Publishing a new tag does not prove an existing run used it.
+
+Ordinary Fly or local Codex runs are separate from [managed Restate review-fix](/latest/reference/post-push-review#managed-review-fix-with-codex), which currently requires GitHub Actions. See [local feedback](/latest/customize/local-harness#run-the-repeatable-feedback-gate) for a repeatable source and image check.
+
 ## Setup steps
 
 <Steps>
