@@ -54,7 +54,42 @@ If you have that branch checked out, your local copy has diverged and needs a fr
 
 Three review passes allow two fix passes, which is why the counter reads `1/2` and then `2/2`.
 
-A fix pass that changes no files stops the loop instead of spending what is left of the budget.
+A fix pass that changes no files usually stops the loop. A pass that disposes of all remaining external findings can continue to review without a push. See [Finding dispositions](#finding-dispositions).
+
+## Finding dispositions
+
+The fixing agent gives each external review finding a disposition:
+
+The replies below apply to matching review threads.
+
+| Disposition | Meaning | What happens next |
+|---|---|---|
+| `fixed` | The agent changed the code to address the finding. | Review checks the result again. |
+| `follow-up` | The finding asks for behavior the issue does not require. | AI-Implement replies `Deferred as a follow-up: {reason}`, resolves the thread, and defers the finding. |
+| `invalid` | The finding is wrong about the code. | AI-Implement replies `Not changed: {reason}`. The thread stays open for review. |
+
+A defect in lines the PR changed is always in scope. The agent must fix it or explain why it is invalid. It cannot defer that defect as a follow-up.
+
+A deferred finding no longer blocks the merge. A later report of the same finding does not reopen it.
+
+AI-Implement lists deferred findings in a comment on the tracker issue:
+
+```text
+**AI-Implement deferred {count} review finding(s) as follow-ups** on PR #{number}.
+These asked for work this issue does not require. They no longer block the merge. Please triage them.
+```
+
+AI-Implement does not create follow-up issues from that list. Read the reasons and file any work you want to pursue.
+
+When a pass disposes of all remaining external findings, no code change is needed. If no internal blocking findings remain, review runs again without a push:
+
+```text
+ℹ️ Fix pass {pass} made no code changes; disposed of {count} external finding(s) instead.
+
+**Merge readiness:** Not ready to merge; re-reviewing.
+```
+
+Deferral also takes effect on auto-merged child PRs. Review the deferred work during the final [grouping review](/latest/reference/feature-branch-grouping).
 
 ## The report
 
