@@ -20,7 +20,7 @@ Because the orchestrator acts as the app, every status change, label, and commen
 <Warning>
   You need the **Admin** role on the Linear workspace to create an application. **Team Owner is not sufficient** — that role is scoped to a team and cannot create workspace applications.
 
-  If you don't have Admin, ask someone who does to create the app and pass you the client ID and secret. Nothing else in this guide needs elevated access.
+  If you don't have Admin, ask an administrator to create the app and pass you the client ID and secret. They must also prepare the workspace-level **Ready for Review** label described below.
 </Warning>
 
 An app's credentials work only on the workspace it was created in, so one orchestrator instance serves one Linear workspace. To connect a second workspace, create a second app there and run a second orchestrator instance against it.
@@ -78,11 +78,41 @@ Set these three variables on the orchestrator. For a Fly.io deployment use `fly 
   Set `LINEAR_WORKSPACE_URL` even though the orchestrator starts without it. It's the base for every issue link in notifications and the admin UI, and it falls back to `https://linear.app` — so leaving it unset produces links that look valid but don't resolve to your workspace.
 </Warning>
 
-## Prepare the Ready for Review label
+## Prepare the Linear labels
 
-AI-Implement creates the per-team labels it needs automatically. One label is different: **Ready for Review** is workspace-level, and creating a workspace-level label requires admin permission that an application identity cannot hold.
+Create the pickup label and the workspace-level review label before your first run. AI-Implement creates the other lifecycle labels when it needs them.
 
-If your workspace already has a label with that name, AI-Implement reuses it and there's nothing to do. If it doesn't, create it by hand once before your first run.
+| Label | Purpose | Who creates it |
+|---|---|---|
+| `AI-Implement` | Marks an issue for pickup. This is the default name. | You, before marking your first issue. |
+| `AI-Planning` | Marks an active planning run. | AI-Implement, when planning starts. |
+| `Plan-Complete` | Records successful planning. | AI-Implement, when planning succeeds. |
+| `AI-Working` | Marks an active implementation run. | AI-Implement, when implementation starts. |
+| `Ready for Review` | Marks an issue whose PR is ready for review. | A workspace administrator, before your first run. |
+
+<Steps>
+  <Step title="Create the pickup label">
+    In Linear, open **Settings → Workspace → Labels** to create a workspace label, or **Team settings → Labels** to create one for a mapped team. Reuse an existing label if it is available to the team.
+
+    Name it exactly `AI-Implement`, including capitalization. If your orchestrator uses a custom name, use the active value under **Settings → Linear Pickup Label** in the admin UI instead.
+
+    The pickup label can be workspace-wide or team-specific. Make sure every mapped team can apply it to its issues.
+  </Step>
+
+  <Step title="Create the workspace review label">
+    As a workspace administrator, open **Settings → Workspace → Labels** and create `Ready for Review` as a workspace-level label. If it already exists, check that it is available across the workspace and reuse it.
+
+    <Warning>
+      Prepare this label before your first run. The application identity cannot create a workspace-level label with the required admin permission, so marking an issue ready for review can fail if it is missing.
+    </Warning>
+  </Step>
+</Steps>
+
+You do not need to create `AI-Planning`, `Plan-Complete`, or `AI-Working` manually. AI-Implement reuses an existing label for the issue's team or the workspace; otherwise, it creates a team-level label. The planning labels are used only when planning runs.
+
+Keep these as separate labels, outside a shared label group. Linear allows only one label from a [label group](https://linear.app/docs/issue-properties#label-groups) on an issue at a time, but the pickup and lifecycle labels must coexist.
+
+Apply the pickup label to request work. AI-Implement applies and removes the lifecycle labels as the run progresses. Changing the pickup name does not rename those lifecycle labels. See [Triggers and status indicators](/latest/reference/labels) for the full lifecycle.
 
 ## What's next
 
