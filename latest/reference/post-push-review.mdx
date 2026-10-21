@@ -46,6 +46,8 @@ Every comment it leaves ends with a **Merge readiness** line, so the newest comm
 
 A review pass that finds problems lists each one in a comment, then hands the list to a fix pass that edits the code.
 
+For a configured project, internal verdicts use the **review** stage and code fixes use **implementation**. Selecting Codex review does not change the fixing agent. See [Use Codex for internal review](/latest/customize/reviewers#use-codex-for-internal-review).
+
 The fix pass commits its work with a message like `fix: address review feedback (iter 1)` and force-pushes it to the pull request branch.
 
 The fix pass pushes with a lease on its own last push. When the branch moved since that push, the push stops and does not overwrite the other commits.
@@ -130,6 +132,27 @@ When the GitHub App cannot read check runs at all, the run stops with [`CHECKS_P
 - **On a gap-fill run.** Those update a pull request that has already been through this.
 - **On a draft pull request.** When a run's own review never approves, it opens the pull request as a draft and skips this review — and nothing later marks that draft ready.
 - **When the run never opened a pull request.**
+
+## Managed review-fix with Codex
+
+Automatic managed review-fix under **Restate (pilot)** admits configured Codex runs on GitHub Actions. It requires:
+
+- An active project using GitHub Actions and the Restate lifecycle.
+- A healthy, registered Restate endpoint and working callback authentication.
+- Current synced workflows on the dispatch branch, with compatible managed-credential and runner capabilities.
+- Complete stage selections and active, compatible account profiles permitted for the project.
+
+Use **Sync workflows** and merge its target-repository PR before retrying an incompatible workflow. See [Review-fix & Planning Lifecycle](/latest/configuration/team-repo-mappings#param-review-fix-lifecycle) for enabling the lifecycle.
+
+The GHA path can admit OpenAI API-key and ChatGPT plan profiles, including supported mixed-agent selections. Codex implementation also requires the compatible workflow's GitHub-hosted runner path.
+
+<Warning>
+  Managed Restate review-fix does not admit Fly Machines or local Docker runs. Managed Claude subscription profiles remain unsupported. Ordinary Fly or local Codex success does not establish support for those managed paths.
+</Warning>
+
+Selection support and live validation are different. The recorded normal-completion proof covers GHA with a ChatGPT plan. API-key, mixed-stage, and full recovery acceptance remain pending.
+
+Do not infer proven restart, cancellation, retry, or expired-token recovery from a successful ordinary run.
 
 ## Send the work back with `/ai-implement`
 
