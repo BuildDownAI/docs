@@ -11,6 +11,16 @@ After AI-Implement opens a pull request, it reviews that pull request again. The
 
 This is a second, independent review. The run that wrote the code reviewed its own work before pushing; this pass starts over against the pushed result.
 
+## The reviewers
+
+Each review pass runs the project's selected reviewers in a fixed order:
+
+1. `gap-analysis`
+2. `code-review`
+3. any other selected reviewers
+
+For the built-in reviewers, how a project selects which reviewers run and gate, and how to add your own, see [Reviewers](/latest/customize/reviewers).
+
 ## What you see on the pull request
 
 The review opens with a comment reading `🔍 Running post-implementation review...`, then works through up to three review passes.
@@ -22,7 +32,11 @@ Every comment it leaves ends with a **Merge readiness** line, so the newest comm
 | `Ready to merge.` | A review pass found nothing to fix. |
 | `Awaiting follow-up review.` | A fix pass pushed changes and the next review pass has not run yet. |
 | `Not ready to merge.` | Problems remain — either a fix pass is starting, or the passes ran out. |
+| `Not ready to merge; re-reviewing.` | A fix pass changed no files but resolved external findings, so the next review pass runs. |
+| `Not ready to merge; waiting for the repository's auto-fix.` | AI-Implement does not run a fix pass and waits for the repository's own auto-fix. See [External code reviewers](/latest/customize/external-reviewers). |
+| `Manual review required.` | AI-Implement's reviewers and a separate review tool both found blocking problems, so no fix pass runs. |
 | `Manual review required; automated review did not complete.` | The review could not finish, so nothing was judged. |
+| `Manual review required; check runs could not be read.` | AI-Implement could not read the pull request's check runs, so it could not judge the checks. |
 | `Manual review required; external review did not complete.` | The review itself was clean, but a separate review tool never reported. |
 | `Manual review required; external review verdict unavailable.` | A separate review tool reported, but its verdict could not be read. |
 
@@ -32,11 +46,23 @@ Every comment it leaves ends with a **Merge readiness** line, so the newest comm
 
 A review pass that finds problems lists each one in a comment, then hands the list to a fix pass that edits the code.
 
-The fix pass commits its work with a message like `fix: address review feedback (iter 1)` and force-pushes it to the pull request branch. If you have that branch checked out, your local copy has diverged and needs a fresh pull.
+The fix pass commits its work with a message like `fix: address review feedback (iter 1)` and force-pushes it to the pull request branch.
+
+The fix pass pushes with a lease on its own last push. When the branch moved since that push, the push stops and does not overwrite the other commits.
+
+If you have that branch checked out, your local copy has diverged and needs a fresh pull.
 
 Three review passes allow two fix passes, which is why the counter reads `1/2` and then `2/2`.
 
 A fix pass that changes no files stops the loop instead of spending what is left of the budget.
+
+## The report
+
+AI-Implement publishes the reviewers' reports as one GitHub pull-request review of type **Comment**. The review is not an approval — see [Approval is a comment, not an approving review](#approval-is-a-comment-not-an-approving-review).
+
+The status comment links to this review as **Full reviewer report**. When AI-Implement cannot publish the review or gets no usable link, the status comment carries the full report instead.
+
+Each reviewer has its own section in the review. The section shows the reviewer's label, its verdict, and a `Checks:` list. For what a reviewer puts in that report, see [Reviewers](/latest/customize/reviewers#what-the-reviewer-returns).
 
 ## Approval is a comment, not an approving review
 
@@ -50,22 +76,19 @@ GitHub does not let an author approve their own pull request, and here the pull 
 
 ## External review tools
 
-If your repository runs a separate review tool that reports as a check on the pull request, the post-push review waits up to five minutes for that check on the current commit before deciding anything.
+A repository can run a separate review tool that reports as a check on the pull request. AI-Implement waits up to five minutes for a matching review check before it decides merge readiness.
 
-What happens then depends on what the check did:
+For the contract the tool follows, the check states AI-Implement waits for, the wait outcomes, and which findings gate the merge, see [External code reviewers](/latest/customize/external-reviewers).
 
-- **No matching check exists** — the review proceeds on its own verdict.
-- **The check is still running when the wait ends** — the review does not approve, and asks for a person instead.
-- **The check finished without reaching a verdict**, because it was cancelled or skipped — treated the same as still running.
-- **The check reported findings** — they block approval.
+## CI checks
 
-<Note>
-  Findings are split by whether they gate the pull request. A finding that does not gate is reported alongside the verdict and does not stand in the way of approval.
-</Note>
+AI-Implement reads the check runs on the pull request's current head.
 
-Which check names count, and whether to wait at all, are set per repository — see [Custom pipeline steps](/latest/customize/custom-steps).
+When a non-review check fails, the review adds the blocking finding **CI check failing**, so a failing check never reaches `Ready to merge`.
 
-The project's review process decides which check and which comments count — see [External code reviewers](/latest/customize/external-reviewers#review-process).
+When AI-Implement cannot read the check status because of a server error, it adds the blocking finding **CI check status could not be verified**.
+
+When the GitHub App cannot read check runs at all, the run stops with [`CHECKS_PERMISSION_DENIED`](/latest/reference/run-statuses#the-review-cannot-read-check-runs).
 
 ## When the post-push review does not run
 
