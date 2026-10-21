@@ -1,0 +1,56 @@
+---
+title: "Test a Restate service in three layers"
+description: "The standard for testing a Restate service: fast unit tests, Restate scenarios on the real server binary, and a manual operator gate — with the rules for the shared harness, CI databases, and CI credentials."
+---
+
+A service built on Restate tests its durable code in three layers. Each layer proves something the others cannot and needs its own setup. The two automated layers each carry a command, and the operator gate runs by hand.
+
+## The three layers
+
+| Layer | Command | What it proves | What it needs |
+|---|---|---|---|
+| Unit | `npm test` | Branch logic, error mapping, wire shapes | No network and no Docker |
+| Restate scenarios | `npm run test:restate` | Serialisation, retry, idempotency, suspension, and a crash that resumes at the right step | The `restate-server` binary from `node_modules`, so no Docker; its own CI job |
+| Operator gate | By hand | Behaviour against real third-party systems, such as Fly, Google, or a real orchestrator | A test organisation with real third-party access |
+
+The operator gate has no command. A person runs it before a work step closes, and it:
+
+- runs against a test organisation, never production
+- cleans up whatever it creates
+- records its results on the issue
+
+## The harness shape
+
+A single harness file declares the test server, its two variants, and the fetch helpers that call handlers over the wire.
+
+A test file imports these and never declares its own, so every scenario boots the server and reads a response the same way.
+
+The two variants boot the same services with different server options:
+
+- **`alwaysReplay`** forces the server to suspend and replay the handler at every step, so a handler that is not deterministic on replay fails here.
+- **`disableRetries`** fails a thrown handler error at once instead of retrying it, so an error path surfaces without waiting out a backoff.
+
+**The empty-body rule.** A handler with no return value answers a success with an empty response body. The fetch helpers read the response as text and treat an empty body as no value, rather than parsing it as JSON and failing.
+
+## Databases
+
+Each CI run gets a fresh Neon branch, created from a clean `test` branch that already carries seed data.
+
+<Warning>
+  Never create the CI branch from production. A branch copies every row, including the auth signing keys — branching production hands those keys to CI.
+</Warning>
+
+## Credentials in CI
+
+CI never holds a credential that can create real infrastructure, such as a Fly organization token.
+
+Any check that needs one of those credentials belongs to the operator gate, where a person runs it — not a CI step.
+
+## When to write which test
+
+Ask one question of the assertion: with Restate removed, would it still mean something?
+
+- **Yes — write a unit test** — parsing, a branch, an error-to-status mapping, a wire shape.
+- **No — write a Restate scenario.** The assertion is about what the engine does with the handler: serialisation, retry, idempotency, suspension, replay determinism.
+- **Neither can be faked — use the operator gate.** The check needs a real third-party system and runs by hand.
+- **A slow time boundary stays in the unit tier.** Factor a real wait into a pure function and test that function, rather than making a scenario wait out the clock.
