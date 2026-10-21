@@ -142,11 +142,11 @@ You can change the concurrency cap for a team from the admin UI or by sending a 
 
 ## /ai-implement comment trigger
 
-Commenting `/ai-implement` on a PR that was opened by AI-Implement triggers a gap-fill run — no label or status field is needed. The comment must **start with** `/ai-implement` and must be posted by a collaborator with write access to the repo.
+Commenting `/ai-implement` on a PR that AI-Implement opened starts a gap-fill run — no label or status field is needed. The comment must **start with** `/ai-implement`, and the person who posts it must have write access to the repo.
 
-Anything you write after the trigger is passed to Claude as an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to let Claude work from the existing review comments alone.
+Anything after the trigger becomes an instruction for that run, as in `/ai-implement also add tests for the error paths`. Leave it bare to use the configured gap-fill prompt.
 
-The gap-fill run checks out the existing PR branch, reviews prior review comments on the PR, and pushes additional commits to address any gaps identified. The issue link and PR metadata are preserved from the original run.
+For how AI-Implement handles the comment alongside review feedback — the dispatch rules, the PR Dispatch Budget, and roll-up PRs — see [How AI-Implement works](/latest/how-it-works).
 
 <Tip>
   The trigger is handled by the orchestrator directly once the target repo has synced its workflow files — use the **Sync workflows** action on its project row in the admin UI if the repo predates this. It also requires the GitHub App's webhook to be configured; see [Create a GitHub App](/latest/setup/github-app).
