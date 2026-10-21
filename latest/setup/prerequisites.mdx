@@ -1,6 +1,6 @@
 ---
 title: "Prerequisites for running AI-Implement"
-description: "What accounts, credentials, and access you need before installing AI-Implement — Linear, GitHub, a Claude provider, and a place to run the orchestrator."
+description: "What accounts, credentials, and access you need before installing AI-Implement — a tracker, GitHub, model access, and a place to run the orchestrator."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
@@ -40,16 +40,20 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
 
     <Columns cols={2}>
       <Card title="Fly.io (recommended)" icon="cloud">
-        A Fly.io account lets you deploy the orchestrator as a managed app. It runs comfortably on a `shared-cpu-1x` machine with 256 MB of memory. See [Deploy the orchestrator](/latest/setup/deploy) for instructions.
+        A Fly.io account lets you deploy the orchestrator as a managed app. The supplied deployment uses a `shared-cpu-1x` machine with 2 GB of memory. See [Deploy the orchestrator](/latest/setup/deploy) for instructions.
       </Card>
       <Card title="Any server running Node.js" icon="server">
-        You can run the orchestrator on any server or local machine that has Node.js 20 or later installed. The local development workflow is covered in [Deploy the orchestrator](/latest/setup/deploy).
+        You can run the orchestrator on any server or local machine that has Node.js 24.x installed. The local development workflow is covered in [Deploy the orchestrator](/latest/setup/deploy).
       </Card>
     </Columns>
   </Step>
 
-  <Step title="A Claude provider">
-    AI-Implement supports three ways to authenticate with Claude. You need at least one:
+  <Step title="Choose model access">
+    For Codex, use an OpenAI API key or connect your own ChatGPT plan on **Models & providers**. Follow [Use Codex with OpenAI](/latest/providers/openai) after creating your project mapping. A configured project that uses Codex for every stage does not need an Anthropic credential.
+
+    A connected ChatGPT plan is for personal and self-hosted use of your own account. Hosted subscription runs also require a private or internal repository authorized for subscription testing. See the [Codex guide](/latest/providers/openai) for the connection and readiness checks.
+
+    If you keep a project on legacy Claude behavior, choose one of these credential paths:
 
     | Provider | What you need |
     |---|---|
@@ -58,12 +62,18 @@ Before you install AI-Implement, gather everything in the checklist below. Each 
     | AWS Bedrock | An AWS account with Bedrock access and an IAM role configured for GitHub OIDC |
 
     <Note>
-      You configure the provider per target repo, not globally. If you are just getting started, an Anthropic API key is the simplest path.
+      These repository secrets apply to legacy Claude projects. Configured projects select a managed account profile for each stage; see [Agent settings per stage](/latest/configuration/agents).
     </Note>
   </Step>
 
-  <Step title="Node.js 20 or later (for local development)">
-    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 20 or later installed on your machine. For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
+  <Step title="A compatible runner and synced workflows">
+    The Codex setup path uses GitHub Actions with a compatible runner image and current workflow templates. Merge the workflow pull request from project creation before opting in. For an existing project, use **Sync workflows** on **Projects** and merge that pull request first.
+
+    See [Runner images](/latest/customize/runner-image) for compatibility checks. Managed post-push review-fix support also requires a healthy Restate connection; [Managed review-fix](/latest/reference/post-push-review#managed-review-fix-with-codex) describes the supported backend and remaining live-validation limits.
+  </Step>
+
+  <Step title="Node.js 24.x (for local development)">
+    If you plan to run the orchestrator locally or contribute to the codebase, you need Node.js 24.x installed on your machine. For production Fly.io deployments, Node.js is included in the build — you do not need to install it separately.
   </Step>
 </Steps>
 

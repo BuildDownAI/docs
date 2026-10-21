@@ -1,6 +1,6 @@
 ---
 title: "Quick start: your first AI-generated PR"
-description: "Set up AI-Implement locally and get your first Claude-generated pull request in about 30 minutes, from cloning the repo to watching the PR appear."
+description: "Set up AI-Implement, choose Codex or Claude Code, and verify your first pull request."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
@@ -10,7 +10,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 This guide walks you through running AI-Implement for the first time. By the end, you'll have the orchestrator running locally, a target repo connected, and a Linear issue on its way to becoming a pull request.
 
 <Note>
-  Before you start, make sure you have: a Linear or Jira workspace with API access, a GitHub App you control, a Fly.io account (for the runner), and an Anthropic API key or AWS Bedrock access. See [Prerequisites](/latest/setup/prerequisites) for details on setting each one up.
+  Before you start, make sure you have: a Linear or Jira workspace with API access, a GitHub App you control, Node.js 24.x, and model access for your selected agent. Codex uses a managed OpenAI profile; legacy Claude projects use their existing provider credentials. See [Prerequisites](/latest/setup/prerequisites) for details on setting each one up.
 </Note>
 
 <Steps>
@@ -59,11 +59,20 @@ This guide walks you through running AI-Implement for the first time. By the end
     </Tabs>
 
 
-    The other variables in `.env.example` are optional for a first run:
+    For the Codex path, also set these orchestrator values:
+
+    | Variable | Description |
+    |---|---|
+    | `ADMIN_ACCESS_CODE` | A non-empty access code for the admin UI, unless you configure sign-in |
+    | `RUNNER_TOKEN_SECRET` | A stable secret for callback tokens and encrypted model credentials; keep it unchanged across restarts |
+    | `RUNNER_CALLBACK_BASE_URL` | The orchestrator's public HTTPS base URL, reachable from GitHub Actions |
+
+    A GitHub-hosted job cannot call back to `localhost`. Expose your local orchestrator through a reachable HTTPS URL, or [deploy a persistent orchestrator](/latest/setup/deploy). Planning refuses dispatch without the callback URL and secret.
+
+    These settings are optional for a first run:
 
     | Variable | Default | Description |
     |---|---|---|
-    | `ADMIN_ACCESS_CODE` | _(none)_ | Password for the admin UI — needed unless you configure sign-in |
     | `NOTIFY_TYPE` | `slack` | Notification provider: `slack` or `teams` |
     | `NOTIFY_WEBHOOK_URL` | _(none)_ | Webhook URL — notifications are skipped if unset |
     | `POLL_INTERVAL_MS` | `60000` | How often the orchestrator polls for new issues, in milliseconds |
@@ -82,9 +91,12 @@ This guide walks you through running AI-Implement for the first time. By the end
     |---|---|
     | `AI_IMPLEMENT_APP_ID` | Your GitHub App's numeric ID |
     | `AI_IMPLEMENT_PRIVATE_KEY` | Your GitHub App's PEM private key |
-    | `ANTHROPIC_API_KEY` | Your Anthropic API key |
 
-    If you prefer Claude Code OAuth authentication over an API key, add `CLAUDE_CODE_OAUTH_TOKEN` instead of (or in addition to) `ANTHROPIC_API_KEY`. OAuth takes precedence.
+    These GitHub App secrets are shared by both agent paths.
+
+    For a **legacy Claude project**, also add `ANTHROPIC_API_KEY`, or use `CLAUDE_CODE_OAUTH_TOKEN` (which takes precedence). Bedrock has its [own setup](/latest/providers/aws-bedrock).
+
+    For an **all-Codex configured project**, skip the Anthropic secrets. You will add the managed OpenAI credential after creating the project mapping.
 
     See [Environment variables for AI-Implement](/latest/configuration/environment-variables) for more detailed information on each variable.
   </Step>
@@ -104,7 +116,9 @@ This guide walks you through running AI-Implement for the first time. By the end
     The orchestrator starts polling for new issues and serving HTTP on port 8080. You should see log output confirming both.
 
     <Tip>
-      Want to run the entire loop on your own machine? `npm run dev:local` executes each job locally instead of on GitHub Actions — the orchestrator still polls your ticketing system and opens pull requests. See [Local development](/latest/setup/deploy#local-development) for what it needs and when to use it.
+      Want to run the entire loop on your own machine? `npm run dev:local` executes ordinary jobs locally instead of on GitHub Actions — the orchestrator still polls your ticketing system and opens pull requests. See [Local development](/latest/setup/deploy#local-development) for what it needs and when to use it.
+
+      For a configured Codex smoke, follow the [local Codex procedure](/latest/customize/local-harness#run-codex-with-an-external-configuration). Local Docker does not provide the managed GitHub Actions review-fix path.
 
       `npm run dev:run` is the smaller one: a single task read from a file, with no ticketing system and no orchestrator involved. See the [local harness](/latest/customize/local-harness).
     </Tip>
@@ -113,7 +127,7 @@ This guide walks you through running AI-Implement for the first time. By the end
   <Step title="Create a project mapping in the admin UI">
     Open the admin UI at [http://localhost:8080/admin](http://localhost:8080/admin) and enter your `ADMIN_ACCESS_CODE`.
 
-    Click **Configure → Projects → + New project** to open the stepper. The stepper has 8 steps; for a first run, fill ticketing config and source, then accept defaults for the rest.
+    Click **Configure → Projects → + New project** to open the stepper. Fill in the ticketing and source fields first.
 
     <Tabs>
       <Tab title="Linear">
@@ -138,7 +152,7 @@ This guide walks you through running AI-Implement for the first time. By the end
       Nothing checks the default branch name against the repository when you save. A default branch name that does not exist saves cleanly and fails the run at its first step, when the runner tries to clone it.
     </Warning>
 
-    Click through the remaining steps (Runner, Provider, Capacity, Secrets, Review) accepting defaults, then **Create project**.
+    Choose **GitHub Actions** as the runner for this Codex path. Complete the remaining project fields, then click **Create project**. Stage settings are added after the project exists.
   </Step>
 
   <Step title="Review and merge the workflow pull request">
@@ -146,9 +160,23 @@ This guide walks you through running AI-Implement for the first time. By the end
 
     Merge it before continuing — the workflows have to be on the default branch for AI-Implement to dispatch them.
 
-    <Warning>
-      After merging, go to the target repo's **Settings → Actions → General** and enable **"Allow GitHub Actions to create and approve pull requests"**. Without this, Claude cannot open PRs.
-    </Warning>
+    Check that the [runner image supports Codex](/latest/customize/runner-image). For an existing project, use **Sync workflows** and merge the update before continuing.
+
+    The workflows open pull requests using the GitHub App credentials. The **Allow GitHub Actions to create and approve pull requests** setting is not required.
+  </Step>
+
+  <Step title="Add your OpenAI account">
+    To use Codex, open **Models & providers** as an administrator. [Create a Codex account profile](/latest/providers/openai#account-profiles), permit it for the new project, then set an OpenAI API key or connect your own ChatGPT plan. Follow that guide's readiness checks before continuing.
+
+    Skip this step and the next if you are keeping the project on legacy Claude behavior.
+  </Step>
+
+  <Step title="Choose the agents and opt the project in">
+    Follow [Agent settings per stage](/latest/configuration/agents) to fill **Orchestrator stage defaults**, then set **Settings → Orchestrator Agent Defaults → Defaults mode** to `configured`.
+
+    For an all-Codex setup, select `codex`, `openai`, an available model, the permitted OpenAI profile, and an elapsed timeout for all three stages. Setting defaults does not enroll a project.
+
+    On **Projects**, open **Edit → Agents** for the saved project. Check the effective values, select **Opt in to stage agent configuration**, and click **Save agent settings**. If readiness refuses the save, use the [troubleshooting guide](/latest/reference/troubleshooting).
   </Step>
 
   <Step title="Create the trigger in your ticketing system">
@@ -187,13 +215,19 @@ This guide walks you through running AI-Implement for the first time. By the end
       </Tab>
     </Tabs>
 
-    Within 60 seconds (one poll cycle), the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Claude checks out the repo, reads `WORKFLOW.md`, implements the issue, and opens a PR.
+    On the next eligible poll, the orchestrator picks it up, marks it in progress, and dispatches the GitHub Actions workflow. Planning runs first if enabled. The selected implementation agent reads `WORKFLOW.md` and changes the code; the pipeline pushes the branch and opens a PR.
 
     When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label; Jira: `AI-Implement Status = PR Ready`), and the PR has an automated review comment on its merge readiness.
 
     <Tip>
       If nothing happens after 60–90 seconds, check the orchestrator logs in your terminal. The most common causes are a missing project mapping, incorrect ticketing credentials (`LINEAR_CLIENT_ID` and `LINEAR_CLIENT_SECRET`, or `JIRA_TOKEN`), or a GitHub App that isn't installed on the target repo.
     </Tip>
+  </Step>
+
+  <Step title="Verify the agent and result">
+    [Check the run evidence](/latest/how-it-works#verify-the-agent-and-result), including **Reports → Agent attribution**, the PR's harness/model/provider footer, and the review outcome. Saved defaults alone do not prove which agent ran.
+
+    The attribution card shows the latest invocation per job, not whole-job token or cost totals. An unavailable cost does not mean the run was free.
   </Step>
 
 </Steps>
@@ -207,10 +241,10 @@ Now that you have a working end-to-end flow, here is where you can go next.
     Move off your machine to a persistent Fly.io app.
   </Card>
   <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/latest/customize/workflow-md">
-    Give Claude repo-specific instructions, and set the model it runs.
+    Give the selected agent repo-specific instructions. Choose configured models in stage settings.
   </Card>
   <Card title="Enable planning" icon="list-check" href="/latest/configuration/planning">
-    Have Claude post an architecture analysis and test plan to your ticketing system before it implements.
+    Have the planning agent post its implementation map, acceptance bar, and risks before implementation.
   </Card>
   <Card title="Project mappings" icon="folder-gear" href="/latest/configuration/team-repo-mappings">
     Connect additional projects to repos, and tune how each one dispatches.
