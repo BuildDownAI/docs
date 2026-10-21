@@ -25,7 +25,7 @@ A real dispatch has two halves: the orchestrator decides what to run and records
 **These steps take their ordinary code path**, though with only what the task file gives them, where a dispatched run would also carry its project mapping's configuration:
 
 - **Setup** — the `setup:` hook from your `WORKFLOW.md`, when it declares one.
-- **The implement and review loop** — Claude writes the change, then a review pass reads it back, repeating up to the iteration limit. This is the part the harness exists to exercise.
+- **The implement and review loop** — the selected agent writes the change, then a review pass reads it back, repeating up to the iteration limit. This is the part the harness exists to exercise.
 - **Preflight** — the checks that run before anything is published.
 - **Verify** — the `verify:` hook from your `WORKFLOW.md`, when it declares one.
 
@@ -47,7 +47,7 @@ A real dispatch has two halves: the orchestrator decides what to run and records
 So a run that passes here tells you the runner did the work. It tells you nothing about whether the orchestrator would have dispatched the issue, what it would have reported while the run was going, or what it would have recorded afterwards.
 
 <Warning>
-  The run executes your repository's commands directly, and does not isolate them from the model process or from your host environment. Claude runs your build, your tests and whatever else the task calls for; your `setup:` and `verify:` hooks and any custom steps run too. Use it only with repositories and task files you trust.
+  The run executes repository commands and hooks against your workspace. They can change its files. Use repositories and task files you trust.
 </Warning>
 
 ## Before you start
@@ -64,7 +64,10 @@ You need two directories, and they are usually not the same one:
     The WSL2 callback warning on that page does not apply to this command, because nothing calls back.
   </Step>
 
-  <Step title="Provide a Claude credential">
+  <Step title="Choose authentication">
+    For Codex, use the [external configuration](#run-codex-with-an-external-configuration) below. You do not need a legacy Claude environment credential.
+
+    For a legacy Claude run:
     Set either `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`. The command reads the `.env` beside it, so an AI-Implement checkout already configured for local development needs nothing further, and a run with neither stops immediately and names both.
 
     A GitHub token is optional. Without one the run uses a placeholder, which is enough because nothing is pushed.
@@ -105,7 +108,7 @@ When it finishes, these are worth looking at:
 
 ## Your changes stay in the working tree
 
-Your checkout is mounted into the container rather than copied into it, and that runs in both directions.
+By default, your checkout is mounted into the container rather than copied into it, and that runs in both directions.
 
 The run edits your files in place, on whatever branch you already had checked out, and leaves the edit uncommitted for you to read, keep or discard. Nothing is committed and nothing is pushed — pushing from a mounted checkout would never be safe, so the push step deliberately does nothing.
 
@@ -224,6 +227,234 @@ Both flags apply to `implementation` and `kg-refresh` runs only.
 
 A `kg-refresh` run needs your ticketing system's data. It fetches that from a running orchestrator — so that orchestrator's URL and an admin credential have to be in your environment — and saves a copy as `tracker-data.json` with the run's artifacts. Pass that file back with `--tracker-data` to repeat the run without fetching again.
 
+## Run Codex with an external configuration
+
+These commands serve different purposes:
+
+| Command | What it runs |
+|---|---|
+| `npm run dev:run` | A standalone task against a local workspace. |
+| `npm run dev:local` | The polling orchestrator, with local Docker runs. It uses hosted project mappings and profiles. |
+| `npm run local:feedback` | The repeatable synthetic gate, with an explicit live-account option. |
+
+A standalone Codex run needs an external JSON file. Hosted account profiles do not substitute for its local file references.
+
+### Prepare the configuration
+
+<Steps>
+  <Step title="Keep private files outside the workspace">
+    Keep the JSON file and credential files outside both the target checkout and the artifact directory.
+
+    Replace `/home/you` and `your-org/private-target` in the examples. Use absolute paths; JSON does not expand `~` or `$HOME`.
+
+    Credential files must belong to the user who starts the harness. Give them mode `600`, and keep their directory private, such as mode `700`.
+  </Step>
+  <Step title="Choose an independent credential">
+    For API authentication, save only the OpenAI API key in a protected text file. Do not put the key in JSON or a task file.
+
+    For a ChatGPT plan, create a separate local sign-in record. Use only the laptop sign-in step in [Manual import and host sign-out](/latest/providers/openai#manual-import-and-host-sign-out), with a new local record path. Do not import that record to the orchestrator.
+
+    <Warning>
+      Do not copy a hosted session or use Codex's `auth.json`. A local ChatGPT plan run needs its own sign-in and explicit authorization for trusted private testing.
+    </Warning>
+  </Step>
+  <Step title="Save a complete versioned JSON file">
+    Choose one example below. Replace `chosen-supported-model` with a model your account can use.
+
+    <Tabs>
+      <Tab title="OpenAI API key">
+        Save as `/home/you/.config/ai-implement-local/api.json`:
+
+        ```json
+        {
+          "version": 1,
+          "mode": "configured",
+          "projectKey": "your-org/private-target",
+          "stages": {
+            "planning": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-openai",
+              "invocationTimeoutMs": 1800000
+            },
+            "implementation": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-openai",
+              "invocationTimeoutMs": 1800000
+            },
+            "review": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-openai",
+              "invocationTimeoutMs": 1800000
+            }
+          },
+          "profiles": [{
+            "id": "local-openai",
+            "identity": "local-openai-account",
+            "revision": 1,
+            "agent": "codex",
+            "provider": "openai",
+            "authMode": "openai-api-key",
+            "credentialPath": "/home/you/.config/ai-implement-local/openai-key"
+          }]
+        }
+        ```
+      </Tab>
+      <Tab title="Independent ChatGPT plan">
+        Save as `/home/you/.config/ai-implement-local/plan.json`:
+
+        ```json
+        {
+          "version": 1,
+          "mode": "configured",
+          "projectKey": "your-org/private-target",
+          "stages": {
+            "planning": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-plan",
+              "invocationTimeoutMs": 1800000
+            },
+            "implementation": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-plan",
+              "invocationTimeoutMs": 1800000
+            },
+            "review": {
+              "agent": "codex",
+              "provider": "openai",
+              "model": "chosen-supported-model",
+              "accountProfileId": "local-plan",
+              "invocationTimeoutMs": 1800000
+            }
+          },
+          "profiles": [{
+            "id": "local-plan",
+            "identity": "independent-local-plan",
+            "revision": 1,
+            "agent": "codex",
+            "provider": "openai",
+            "authMode": "codex-subscription",
+            "sessionPath": "/home/you/.ai-implement/chatgpt-plan-local.json",
+            "sessionSource": "chatgpt-sign-in",
+            "trustedPrivateTesting": true
+          }]
+        }
+        ```
+
+        Set `trustedPrivateTesting` only when you have authorization for this private test. The harness uses `gh repo view` to verify a private or internal GitHub repository.
+
+        The task's `repo`, the JSON `projectKey`, and the workspace's GitHub origin must match. A missing or unverifiable origin stops the run.
+
+        Check that your GitHub CLI can read the repository's visibility:
+
+        ```bash
+        gh repo view your-org/private-target --json visibility
+        ```
+      </Tab>
+    </Tabs>
+
+    `stages` supplies the local defaults. An optional top-level `selections` object overrides individual fields per stage. All stages must resolve, including stages you do not intend to customize.
+
+    This standalone file does not support Bedrock. Use [stage settings](/latest/configuration/agents) for hosted configuration.
+  </Step>
+</Steps>
+
+### Run a task
+
+<Steps>
+  <Step title="Write the task file">
+    Save `/home/you/tasks/codex.md`:
+
+    ```markdown
+    ---
+    title: Explain this repository's purpose
+    id: LOCAL-CODEX-1
+    repo: your-org/private-target
+    limits:
+      maxIterations: 1
+    ---
+
+    Add one sentence to README.md explaining this repository's purpose.
+
+    Acceptance criteria:
+    - Change only README.md.
+    - Check the sentence against the repository's actual behavior.
+    ```
+
+    `maxIterations` limits the feedback loop. Codex uses the JSON invocation timeout, not a Claude `maxTurns` value.
+  </Step>
+  <Step title="Run planning and implementation">
+    From your AI-Implement checkout:
+
+    ```bash
+    AI_IMPLEMENT_DIR="/home/you/src/AI-Implement"
+    AGENT_CONFIG="/home/you/.config/ai-implement-local/api.json"
+    TARGET_REPO="/home/you/src/private-target"
+    TASK_FILE="/home/you/tasks/codex.md"
+
+    cd "$AI_IMPLEMENT_DIR"
+    npm run build:runner:local
+    npm run dev:run -- --phase full \
+      --agent-config "$AGENT_CONFIG" \
+      --workspace "$TARGET_REPO" \
+      --task "$TASK_FILE"
+    ```
+
+    Select `plan.json` instead for the independent ChatGPT plan example. `--agent-config` requires `--phase full`; it does not bootstrap configured agents for other phases.
+  </Step>
+  <Step title="Inspect the outcome">
+    Read the artifact path printed by the CLI. Inspect `telemetry.json`, `run.log`, and `changes.diff`, then review the workspace summary and `git diff`.
+
+    An exit code of zero is insufficient if telemetry says the run was cancelled. Check the final outcome and the requested change together.
+  </Step>
+</Steps>
+
+### Run the repeatable feedback gate
+
+Start with the synthetic run from the AI-Implement checkout:
+
+```bash
+npm run local:feedback
+```
+
+It checks the source and runner image without using a real model account. If it reports inherited credentials, remove those environment variables before repeating it.
+
+Read `summary.md` and `result.json` in the artifact directory it prints. A successful synthetic result proves the synthetic transport and simulated session handling, not real account authentication.
+
+After the synthetic gate passes, an explicit live run can use the same source and gated image:
+
+```bash
+npm run local:feedback -- --live \
+  --agent-config "$AGENT_CONFIG" \
+  --workspace "$TARGET_REPO" \
+  --task "$TASK_FILE"
+```
+
+This invokes the selected real account. Inspect the new `summary.md` and `result.json`: a completed live run reports `mode: live`. `mode: live-preflight` means it stopped before completion.
+
+Live diagnostics can appear in `runner.stderr.log`. The summary tells you when no runner started; do not infer success from a missing log.
+
+### Authentication and held sessions
+
+For an API credential failure, check the protected key file and its permissions. Confirm that the key's account can use your selected model.
+
+For a ChatGPT plan's `authentication_required` failure, sign in again to the independent local record. Use the [OpenAI sign-in commands](/latest/providers/openai#manual-import-and-host-sign-out), then retry with the same external configuration.
+
+Cancellation can print `local session lease: released` or `held`. A held lease is not success, even if the recorded Docker exit code is zero.
+
+<Warning>
+  Do not remove a session lock because it is old. First confirm that its container is gone, no session runner is alive, and the intact session record was persisted. If persistence is uncertain, sign in again instead of reusing the record. Only after those checks can you remove that session's `.ai-lock` file.
+</Warning>
+
 ## Script options
 
 <Tip>
@@ -236,6 +467,8 @@ A `kg-refresh` run needs your ticketing system's data. It fetches that from a ru
 | `--task`, `-t` | The task file to run. Required for every phase except `kg-refresh`. |
 | `--phase` | `implementation` (the default), `planning`, `full`, or `kg-refresh`. |
 | `--tracker-data` | A previously fetched export to use instead of fetching one. `kg-refresh` only. |
+| `--agent-config` | External versioned JSON configuration. Requires `--phase full`. |
+| `--workspace-mode` | `mounted` (default) or `copy`, which uses a temporary source copy. |
 | `--image` | The runner image to use. Defaults to `LOCAL_RUNNER_IMAGE`, then to `ai-implement-runner:local`. |
 | `--until` | Stop after this step. `implementation` and `kg-refresh` runs only. |
 | `--shell` | Open a shell in the container when the run finishes. `implementation` and `kg-refresh` runs only. |
