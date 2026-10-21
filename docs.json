@@ -147,6 +147,7 @@
                 "group": "Providers",
                 "pages": [
                   "latest/providers/anthropic",
+                  "latest/providers/openai",
                   "latest/providers/aws-bedrock"
                 ]
               },
