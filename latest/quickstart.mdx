@@ -182,9 +182,7 @@ This guide walks you through running AI-Implement for the first time. By the end
   <Step title="Create the trigger in your ticketing system">
     <Tabs>
       <Tab title="Linear">
-        In your Linear workspace, create a label named exactly `AI-Implement`. The orchestrator polls for issues with this label — the name must match.
-
-        You'll also want to create an `AI-Working` label. AI-Implement adds this to an issue while a run is in progress and removes it when the run finishes.
+        Follow [Prepare the Linear labels](/latest/setup/linear-app#prepare-the-linear-labels) before your first run. Create the pickup label (`AI-Implement` by default) and the workspace-level `Ready for Review` label. AI-Implement creates the other lifecycle labels automatically.
       </Tab>
 
       <Tab title="Jira">
