@@ -158,6 +158,7 @@
                   "latest/customize/planning-md",
                   "latest/customize/custom-steps",
                   "latest/customize/external-reviewers",
+                  "latest/customize/reviewers",
                   "latest/customize/runner-image",
                   "latest/customize/local-harness",
                   "latest/customize/integration-testing"

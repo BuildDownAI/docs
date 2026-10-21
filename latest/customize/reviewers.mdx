@@ -1,0 +1,117 @@
+---
+title: "Reviewers"
+description: "The reviewers AI-Implement runs after it opens a pull request: the two built-in reviewers, how a project selects which reviewers run and gate, and how to define your own in .ai-implement/config.yml."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+AI-Implement runs a list of reviewers after it opens a pull request. Each reviewer reads the diff and reports what it finds.
+
+A reviewer either gates the merge or runs as advisory. A gating reviewer blocks the merge when it finds a problem. An advisory reviewer reports its findings but does not block the merge.
+
+## Built-in reviewers
+
+AI-Implement includes these built-in reviewers:
+
+| Reviewer | Question it asks | Default |
+| -- | -- | -- |
+| `gap-analysis` | Does the diff implement every acceptance criterion in the issue? It also reports clearly unrequested changes. | runs and gates |
+| `code-review` | Does the diff contain defects, security faults, or test gaps? | runs and gates |
+
+<Warning>
+  Turn `code-review` off only when a trusted external reviewer is in place. See [External code reviewers](/latest/customize/external-reviewers).
+</Warning>
+
+## Which reviewers run
+
+The project's **Reviewers** setting selects which reviewers run and which of them gate. A pull request cannot change this setting.
+
+When the setting is blank, both built-in reviewers run and gate.
+
+The [project settings](/latest/configuration/team-repo-mappings) page describes this control.
+
+## Define a reviewer
+
+You can add your own reviewer in `.ai-implement/config.yml` in your target repo. Each entry has these fields:
+
+- `id` — required
+- `prompt` — required
+- `model` — optional
+
+```yaml
+reviewers:
+  - id: security
+    prompt: |
+      Review the diff for injection, authentication, and secret-handling faults.
+    model: claude-sonnet-5
+```
+
+These rules decide which definition AI-Implement uses and whether it gates:
+
+| Case | Definition used | Effect |
+| -- | -- | -- |
+| Selected in project settings, **Gates** on | The definition on the **default branch** | Gates the merge |
+| Same, and the pull request changes the definition | The default-branch version gates; the pull-request version also runs, labelled `{id} (branch advisory)` | Preview only; does not gate |
+| Same, and the definitions are identical | Runs once | Gates |
+| Selected, **Gates** off | The definition on the pull-request branch | Advisory |
+| Defined on the branch, not selected | The definition on the pull-request branch | Advisory |
+| Selected and gating, but missing from the default branch or unreadable | None | Review fails closed: `Selected reviewer(s) did not resolve from trusted code or default-branch config definitions: {ids}. Automated review is incomplete.` |
+
+A pull request cannot rewrite the reviewer that judges it.
+
+To add a gating reviewer:
+
+<Steps>
+  <Step title="Merge the definition to the default branch">
+    Merge the reviewer's definition in `.ai-implement/config.yml` to the default branch.
+  </Step>
+  <Step title="Select the reviewer">
+    Select the reviewer in the project settings.
+  </Step>
+  <Step title="Turn on Gates">
+    Turn on **Gates** for the reviewer.
+  </Step>
+</Steps>
+
+The ids `claude-review-summary` and `legacy-post-push-review` are reserved.
+
+AI-Implement ignores a config entry whose id matches a built-in reviewer or an image-baked reviewer.
+
+## Reviewers with code
+
+A fork of AI-Implement can add a reviewer that runs code. The fork bakes the reviewer module into the runner image at `custom/reviewers/<id>.ts`.
+
+A reviewer with code overrides a built-in reviewer that has the same id.
+
+A target repository cannot supply reviewer code.
+
+See [Runner image](/latest/customize/runner-image) and [Customize pipeline behavior](/latest/customize/custom-steps).
+
+## Turn limit
+
+Each reviewer stops at a turn limit. AI-Implement takes the limit from the first of these that is set:
+
+- the reviewer's **Max turns** in the project settings
+- the built-in default
+- **Review Max Turns** in **Settings → Retry Policy** (default 30)
+
+When a reviewer reaches its turn limit, the review is incomplete and reports `REVIEWER_TURNS_EXHAUSTED`. See [A reviewer reached its turn limit](/latest/reference/run-statuses#a-reviewer-reached-its-turn-limit).
+
+## What the reviewer returns
+
+Each reviewer posts a report on the pull request. The report starts with the reviewer's label and one result:
+
+- `approved` — the reviewer found no problem
+- a finding count — the number of problems the reviewer found
+- `incomplete; no approval` — the reviewer did not reach a verdict
+
+After the result, the report shows a `Checks:` list. Each check has one of these results:
+
+- Passed
+- Failed
+- Not verified
+- Not applicable
+
+A reviewer that does not finish shows `{label}: review incomplete (required)` or `{label}: review incomplete (advisory)`.
