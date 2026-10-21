@@ -158,7 +158,8 @@
                   "latest/customize/custom-steps",
                   "latest/customize/external-reviewers",
                   "latest/customize/runner-image",
-                  "latest/customize/local-harness"
+                  "latest/customize/local-harness",
+                  "latest/customize/integration-testing"
                 ]
               },
               {
