@@ -11,6 +11,10 @@ AI-Implement can run the Codex agent against OpenAI. Each OpenAI account profile
 
 Both are configured per account profile on the **Models & providers** page of the admin UI. Set up the profile first, then add a key or connect a plan to it.
 
+<Info>
+  Adding an account profile and setting its credentials requires an administrator on the orchestrator's admin UI.
+</Info>
+
 ## Account profiles
 
 An account profile pairs a set of credentials with the projects allowed to use them. Create one on **Models & providers** with **Add account profile** before you add a key or connect a plan.
@@ -54,7 +58,7 @@ Connecting a ChatGPT plan signs you in with your own ChatGPT account. **It is fo
 
 Pairing is the normal path: the admin UI mints a code, and a helper on your laptop signs in and uploads the result. You will need:
 
-- **A laptop with a web browser.** Sign-in opens a browser and completes through a local `127.0.0.1` callback, so the browser and the command must run on the same machine. The orchestrator host has no browser and cannot receive the callback.
+- **A laptop with a web browser.** Sign-in opens a browser and completes through a loopback (`127.0.0.1`) callback, so the browser and the command must run on the same machine. A remote orchestrator cannot receive that callback.
 - **An AI-Implement source checkout on that laptop, built with `npm run build`**, so the sign-in helper is available.
 
 <Steps>
@@ -88,13 +92,15 @@ Pairing is the normal path: the admin UI mints a code, and a helper on your lapt
   The pairing code works once and expires 15 minutes after it is shown. A rejected upload — a bad record, the wrong profile state, or an oversize record — still spends the code, so if the command fails, click **Connect ChatGPT plan** again to mint a fresh one.
 </Warning>
 
-If the command uploads the record but you never see a confirmation — a dropped connection after the orchestrator accepted it — the orchestrator may already own the sign-in while the laptop still holds tokens.
+If the command uploads the record but you never see a confirmation — a dropped connection after the orchestrator accepted it — the orchestrator may already own the sign-in while the laptop still holds the same tokens.
 
-Clear those leftover tokens from the laptop. Delete the record file at `~/.ai-implement/chatgpt-plan.json`, or sign it out with `node dist/chatgpt-plan-login.js logout --record ~/.ai-implement/chatgpt-plan.json`.
+Delete the leftover record file at `~/.ai-implement/chatgpt-plan.json`, and do nothing else to it. Do not sign in, refresh, or reuse it on the laptop, which would make the orchestrator's copy look reused.
 
-Do not sign in or refresh on the laptop again, which would make the orchestrator's copy look reused.
+<Warning>
+  Do not run `logout` to clear the leftover record. Local logout revokes the refresh token, and the orchestrator may hold the same one, so it can disconnect the hosted session. Delete the file instead.
+</Warning>
 
-Then click **Check status**. If it is not connected, click **Connect ChatGPT plan** again and run the command with a fresh code.
+Then click **Check status** to see whether the orchestrator is connected. If it is connected, you are done. If it is not, click **Connect ChatGPT plan** again and run the command with a fresh code.
 
 ### Manual import and host sign-out
 
@@ -131,12 +137,19 @@ Read the connected account and the refresher's last outcome from the host — it
 fly ssh console -a <orchestrator-app> -C "node dist/model-account-cli.js chatgpt-status --profile <profile-id>"
 ```
 
-Inspect or sign out the laptop's own record with the local commands — `status` prints the account and time left, and `logout` revokes and clears the local tokens:
+Inspect the laptop's own record with the local `status` command, which prints the account and time left:
 
 ```bash
 node dist/chatgpt-plan-login.js status --record ~/.ai-implement/chatgpt-plan.json
+```
+
+The local `logout` command revokes the refresh token and clears the local tokens:
+
+```bash
 node dist/chatgpt-plan-login.js logout --record ~/.ai-implement/chatgpt-plan.json
 ```
+
+Use local `logout` only on an independent laptop-only sign-in — one you created with `login` and never uploaded or imported. Once the orchestrator holds the same sign-in, revoking it on the laptop disconnects the hosted session too. To sign out a hosted account on purpose, use the host sign-out command above instead.
 
 ## How stored credentials are protected
 
