@@ -144,6 +144,24 @@ GitHub notifies the orchestrator of pull-request events.
 | 400 | `Missing required PR fields` | The merged-PR payload is missing a required field (number, URL, branch, merge-commit SHA, or repository) |
 | 401 | `Invalid signature` | The `X-Hub-Signature-256` did not verify against the webhook secret |
 
+### `POST /api/chatgpt-pairing/upload`
+
+The laptop sign-in helper uses this endpoint. It authenticates with the single-use pairing code, outside the admin-session gate.
+
+| HTTP | `error` | Condition |
+|---|---|---|
+| 401 | `pairing code is not valid` | The code is missing, unknown, used, expired, or replaced by a new code. |
+| 403 | `the profile cannot take an upload; mint a new code` | The profile disappeared, changed authentication mode, or is no longer active. |
+| 400 | `body must be a JSON object; the code was consumed, mint a new one` | Invalid JSON or a non-object body. |
+| 400 | `record failed validation; the code was consumed, mint a new one` | The sign-in record is not valid. |
+| 409 | `the record changed during upload; the code was consumed, mint a new one` | Another record update won the write. |
+| 413 | `record too large; the code was consumed, mint a new one` | The body exceeds the upload limit. |
+| 500 | `could not write the record; the code was consumed, mint a new one` | Record storage failed. |
+| 500 | `could not store the record; the code was consumed, mint a new one` | An unexpected import error occurred. |
+| 503 | `pairing is not configured on this orchestrator` | The orchestrator has no `RUNNER_TOKEN_SECRET`. |
+
+A rejected upload consumes a valid code before it validates the body. Follow [Pairing recovery](/latest/reference/troubleshooting#the-chatgpt-pairing-code-is-not-valid) before retrying.
+
 ## Admin API
 
 These endpoints support the admin UI. See [Admin UI](/latest/reference/admin-ui) for what each panel does.
@@ -157,6 +175,49 @@ These endpoints support the admin UI. See [Admin UI](/latest/reference/admin-ui)
     
     Requests without one return `401` with `Unauthorized`.
 </Info>
+
+### Model accounts and credentials
+
+These endpoints require an administrator:
+
+- `POST /api/model-accounts` creates profile metadata.
+- `PATCH /api/model-accounts/{profileId}` appends a profile revision.
+- `PUT` or `DELETE /api/model-accounts/{profileId}/credential` sets or removes an API key.
+- `POST /api/model-accounts/{profileId}/chatgpt-pairing` creates a pairing code.
+
+Common responses include:
+
+| HTTP | `error` or additional `code` | Condition |
+|---|---|---|
+| 400 | A validation message | Invalid metadata, unsupported fields, or a credential request for the wrong authentication mode. |
+| 404 | `account profile not found` | The profile does not exist. |
+| 409 | `account profile already exists; PATCH it to append a revision` | A create request reused an existing ID. |
+| 409 | `code: profile_not_active` | New project grants were added to a disabled or archived profile. |
+| 503 | A credential storage message | The encryption key is unavailable because `RUNNER_TOKEN_SECRET` is unset. |
+| 500 | A credential storage message | The credential or profile revision could not be stored or removed. |
+
+A profile's readiness labels and credential status are not all HTTP error codes. See [Account setup](/latest/providers/openai) and [Troubleshooting](/latest/reference/troubleshooting).
+
+### Stage configuration
+
+- `PUT /api/agent-defaults` saves orchestrator defaults.
+- `PUT /api/mappings/{projectKey}/agent-config` saves project opt-in and overrides.
+- `GET /api/mappings/{projectKey}/agent-config/resolved` reads the effective configuration.
+
+The API can return `code` alongside the human-readable `error`. Common project-save responses include:
+
+| HTTP | Additional `code` | Condition |
+|---|---|---|
+| 400 | None required | The body is invalid or the stage selection does not resolve. The message identifies the problem. |
+| 404 | None | The mapping does not exist. |
+| 409 | `stale_inputs` | Defaults, profiles, permissions, or the project changed during the save. Re-read before retrying. |
+| 409 | `runner_incompatible`, `retired_workflow_present` | The installed workflow or runner cannot support the selected configuration. |
+| 409 | `unsupported_backend` | GHA delivery readiness could not be confirmed. This is not a universal prohibition on GHA. |
+| 422 | `claude_subscription_unsupported` | The configuration selects a managed Claude subscription profile. |
+| 501 | `readiness_unavailable` | Readiness inspection is not configured. |
+| 503 | `readiness_unavailable` | Readiness inspection failed temporarily. |
+
+Other readiness refusals identify their cause in `code` and `backend`. See [Agent setup](/latest/configuration/agents#when-opt-in-is-refused-for-readiness) for the workflow and account checks.
 
 ### `POST /api/auth`
 
