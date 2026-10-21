@@ -11,7 +11,7 @@ The orchestrator is a Node.js service that polls your ticketing system, dispatch
 
 ## Local development
 
-Running locally is the fastest way to test a configuration before committing to a cloud deployment.
+Use Node.js 24.x for local development. Running locally lets you test a configuration before a cloud deployment.
 
 <Tip>
   If this is your first time through, start with the [quickstart](/latest/quickstart).
@@ -41,7 +41,9 @@ Running locally is the fastest way to test a configuration before committing to 
     LINEAR_CLIENT_SECRET=...
     ```
 
-    See [Environment variables](/latest/configuration/environment-variables) for the full list, including the Jira equivalents.
+    For the managed Codex path, also set `ADMIN_ACCESS_CODE` (or configure sign-in), a stable `RUNNER_TOKEN_SECRET`, and `RUNNER_CALLBACK_BASE_URL`. The callback URL must be a public HTTPS base URL reachable from GitHub Actions; a hosted job cannot reach your local `localhost` address. Planning refuses dispatch without the callback URL and secret.
+
+    Keep `RUNNER_TOKEN_SECRET` stable: changing it makes stored model credentials unreadable. See [Environment variables](/latest/configuration/environment-variables) for these settings and the Jira equivalents.
   </Step>
 
   <Step title="Install dependencies">
@@ -91,11 +93,9 @@ Running locally is the fastest way to test a configuration before committing to 
     </Tabs>
 
     <Note>
-      `.env` is not auto-loaded. The `dev` script runs `tsx src/index.ts` with no dotenv integration,
-      so variables in `.env` are ignored unless you load them yourself.
+      `npm run dev` and `npm run dev:local` load `.env` automatically when it exists. Edit the file before starting, and restart the process after changing it.
 
-      Either start with `tsx --env-file=.env src/index.ts`, or export the variables into your shell
-      first with `set -a; source .env; set +a` before starting the orchestrator.
+      For configured Codex smoke runs, use the [local Codex procedure](/latest/customize/local-harness#run-codex-with-an-external-configuration). Managed post-push review-fix support uses GitHub Actions and a healthy Restate connection; see [Managed review-fix with Codex](/latest/reference/post-push-review#managed-review-fix-with-codex).
     </Note>
 
     Either mode starts the polling loop and HTTP server on port 8080.
@@ -156,7 +156,7 @@ For production use, deploy the orchestrator as a Fly.io app. Each client (team o
       --app <app_name>
     ```
 
-    Add `ADMIN_ACCESS_CODE` and any notification variables if needed.
+    For managed Codex accounts, also set a stable `RUNNER_TOKEN_SECRET` and set `RUNNER_CALLBACK_BASE_URL` to the app’s public HTTPS base URL. Configure `ADMIN_ACCESS_CODE` or [admin sign-in](/latest/setup/sso) before adding account credentials. Add notification variables if needed.
   </Step>
 
   <Step title="Deploy the app">

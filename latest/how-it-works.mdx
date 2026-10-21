@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-AI-Implement connects three systems — **Linear** or **Jira**, GitHub Actions, and Claude Code — through a small Node.js orchestrator. Understanding how these pieces fit together helps you write better tickets, configure the service correctly, and know what to expect at each stage of a run.
+AI-Implement connects **Linear** or **Jira**, your execution backend, and the selected coding agents through a small Node.js orchestrator. Configured projects can select Codex or Claude Code independently for planning, implementation, and review. Understanding how these pieces fit together helps you write better tickets, configure the service correctly, and know what to expect at each stage of a run.
 
 ## The full lifecycle
 
@@ -69,16 +69,9 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   <Step title="Planning phase (if enabled)">
     If planning is enabled for the project mapping (the default), the orchestrator dispatches a separate planning workflow (`claude-plan.yml`) before implementation begins.
 
-    Claude reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. It then posts up to four structured comments to the issue:
+    The selected planning agent reads the codebase in read-only mode, guided by your repo's `PLANNING.md` template. The supplied template posts **Implementation Map**, **Acceptance Bar**, and **Risks & Open Questions** comments. Your repository owns the template, so its output can differ.
 
-    - **Architecture Analysis** — how the codebase is structured and what changes are needed
-    - **Test Plan** — what tests should be written or updated
-    - **Work Units** — a breakdown of the issue into smaller pieces, separated into ones that can be implemented in parallel and ones that must come after.
-    - **Cross-Story Context** — relevant context from related issues (if available)
-
-    <Note>
-      When the **Work Units** section is present, the implementation phase spins up multiple Claude subagents in parallel — each scoped to a specific set of files — so independent chunks land at the same time instead of one after another. Skipped when the issue is too small or too tightly coupled to decompose, in which case implementation runs as a single pass.
-    </Note>
+    See [Planning](/latest/configuration/planning) for the output format and how the next stage consumes it.
 
     When the planning workflow finishes successfully, these comments appear on the issue and its marker is updated:
     
@@ -95,19 +88,20 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     Implementation starts automatically once planning succeeds. The project mapping's `autoApprovePlans` field is reserved for a future manual-approval gate and does not currently change this.
 
     <Info>
-      Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so Claude has full context when it starts writing code.
+      Planning runs against your `PLANNING.md` template, which you can customize per repo. The planning output is injected into the implementation prompt so the implementation agent has that context when it starts writing code.
     </Info>
   </Step>
 
   <Step title="Implementation workflow is dispatched">
     The orchestrator dispatches the `claude-implement.yml` GitHub Actions workflow in your target repo using a `workflow_dispatch` event.
 
-    The workflow receives a payload with everything Claude needs to start:
+    The workflow receives the context needed to start:
 
     - **Issue context** — issue ID, identifier (e.g. `ENG-123` for Linear, `PROJ-456` for Jira), title, and description
     - **Related-issue context** — parent issue, sibling issues, and dependencies detected from ticketing-system relationships, when present
-    - **Run caps** — Claude turn cap, implement/review iteration cap, GitHub Actions job timeout — each forwarded only when set on the project mapping
-    - **Provider routing** — Claude provider (`anthropic` or `bedrock`) and AWS region (Bedrock only)
+    - **Stage selection** — for configured projects, the resolved agent, provider, model, account profile, and elapsed timeout are frozen at dispatch
+    - **Run caps** — the feedback-loop iteration cap and job timeout, plus Claude turn caps where relevant
+    - **Legacy provider routing** — for projects that have not opted in, the Claude provider (`anthropic` or `bedrock`) and AWS region (Bedrock only)
     - **Runner image override** — a custom container image when the project has one configured
     - **Callback credentials** — a signed token the runner uses to report final results, plus a separate signed token for streaming step-progress updates back to the admin UI
 
@@ -115,25 +109,21 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       Each field is included only when relevant — the AWS region is omitted on Anthropic mappings, run caps are omitted when not set on the mapping, and so on.
     </Note>
 
-    Two execution modes are supported, configured per project mapping in the admin UI:
+    Execution backends include:
 
-    - **GitHub Actions** (default) — runs Claude Code inside a standard `ubuntu-latest` runner.
+    - **GitHub Actions** (default) — runs the selected agent inside an `ubuntu-latest` job using the configured runner image.
     - **Fly Machines** — boots a dedicated Fly.io machine for the run, useful for repos that need more resources or a custom runtime environment.
+
+    Ordinary local Docker runs are also available for development. Managed configured review-fix support is narrower than this backend list; see [Managed review-fix with Codex](/latest/reference/post-push-review#managed-review-fix-with-codex).
   </Step>
 
-  <Step title="Claude checks out the repo and implements the issue">
-    Inside the GitHub Actions runner, Claude Code:
+  <Step title="The selected agent implements the issue">
+    The pipeline checks out the repository using the GitHub App token. The implementation agent reads `WORKFLOW.md`, receives any planning context, and changes the code. The pipeline runs its checks and review loop, commits and pushes the change, and opens a pull request titled `IDENTIFIER: Title` with a link to the originating issue.
 
-    1. Checks out the repo using the GitHub App token.
-    2. Reads `WORKFLOW.md` (your per-repo implementation prompt template) for instructions.
-    3. Reads any planning context fetched from the issue comments.
-    4. Implements the issue — creating a branch, writing code, and committing changes.
-    5. Opens a pull request with the title `IDENTIFIER: Title` (e.g. `ENG-123: Add user export` for Linear, `PROJ-456: Add user export` for Jira) and a body that links back to the originating issue.
-
-    Claude uses the model specified in your `WORKFLOW.md` front matter. The default for new repos is `claude-sonnet-4-6`. You can override this per repo by editing the `model:` field in `WORKFLOW.md`.
+    For an opted-in project, [stage settings](/latest/configuration/agents) select the model and timeout. They take precedence over repository model settings. A legacy Claude project continues to use its repository front matter or per-repo model configuration.
 
     <Tip>
-      You can add `setup:`, `verify:`, and `teardown:` script hooks in your `WORKFLOW.md` front matter to run custom scripts before and after the Claude pass — useful for installing project dependencies or running tests.
+      You can add `setup:`, `verify:`, and `teardown:` script hooks in your `WORKFLOW.md` front matter to run custom scripts before and after the implementation pass — useful for installing project dependencies or running tests.
     </Tip>
   </Step>
 
@@ -174,7 +164,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
 
     With no added instruction, the run follows its configured gap-fill prompt. The supplied template asks the agent to address feedback and read relevant PR discussion as needed. A custom `WORKFLOW.md` can change that brief.
 
-    Claude checks out the existing branch, reads the same `WORKFLOW.md` template, and pushes new commits to the same branch.
+    The implementation agent works on the existing branch using the same `WORKFLOW.md` template. The pipeline pushes any new commits to that branch.
 
     You can also comment `/ai-implement` on a grouping roll-up PR — one whose branch is `ai-implement/feature/<key>` or `ai-implement/multi-issue/<key>`. See [Feature-branch grouping](/latest/reference/feature-branch-grouping).
 
@@ -190,7 +180,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
       Like the previous step, this runs on the orchestrator's GitHub webhook and has no polling fallback.
     </Warning>
     
-    After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave feedback that needs another pass from Claude. AI-Implement turns that feedback into a **review-fix run** on the same PR. It does not need a manual `/ai-implement` comment.
+    After the PR is open, reviewers — your teammates or other bots like Claude Code Review — may leave feedback that needs another pass from the implementation agent. AI-Implement turns that feedback into a **review-fix run** on the same PR. It does not need a manual `/ai-implement` comment.
 
     AI-Implement writes to one PR with one run at a time. An issue that already has an open PR always goes to a review-fix run on that PR, so AI-Implement never implements the issue a second time.
 
@@ -202,7 +192,7 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
     - **Inline review comments** on specific lines of the diff
     - **Issue comments** on the PR containing actionable feedback
 
-    AI-Implement deduplicates each new piece of feedback against what Claude already addressed in earlier passes. It then queues a review-fix run that pushes to the same PR branch — no new PRs or branches.
+    AI-Implement deduplicates each new piece of feedback against what earlier passes already addressed. It then queues a review-fix run that pushes to the same PR branch — no new PRs or branches.
 
     Bot feedback must come from an author trusted by the project's review process. See [Trusted Review Authors](/latest/configuration/team-repo-mappings#param-trusted-review-authors).
 
@@ -276,9 +266,23 @@ Here is what happens from the moment you mark an issue (with the `AI-Implement` 
   See [Triggers and status indicators](/latest/reference/labels) for the full lifecycle reference, including planning/implementation failure markers.
 </Info>
 
+## Verify the agent and result
+
+After a run, open **Reports** in the admin UI and find the issue under **Agent attribution**. Read **Stage**, **Agent / provider / model**, **Profile / auth**, and **Outcome** together. This is observed invocation evidence; the saved **Agents** values only show configuration.
+
+The card shows the **latest invocation per job**. Its usage and cost are not totals for every planning, implementation, and review invocation. **unavailable** means the cost was not reported, and **partial cost** is incomplete. Neither should be read as a zero-dollar total. **No attribution (legacy)** means no managed attribution was recorded.
+
+On the PR, check the **Generated with AI-Implement** footer for the implementation harness, model, and provider. Then read the test plan, the **Full reviewer report**, and the current merge-readiness status. A successful invocation or a PR link alone does not establish that checks passed or the review approved. See [Post-push review](/latest/reference/post-push-review) for the result states.
+
+For a local Codex run, inspect the artifacts described in [Local harness](/latest/customize/local-harness#run-codex-with-an-external-configuration).
+
 ## Authentication options
 
-The workflow supports three authentication paths for Claude, selected in order of precedence:
+Configured projects use a managed account profile for each stage. For Codex, [add an OpenAI API key or connect your own ChatGPT plan](/latest/providers/openai), then [set stage defaults and opt the project in](/latest/configuration/agents). An all-Codex configured project does not need an Anthropic repository secret.
+
+### Legacy Claude authentication
+
+Projects that have not opted in retain these authentication paths, selected in order of precedence:
 
 1. **AWS Bedrock** — when the orchestrator dispatches with `provider=bedrock`, the workflow uses OIDC to assume an IAM role and calls Claude via Bedrock. Requires `AWS_BEDROCK_ROLE_ARN` as a repo secret and a `model:` set in `WORKFLOW.md` (there is no safe Bedrock default).
 2. **Claude Code OAuth token** — when `CLAUDE_CODE_OAUTH_TOKEN` is set as a repo or org secret, it takes precedence over an API key.

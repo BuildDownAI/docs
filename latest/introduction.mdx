@@ -1,13 +1,13 @@
 ---
 title: "AI-Implement: From tickets to pull requests"
-description: "AI-Implement turns your Linear or Jira backlog into pull requests by running Claude Code against marked issues. Your tickets are the prompts."
+description: "AI-Implement turns your Linear or Jira backlog into pull requests by running your selected coding agent against marked issues. Your tickets are the prompts."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
 
-AI-Implement is an orchestration service that connects your **Linear** or **Jira** workspace to one or more GitHub repositories. You mark an issue with the `AI-Implement` label (Linear) or set its `AI-Implement Status` to `Ready` (Jira), and within minutes Claude Code checks out the right repo, reads your codebase, implements the ticket, opens a pull request, and posts an automated merge-readiness review of its own diff. Your team reviews everything in the tools they already use — Linear or Jira, plus GitHub — without learning a new interface.
+AI-Implement is an orchestration service that connects your **Linear** or **Jira** workspace to one or more GitHub repositories. You mark an issue with the `AI-Implement` label (Linear) or set its `AI-Implement Status` to `Ready` (Jira), and the orchestrator runs your selected agent against the right repo. The pipeline opens a pull request and posts an automated merge-readiness review of the pushed diff. You can use Codex, Claude Code, or a different agent for each stage. Your team reviews everything in the tools they already use — Linear or Jira, plus GitHub — without learning a new interface.
 
 ## Who it's for
 
@@ -18,24 +18,24 @@ You'll get the most value if:
 - Your team runs tickets through Linear or Jira and wants AI output to land in your existing review process.
 - You have focused, well-specified issues where the requirement fits in a single pass.
 - You're comfortable operating a small Node.js service on Fly.io (or similar infrastructure).
-- You want Claude to run inside your own CI, with your own secrets, against your own provider.
+- You want the selected agent to run inside your own CI, using accounts you control.
 
 <Note>
-  AI-Implement works best with clearly scoped tickets. Claude handles focused, well-specified issues well and struggles with sprawling or vague ones. The quality of the ticket is the quality of the prompt.
+  AI-Implement works best with clearly scoped tickets. Keep each issue focused and well-specified. The quality of the ticket is the quality of the prompt.
 </Note>
 
 ## What you need to get started
 
-Before you can run AI-Implement, you'll need accounts and credentials across four services:
+Before you can run AI-Implement, prepare:
 
 - **Linear or Jira Cloud workspace** — where your issues live and where the `AI-Implement` label or two custom fields (`AI-Implement Status` and `AI-Implement Repo`) are applied
 - **GitHub App** — authenticates the orchestrator to dispatch workflows and open PRs
-- **Fly.io account** — where the orchestrator service runs (a single shared-cpu-1x machine is enough)
-- **Anthropic API key** — or an AWS Bedrock setup with the appropriate IAM role
+- **An orchestrator host** — Fly.io or another server that can run the service
+- **Model access** — an OpenAI account profile for Codex, or credentials for a Claude provider
 
 <Columns cols={2}>
   <Card title="Quick start" icon="rocket" href="/latest/quickstart">
-    Get from zero to your first AI-generated PR in under 30 minutes.
+    Connect a repo, choose an agent, and run your first issue.
   </Card>
   <Card title="How it works" icon="diagram-project" href="/latest/how-it-works">
     Understand the full lifecycle from ticket to merged PR.
@@ -48,6 +48,12 @@ Before you can run AI-Implement, you'll need accounts and credentials across fou
   </Card>
 </Columns>
 
+## Start with Codex
+
+Follow the [quickstart](/latest/quickstart) to prepare a compatible GitHub Actions runner and merge the synced workflows. Then [add an OpenAI API key or connect your own ChatGPT plan](/latest/providers/openai), [set stage defaults and opt your project in](/latest/configuration/agents), and [check the agent and result from your first run](/latest/how-it-works#verify-the-agent-and-result).
+
+An all-Codex configured project uses its managed OpenAI profile. It does not need an Anthropic secret. Existing projects keep their legacy behavior until you opt them in.
+
 ## Key concepts
 
 **The ticket is the prompt.** Writing well-specified tickets is something teams already know how to do. AI-Implement uses that skill — and the cross-issue structure in your ticket backlog — instead of asking anyone to learn prompt engineering.
@@ -56,4 +62,4 @@ Before you can run AI-Implement, you'll need accounts and credentials across fou
 
 **One orchestrator, many repos.** A single AI-Implement service can dispatch workflows across multiple repos in multiple GitHub organizations. **Project mappings** — each one connecting a Linear team or Jira JQL to a GitHub repo — are managed in the admin UI.
 
-**Gap-fill on demand.** After reviewing a PR, comment `/ai-implement` on it to send Claude back in for a second pass on the same branch.
+**Gap-fill on demand.** After reviewing a PR, comment `/ai-implement` on it to send the implementation agent back in for another pass on the same branch.

@@ -7,7 +7,7 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 <ExperimentalBanner />
 
 
-Connecting a GitHub repository to AI-Implement comes down to adding a project mapping in the orchestrator's admin UI. Saving that mapping syncs the workflow templates into the repo so GitHub Actions knows how to run Claude, and starts the polling loop watching for issues. Follow the steps below in order.
+Connecting a GitHub repository to AI-Implement comes down to adding a project mapping in the orchestrator's admin UI. Saving that mapping syncs the workflow templates into the repo so GitHub Actions knows how to run the selected agent, and starts the polling loop watching for issues. Follow the steps below in order.
 
 <Steps>
   <Step title="Install the GitHub App on the target repo">
@@ -47,7 +47,7 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
   </Step>
 
   <Step title="Create a project mapping in the admin UI">
-    Open the admin UI at `http://localhost:8080/admin` (or your Fly.io app URL) and click **Configure → Projects → + New project**. The stepper walks through 8 steps; for a first connection, the key inputs are:
+    Open the admin UI at `http://localhost:8080/admin` (or your Fly.io app URL) and click **Configure → Projects → + New project**. For a first connection, the key inputs are:
 
     <Tabs>
       <Tab title="Linear">
@@ -72,7 +72,7 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
       Nothing checks the default branch name against the repository when you save. A default branch name that does not exist saves cleanly and fails the run at its first step, when the runner tries to clone it.
     </Warning>
 
-    Step through the remaining steps accepting defaults for a first run, then **Create project**. The orchestrator begins watching the configured scope on its next poll cycle.
+    For the Codex path, select **GitHub Actions** as the runner, complete the remaining fields, then click **Create project**. The orchestrator begins watching the configured scope on its next poll cycle.
 
     See the [Admin UI reference](/latest/reference/admin-ui) for the full field list and defaults.
   </Step>
@@ -82,14 +82,24 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
 
     - `claude-implement.yml` — the main implementation workflow
     - `claude-plan.yml` — the planning workflow
-    - `WORKFLOW.md` — the Claude implementation prompt template
-    - `PLANNING.md` — the Claude planning prompt template
+    - `WORKFLOW.md` — the implementation prompt template
+    - `PLANNING.md` — the planning prompt template
 
     <Note>
       `WORKFLOW.md` and `PLANNING.md` are seeded once and never overwritten by subsequent syncs. After the initial setup, each repo owns its own prompt templates — you can edit them freely without them being reset by a future sync.
     </Note>
 
     Open the pull request that was created in your target repo and review the added files. Merge the PR when you are ready. Once merged, the workflow files are active and GitHub Actions can dispatch runs against that repo.
+  </Step>
+
+  <Step title="Configure Codex for the saved project">
+    Check that the [runner image supports Codex](/latest/customize/runner-image). If you are connecting an existing project, use **Sync workflows** on **Projects** and merge that update first.
+
+    Next, follow [Use Codex with OpenAI](/latest/providers/openai) to create a managed account profile, permit it for this project, and add an API key or connect your own ChatGPT plan.
+
+    Follow [Agent settings per stage](/latest/configuration/agents) to set the orchestrator defaults and enable `configured` defaults mode. Open the saved project's **Edit → Agents** tab, check all three effective stages, select **Opt in to stage agent configuration**, and click **Save agent settings**.
+
+    An all-Codex configured project needs no Anthropic repository secret. Skip this step to keep legacy Claude behavior with its [existing provider credentials](/latest/providers/anthropic).
   </Step>
 
   <Step title="Trigger a run and watch it">
@@ -103,12 +113,12 @@ Connecting a GitHub repository to AI-Implement comes down to adding a project ma
       </Tab>
     </Tabs>
 
-    Within 60 seconds (one poll cycle), the orchestrator picks it up, dispatches the workflow, and Claude Code starts working on the implementation.
+    On the next eligible poll, the orchestrator picks it up and dispatches the workflow. The selected planning agent runs first if planning is enabled, followed by the implementation agent.
 
     When the run finishes, the issue is marked ready for review (Linear: `Ready for Review` label added; Jira: `AI-Implement Status` set to `PR Ready`), with a comment linking to the PR.
 
     <Tip>
-      For best results, target issues that are focused and well-specified. Claude performs well on issues that clearly describe what should change and why — and less well on vague or sprawling tickets.
+      For best results, target issues that are focused and well-specified. Describe what should change and why, with acceptance criteria the agent can verify.
     </Tip>
   </Step>
 </Steps>
@@ -160,10 +170,12 @@ AI-Implement requires two custom select fields in your Jira instance: one for th
 
 ## After your first run
 
-Once the PR appears, you can:
+Once the PR appears, [verify the agent, model, and result](/latest/how-it-works#verify-the-agent-and-result). **Reports → Agent attribution** shows the latest invocation per job, not whole-job usage or cost. An unavailable cost is not zero.
+
+You can then:
 
 - Read the [post-push review](/latest/reference/post-push-review) on the PR — a GitHub review with a **Full reviewer report** link and a sticky status comment on merge readiness
-- Comment `/ai-implement` on the PR to send Claude back in for a gap-fill pass on the same branch
+- Comment `/ai-implement` on the PR to send the implementation agent back in for a gap-fill pass on the same branch
 - Merge the PR to close the issue.
 
 <Tip>
@@ -180,7 +192,7 @@ From here you can add a capability the orchestrator runs fine without, or go dee
     Per-person sign-in in place of a shared access code.
   </Card>
   <Card title="Customize WORKFLOW.md" icon="pen-to-square" href="/latest/customize/workflow-md">
-    Edit the Claude prompt template to match your repo's stack and conventions.
+    Edit the implementation prompt template to match your repo's stack and conventions.
   </Card>
   <Card title="Admin UI reference" icon="sliders" href="/latest/reference/admin-ui">
     Full reference for all fields available in the project mapping form.
