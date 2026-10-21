@@ -3,7 +3,7 @@ title: "Test a Restate service in three layers"
 description: "The standard for testing a Restate service: fast unit tests, Restate scenarios on the real server binary, and a manual operator gate — with the rules for the shared harness, CI databases, and CI credentials."
 ---
 
-A service built on Restate tests its durable code in three layers. Each layer proves something the others cannot, carries its own command, and needs its own setup.
+A service built on Restate tests its durable code in three layers. Each layer proves something the others cannot and needs its own setup. The two automated layers each carry a command, and the operator gate runs by hand.
 
 ## The three layers
 
