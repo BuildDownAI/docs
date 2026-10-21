@@ -4,9 +4,13 @@ description: "Release history for the BuildDown skills plugin — what shipped i
 ---
 
 <Note>
-  **These numbers track delivery, not releases.** A version bump is how a skill change reaches an installation at all, so the plugin's version moves on every change.
+  After each release, the first change that ships plugin content sets the next release number. Later changes to shipped content add a patch increment.
 
-  Most of those numbers are never published. The list below skips, and a missing number means no stable-channel install ever ran it. It also means the sequence climbs faster than [AI-Implement's](/releases), so the two cannot be compared.
+  A release ships the number the development channel carries at that moment. It can be tagged 1.5.2 without 1.5.0 or 1.5.1 ever reaching the stable channel.
+
+  Before v1.5.0, each skill change increased the minor version, so earlier releases have wider gaps.
+
+  Skills and [AI-Implement](/releases) have independent version numbers. You cannot compare them to judge which product is ahead.
 </Note>
 
 <Update label="v1.4.0" description="Released 26 August 2026" tags={["Release"]}>
