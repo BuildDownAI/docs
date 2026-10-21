@@ -1,6 +1,6 @@
 ---
 title: "Agent settings per stage"
-description: "Choose which agent, provider, model, account profile, and elapsed timeout each stage uses: set orchestrator defaults, opt a project in, and resolve every stage field by field through inheritance and overrides."
+description: "Choose an agent for each stage, set defaults, and opt projects in with inherited settings or overrides."
 ---
 import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
@@ -47,7 +47,9 @@ The **Agents** tab shows each field's effective value and where it came from, so
 
 <Steps>
   <Step title="Enter the per-stage defaults">
-    On the **Models & providers** page, fill in the **Orchestrator stage defaults** table — an agent, provider, model, account profile, and **Elapsed time limit (ms)** for planning, implementation, and review — then click **Save**.
+    Open **Models & providers**. Complete the **Orchestrator stage defaults** table for each stage, then click **Save**.
+
+    Use **Elapsed time limit (ms)** for the invocation timeout.
 
     A blank field has no default at this layer, so any project that inherits it is left with an unresolved stage. Fill every field you expect projects to inherit.
   </Step>
@@ -97,7 +99,7 @@ For a project on GitHub Actions, the common cause is a workflow file in the targ
 
 The model ids below are examples. Replace each with a model the selected account supports.
 
-Nothing validates the id, so an unsupported one fails when the stage runs rather than when you save.
+Saving does not check whether your account can use a model. An unavailable model can fail when the stage runs.
 
 ### Codex across every stage
 
@@ -132,7 +134,7 @@ How the limit combines with other caps depends on the agent:
 - **Codex** is bounded by this elapsed timeout together with the existing feedback-loop iteration cap (**Max Iterations** on the project).
 - **Claude** also honors this elapsed timeout, and its native turn caps stay separate — **Max Turns** per project, and **Review Max Turns** under the Retry Policy on the Settings page.
 
-The job deadline can shorten a stage. When a stage's elapsed timeout is longer than the time remaining in the job, the run uses the remaining time instead, and the effective source for that field reads as the job deadline.
+The remaining job time can shorten an invocation's timeout. The **Agents** tab shows inherited and overridden values before that runtime limit applies.
 
 ## When changes take effect
 
@@ -150,6 +152,15 @@ A project that has not opted in runs in legacy mode and is unaffected by stage c
 
 ## Opting back out
 
-Clearing **Opt in to stage agent configuration** and saving returns the project to legacy mode. In-flight runs are unaffected; the change applies to the next run.
+<Steps>
+  <Step title="Check the legacy credentials">
+    Check the mapping's **Claude provider** and make sure its legacy credentials are available.
 
-Because the next legacy run authenticates the way the mapping's Claude provider does rather than through a stage account profile, the repository's legacy credentials must still be in place for that run to work. See [Use Codex with OpenAI](/latest/providers/openai), [Anthropic](/latest/providers/anthropic), or [AWS Bedrock](/latest/providers/aws-bedrock) for the credentials each provider needs.
+    The next legacy run uses those credentials instead of a stage account profile. See [Anthropic](/latest/providers/anthropic) or [AWS Bedrock](/latest/providers/aws-bedrock).
+  </Step>
+  <Step title="Opt the project out">
+    Clear **Opt in to stage agent configuration** and click **Save agent settings**.
+
+    The next run uses legacy settings. A run already in flight keeps its resolved settings.
+  </Step>
+</Steps>

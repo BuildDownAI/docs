@@ -452,10 +452,14 @@ Change the pickup label only for a planned migration, since issues on the old la
 
 The **Orchestrator Agent Defaults** card carries **Defaults mode**, which turns stage agent configuration on or off for the whole orchestrator:
 
-- `legacy` — stage defaults are off, and every project runs its existing behavior.
+- `legacy` — stage defaults are off. This does not opt projects out.
 - `configured` — stage defaults are available for projects to opt in to.
 
 Turning it on enrolls no project on its own. The per-stage default values are set on the **Models & providers** page. See [Agent settings per stage](/latest/configuration/agents).
+
+<Warning>
+  Opt configured projects out before selecting `legacy`. Otherwise, their next configured runs cannot start. See [Opting back out](/latest/configuration/agents#opting-back-out).
+</Warning>
 
 #### Retry Policy
 
