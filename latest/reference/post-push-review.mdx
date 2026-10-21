@@ -124,4 +124,6 @@ Trigger as many rounds as you need; each one adds commits to the same branch.
   A gap-fill run is quiet on the pull request — no start notice, no summary, and no notice if it fails. What you get is commits on the branch and a note on the issue describing what it addressed.
 </Note>
 
-On a pull request AI-Implement did not open there is nothing to continue from, so the trigger does no work and may reply saying it has no record of it.
+On a pull request with no AI-Implement run record, the comment does no work, and AI-Implement may reply that it has no record of the pull request.
+
+For the dispatch rules that decide whether a comment starts a run — including the grouping roll-up PR exception and the [PR Dispatch Budget](/latest/configuration/team-repo-mappings#param-pr-dispatch-budget) — see [How AI-Implement works](/latest/how-it-works).
