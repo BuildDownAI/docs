@@ -251,6 +251,11 @@ reviewProviders:
 reviewCheckNames:
   - claude-review
   - my-org-review-bot
+reviewers:
+  - id: security
+    prompt: |
+      Review the diff for injection, authentication, and secret-handling faults.
+    model: claude-sonnet-5
 ```
 
 <Note>
@@ -311,6 +316,10 @@ reviewCheckNames:
 
     Any check you leave off silently stops being matched, so list every one you rely on.
   </Warning>
+</ParamField>
+
+<ParamField body="reviewers" type="array">
+  Defines your own reviewers that run after AI-Implement opens the pull request, described in [Reviewers](/latest/customize/reviewers).
 </ParamField>
 
 ## custom/providers/ — override a ticketing provider
