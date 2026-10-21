@@ -163,6 +163,14 @@ A **project mapping** connects a ticketing-system scope (a Linear team or a Jira
   `provider=bedrock` is not supported when `executionMode` is `fly-machines`. Use `executionMode=github-actions` for Bedrock runs.
 </Note>
 
+## Agents
+
+A project can opt in to per-stage agent settings — an agent, provider, model, account profile, and timeout chosen separately for planning, implementation, and review. These live on the project's **Agents** tab, not among the mapping fields, and save with their own button.
+
+While a project is opted in, its resolved stage settings take precedence over the **Claude provider** setting above and over any model set in the target repository. A project that has not opted in keeps the behavior described here.
+
+See [Agent settings per stage](/latest/configuration/agents) for the defaults, inheritance, and how to opt a project in.
+
 ## Planning
 
 <ParamField body="planningEnabled" type="boolean" default="true">

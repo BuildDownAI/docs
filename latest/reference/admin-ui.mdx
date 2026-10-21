@@ -206,6 +206,8 @@ The Projects panel is where you connect ticketing scopes (Linear teams or Jira J
   See [Configure project mappings](/latest/configuration/team-repo-mappings) for the full field reference and defaults.
 </Note>
 
+A project's **Edit** dialog also carries an **Agents** tab, where the project opts in to per-stage agent settings and chooses to inherit or override each field. See [Agent settings per stage](/latest/configuration/agents).
+
 #### Create a new project mapping
 
 <Steps>
@@ -275,10 +277,13 @@ A second table lists every step module with:
 
 ### Models & providers
 
-Read-only summary of model provider and region per project mapping.
+Beyond the read-only per-project summary below, this page hosts the orchestrator's agent-configuration controls:
+
+- **Orchestrator stage defaults** — the per-stage agent, provider, model, account profile, and elapsed time limit that opted-in projects inherit. See [Agent settings per stage](/latest/configuration/agents).
+- **Account profiles** — the stored credentials runs authenticate with, and the projects each one may serve. See [Use Codex with OpenAI](/latest/providers/openai#account-profiles).
 
 <Note>
-  Model IDs themselves live in each target repo's `WORKFLOW.md` and `PLANNING.md` front matter — this page doesn't edit them.
+  For a legacy project, the model ids live in its target repo's `WORKFLOW.md` and `PLANNING.md` front matter. For an opted-in project, the model comes from the stage defaults or the project's own override — see [Agent settings per stage](/latest/configuration/agents).
 </Note>
 
 KPI cards show:
@@ -442,6 +447,15 @@ Change the pickup label only for a planned migration, since issues on the old la
 <Note>
   Changes to settings that differ from the running process take effect after a restart. The pickup label is the exception: it takes effect at the next poll.
 </Note>
+
+#### Orchestrator Agent Defaults
+
+The **Orchestrator Agent Defaults** card carries **Defaults mode**, which turns stage agent configuration on or off for the whole orchestrator:
+
+- `legacy` — stage defaults are off, and every project runs its existing behavior.
+- `configured` — stage defaults are available for projects to opt in to.
+
+Turning it on enrolls no project on its own. The per-stage default values are set on the **Models & providers** page. See [Agent settings per stage](/latest/configuration/agents).
 
 #### Retry Policy
 

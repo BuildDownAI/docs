@@ -140,7 +140,8 @@
                   "latest/configuration/environment-variables",
                   "latest/configuration/team-repo-mappings",
                   "latest/configuration/workflow-templates",
-                  "latest/configuration/planning"
+                  "latest/configuration/planning",
+                  "latest/configuration/agents"
                 ]
               },
               {

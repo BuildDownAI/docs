@@ -1,0 +1,155 @@
+---
+title: "Agent settings per stage"
+description: "Choose which agent, provider, model, account profile, and elapsed timeout each stage uses: set orchestrator defaults, opt a project in, and resolve every stage field by field through inheritance and overrides."
+---
+import ExperimentalBanner from "/snippets/experimental-banner.mdx";
+
+<ExperimentalBanner />
+
+
+AI-Implement runs each issue through a fixed set of stages, and stage agent configuration lets an administrator choose how each one runs:
+
+- **planning** — the read-only analysis pass
+- **implementation** — the code changes and any post-push fixes
+- **review** — the verdict passes
+
+Every stage resolves to the same settings:
+
+- **agent** — `claude` or `codex`
+- **provider** — `anthropic` or `bedrock` for Claude, `openai` for Codex
+- **model** — the model id, passed through to the agent unchanged
+- **account profile** — the stored credential the run authenticates with
+- **elapsed timeout** — the wall-clock limit for one invocation of the stage, in milliseconds
+
+Stage settings live in two layers: the orchestrator holds one set of **stage defaults**, and each project either inherits a default or overrides it. Nothing in a target repository carries them.
+
+A project only runs on this configuration once it opts in. Until then it stays on its existing behavior, described under [Legacy projects](#legacy-projects) below.
+
+## How a stage resolves
+
+Each project resolves field by field against the orchestrator defaults:
+
+- An **overridden** field uses the project's value.
+- An **inherited** field uses the orchestrator default.
+
+Every stage must end with a value for every setting and an account profile that is active, permitted for the project, and matches the stage's agent and provider. A stage with any field left unresolved cannot be enabled.
+
+This holds for every stage at once, including planning.
+
+Disabling planning on the mapping skips the planning run, but the planning stage stays in the configuration and must still resolve for the project to opt in.
+
+The **Agents** tab shows each field's effective value and where it came from, so you can read the resolved stage before saving:
+
+- `Effective: <value> (source: orchestrator default)` — the field is inherited.
+- `Effective: <value> (source: project)` — the field is overridden here.
+
+## Set the orchestrator defaults
+
+<Steps>
+  <Step title="Enter the per-stage defaults">
+    On the **Models & providers** page, fill in the **Orchestrator stage defaults** table — an agent, provider, model, account profile, and **Elapsed time limit (ms)** for planning, implementation, and review — then click **Save**.
+
+    A blank field has no default at this layer, so any project that inherits it is left with an unresolved stage. Fill every field you expect projects to inherit.
+  </Step>
+
+  <Step title="Turn defaults on">
+    On the **Settings** page, under **Orchestrator Agent Defaults**, set **Defaults mode** to `configured` and click **Save**.
+
+    The save is refused unless every stage already resolves to a complete selection, so enter the defaults first.
+
+    <Note>
+      Turning on **Defaults mode** enrolls no project. It only makes the defaults available for projects to opt in to, one at a time. Until a project opts in, it stays on its existing behavior.
+    </Note>
+  </Step>
+</Steps>
+
+## Opt a project in
+
+<Steps>
+  <Step title="Open the project's Agents tab">
+    On the **Projects** page, open an existing project's **Edit** dialog and select the **Agents** tab. A project must be saved before it can carry agent settings.
+  </Step>
+
+  <Step title="Choose Inherit or Override per field">
+    For each field of each stage, pick **Inherit** to take the orchestrator default or **Override** to set a project-specific value. The effective value and its source update as you edit.
+  </Step>
+
+  <Step title="Opt in and save">
+    Select **Opt in to stage agent configuration** and click **Save agent settings**.
+
+    Opting in checks that every stage resolves and that the project is ready to run the selected agents. If a stage does not resolve, or a profile is not active, permitted, or compatible, the save is refused and nothing changes.
+  </Step>
+</Steps>
+
+Agent settings save on their own button, separately from the rest of the mapping.
+
+### When opt-in is refused for readiness
+
+Opting in inspects the backend the project would dispatch on, not just the configuration. A project whose runner or synced workflow cannot run the selected agents is refused, and nothing is saved.
+
+For a project on GitHub Actions, the common cause is a workflow file in the target repository that predates agent configuration. Run the **Sync workflows** action on the project's row, merge the pull request it opens in the target repo, then open the **Agents** tab and opt in again.
+
+<Note>
+  Readiness depends on the backend, the target repository, and how each account profile authenticates, so opt-in is not guaranteed for every project. A Claude subscription profile cannot be enabled through project opt-in.
+</Note>
+
+## Example configurations
+
+The model ids below are examples. Replace each with a model the selected account supports.
+
+Nothing validates the id, so an unsupported one fails when the stage runs rather than when you save.
+
+### Codex across every stage
+
+One Codex profile (agent `codex`, provider `openai`) permitted for the project serves every stage:
+
+| Stage | Agent | Provider | Model | Account profile | Elapsed timeout (ms) |
+|---|---|---|---|---|---|
+| planning | codex | openai | gpt-5-codex | codex-openai | 1800000 |
+| implementation | codex | openai | gpt-5-codex | codex-openai | 1800000 |
+| review | codex | openai | gpt-5-codex | codex-openai | 1800000 |
+
+### A different agent by stage
+
+Claude plans and reviews while Codex implements. This needs a profile for each agent permitted for the project — a Claude profile (provider `anthropic`) and a Codex profile (provider `openai`) — because each stage's profile must match that stage's agent and provider:
+
+| Stage | Agent | Provider | Model | Account profile | Elapsed timeout (ms) |
+|---|---|---|---|---|---|
+| planning | claude | anthropic | claude-sonnet-4-6 | claude-anthropic | 1800000 |
+| implementation | codex | openai | gpt-5-codex | codex-openai | 1800000 |
+| review | claude | anthropic | claude-opus-4-8 | claude-anthropic | 1800000 |
+
+Account profiles and their credentials are created on the **Models & providers** page. See [Use Codex with OpenAI](/latest/providers/openai#account-profiles) for the Codex profile, and [Anthropic](/latest/providers/anthropic) or [AWS Bedrock](/latest/providers/aws-bedrock) for Claude.
+
+## Timeouts and limits
+
+The timeout is an elapsed wall-clock limit for one invocation of a stage, in milliseconds. For example, `1800000` ms is 30 minutes.
+
+The same value carries two labels: **Elapsed time limit (ms)** in the orchestrator stage defaults, and **Invocation timeout (ms)** in a project's **Agents** tab.
+
+How the limit combines with other caps depends on the agent:
+
+- **Codex** is bounded by this elapsed timeout together with the existing feedback-loop iteration cap (**Max Iterations** on the project).
+- **Claude** also honors this elapsed timeout, and its native turn caps stay separate — **Max Turns** per project, and **Review Max Turns** under the Retry Policy on the Settings page.
+
+The job deadline can shorten a stage. When a stage's elapsed timeout is longer than the time remaining in the job, the run uses the remaining time instead, and the effective source for that field reads as the job deadline.
+
+## When changes take effect
+
+A saved selection applies to the project's next run. A run already in flight keeps the settings it resolved at dispatch, so a mid-run change never alters it.
+
+For an opted-in project, the resolved model, timeout, and account profile take precedence over any model set in the target repository — including the model named in a reviewer definition, which the review stage's configured model replaces.
+
+## Legacy projects
+
+A project that has not opted in runs in legacy mode and is unaffected by stage configuration. It keeps:
+
+- the provider on its mapping's [Claude provider](/latest/configuration/team-repo-mappings#claude-provider) setting
+- the model from its repository front matter or per-repo configuration
+- its existing prompt front matter
+
+## Opting back out
+
+Clearing **Opt in to stage agent configuration** and saving returns the project to legacy mode. In-flight runs are unaffected; the change applies to the next run.
+
+Because the next legacy run authenticates the way the mapping's Claude provider does rather than through a stage account profile, the repository's legacy credentials must still be in place for that run to work. See [Use Codex with OpenAI](/latest/providers/openai), [Anthropic](/latest/providers/anthropic), or [AWS Bedrock](/latest/providers/aws-bedrock) for the credentials each provider needs.
