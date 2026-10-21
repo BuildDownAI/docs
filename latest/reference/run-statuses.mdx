@@ -195,9 +195,32 @@ The most common failures are listed below.
     <Accordion title="Reached max turns" description="The run stopped at the per-run turn limit before finishing">
         Claude stopped because it reached the maximum number of turns allowed for a single run — the work was too large to finish in the limit, or the run got stuck repeating steps.
 
-        Unlike the other failures on this page, this isn't a hard error: the run still pushes its work as a **draft PR** (carrying the reviewer's final feedback and per-pass stats) and posts a run-autopsy comment on the ticket with a per-pass breakdown, rather than failing with a bare invocation error.
+        Like [Dependencies did not install](#dependencies-did-not-install), this isn't a hard error: the run still pushes its work as a **draft PR** (carrying the reviewer's final feedback and per-pass stats) and posts a run-autopsy comment on the ticket with a per-pass breakdown, rather than failing with a bare invocation error.
 
         See [Troubleshooting](/latest/reference/troubleshooting#reached-max-turns) for information on how to raise the limit.
+    </Accordion>
+
+    <Accordion title="Dependencies did not install" description="The install never succeeded, so the run shipped a draft PR without building or testing">
+        The dependency install did not succeed, so build and tests never ran.
+
+        Like [Reached max turns](#reached-max-turns), this isn't a hard error — the run still pushes its work as a **draft PR** rather than failing with a bare invocation error.
+
+        On the issue, the failure comment starts with `⚠️ Implementation failed: 🟡 Implementation finished, but dependencies did not install — build and tests never ran.`, followed by the install command and the end of its output.
+
+        Its next step directs you to fix the install (lockfile, peer ranges, registry access), or set `packageManager: none` in `.ai-implement/config.yml` and install from a `setup:` hook, then re-dispatch or review the PR by hand. See [Dependencies did not install](/latest/reference/troubleshooting#dependencies-did-not-install) for the common causes and fixes.
+
+        The work is pushed as a **draft PR** whose body starts with `## ⚠️ Dependencies did not install`, showing the install command and the end of its output in a code block.
+
+        A second comment reports the install result: `` Dependency install (`npm ci`) failed before and after the agent ran. Build and tests did not run. ``, followed by that output.
+
+        The run is never approved, so a feature-branch child PR is **not** auto-merged — a person reviews it, the same hold a review that did not approve receives.
+
+        Preflight, the verification hook, and the post-push review are all skipped for this run.
+
+        If the first install fails but the install after the agent's change succeeds, the run completes normally. The first attempt's failure is still recorded:
+
+        - The pull request's Test plan includes `Initial dependency install failed; it succeeded after this change.`
+        - The issue gets a comment: `` Dependency install (`npm ci`) failed before the agent ran and succeeded after its change. ``
     </Accordion>
 
     <Accordion title="The Claude run failed" description="Claude ended with an error before finishing">
