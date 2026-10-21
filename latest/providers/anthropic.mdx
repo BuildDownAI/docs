@@ -6,6 +6,8 @@ import ExperimentalBanner from "/snippets/experimental-banner.mdx";
 
 <ExperimentalBanner />
 
+This page describes the mapping-based provider settings for legacy projects. Configured projects select their agent, provider, model, and account through [Agent settings per stage](/latest/configuration/agents).
+
 
 By default, AI-Implement uses the Anthropic provider, which supports two authentication methods: `ANTHROPIC_API_KEY` (API key) and `CLAUDE_CODE_OAUTH_TOKEN` (Claude Code OAuth token). You do not need to configure a provider explicitly — `anthropic` is the default when you add a repo mapping in the admin UI. This page explains how to set up the required secrets and how to control which model Claude uses for each run.
 
@@ -91,7 +93,7 @@ The provider is configured per repo mapping, not globally. To confirm or change 
 
 ## Selecting a model
 
-The model Claude uses is controlled by the `model:` key in the front matter of your repo's `WORKFLOW.md` (and `PLANNING.md` if planning is enabled). The value is passed verbatim to `claude-code --model`, so any model ID that Anthropic's API or your OAuth token accepts is valid.
+For a legacy project, the model Claude uses is controlled by the `model:` key in the front matter of your repo's `WORKFLOW.md` (and `PLANNING.md` if planning is enabled). The value is passed verbatim to `claude-code --model`, so any model ID that Anthropic's API or your OAuth token accepts is valid.
 
 ```yaml
 ---
@@ -99,10 +101,10 @@ model: claude-sonnet-4-6
 ---
 ```
 
-When `model:` is not set in `WORKFLOW.md`, the implementation workflow defaults to `claude-sonnet-4-6`.
+When no model override is set, the legacy run uses its runner default. Check your existing template before changing the model.
 
 Other valid Anthropic model IDs include `claude-opus-4-7` and `claude-haiku-4-5-20251001`. New Anthropic model releases flow through without requiring a workflow template update — the model ID is not validated by the workflow.
 
 <Note>
-  The seed `WORKFLOW.md` that AI-Implement syncs to your repo already includes `model: claude-sonnet-4-6`, so new repos work out of the box without any model configuration.
+  The seeded `WORKFLOW.md` includes a legacy model value. For a configured project, its stage model takes precedence over that value.
 </Note>

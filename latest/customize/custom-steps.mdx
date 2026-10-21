@@ -44,7 +44,9 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="install-skills">
-    Clones the project's configured skills repository into the workspace so Claude can use its skills during the run. Skipped automatically when the project has no skills repository set.
+    Clones the project's configured skills repository into the workspace for the agents selected across the run's stages. Skipped automatically when the project has no skills repository set.
+
+    Claude skills go to `~/.claude/skills`; Codex skills go to `~/.agents/skills`. This uses the trusted project skills repository, not a desktop client's BuildDown plugin installation.
 
     Override to change how skills are fetched — for example to pull from a private mirror, or to filter which skills are made available.
   </Accordion>
@@ -91,7 +93,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
   </Accordion>
 
   <Accordion title="preflight">
-    Runs the target repo's own `typecheck`/`lint`/`test` package-manager scripts against Claude's finished diff, immediately before push. Automatically skipped when the `feedback-loop` did not approve the diff — so it validates a reviewer-approved change, not the pre-implementation workspace.
+    Runs the target repo's own `typecheck`/`lint`/`test` package-manager scripts against the agent's finished diff, immediately before push. Automatically skipped when the `feedback-loop` did not approve the diff — so it validates a reviewer-approved change, not the pre-implementation workspace.
 
     It is also skipped when both dependency install attempts failed — its checks would fail for missing dependencies rather than for the change.
 
@@ -124,7 +126,7 @@ The orchestrator pipelines reference these step IDs. Any of them can be overridd
 
     It is skipped when both dependency install attempts failed — an unverified run's PR is left for a human rather than run through a review cycle.
 
-    Before the review runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own findings are then deduped and fed back to Claude as iteration prompts. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
+    Before the review runs, the step waits for any configured external review provider (such as a `claude-review.yml` GitHub Action posting its own findings) to finish. Both the external reviewer's blocking issues and the step's own findings are then deduped and fed back to the implementation agent as fix instructions. If blocking issues remain after a pass, the step force-pushes the revision and runs another review pass.
 
     It runs up to three review passes by default, which force-push at most two revised versions: on the third pass the step reports that it reached the review cap rather than force-pushing again. [Post-push review](/latest/reference/post-push-review) covers the comments it leaves and how each outcome reads.
 
@@ -279,13 +281,13 @@ reviewers:
 </ParamField>
 
 <ParamField body="models.implement" type="string">
-  Model ID used for the implementation step. Overrides the `model:` value from `WORKFLOW.md` front matter for the implement step only.
+  Legacy model ID used for the implementation step. Overrides the `model:` value from `WORKFLOW.md` front matter for the implement step only.
   
-  Useful when you want a heavier model for implementation and a lighter one for review.
+  Configured projects use their [implementation stage selection](/latest/configuration/agents) instead.
 </ParamField>
 
 <ParamField body="models.review" type="string">
-  Model ID used for the `review` step wrapped by `feedback-loop`. Same override semantics as `models.implement`.
+  Legacy model ID used for the `review` step wrapped by `feedback-loop`. Configured projects use their [review stage selection](/latest/configuration/agents) instead.
 </ParamField>
 
 <ParamField body="reviewProviders" type="string[]">
