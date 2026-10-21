@@ -11,6 +11,30 @@ AI-Implement runs a list of reviewers after it opens a pull request. Each review
 
 A reviewer either gates the merge or runs as advisory. A gating reviewer blocks the merge when it finds a problem. An advisory reviewer reports its findings but does not block the merge.
 
+## Use Codex for internal review
+
+These controls make different choices:
+
+| Control | What it selects |
+|---|---|
+| [Review stage](/latest/configuration/agents) | The agent, provider, model, account profile, and timeout for internal verdicts. |
+| **Reviewers** in project settings | Which internal reviewer definitions run and which findings gate. |
+| [Review process](/latest/customize/external-reviewers#review-process) | How a separate external review service contributes its verdict and findings. |
+
+Selecting Codex for the review stage does not install an external Codex review bot.
+
+The configured stages divide the work as follows:
+
+| Work | Stage |
+|---|---|
+| Generate planning comments | planning |
+| Change code, including post-push fix passes | implementation |
+| In-loop verdicts, internal or advisory post-push reviews, and read-only post-mortems | review |
+
+For example, Claude implementation with Codex review sends code fixes back to Claude. A changed selection applies to a later run; the current run keeps its resolved settings.
+
+The configured review model takes precedence over repository model values and each reviewer definition's `model`.
+
 ## Built-in reviewers
 
 AI-Implement includes these built-in reviewers:
@@ -38,7 +62,7 @@ You can add your own reviewer in `.ai-implement/config.yml` in your target repo.
 
 - `id` — required
 - `prompt` — required
-- `model` — optional
+- `model` — optional legacy model override; configured review-stage selection takes precedence
 
 ```yaml
 reviewers:
@@ -91,13 +115,15 @@ See [Runner image](/latest/customize/runner-image) and [Customize pipeline behav
 
 ## Turn limit
 
-Each reviewer stops at a turn limit. AI-Implement takes the limit from the first of these that is set:
+These turn limits apply to Claude reviewers. AI-Implement takes the limit from the first of these that is set:
 
 - the reviewer's **Max turns** in the project settings
 - the built-in default
 - **Review Max Turns** in **Settings → Retry Policy** (default 30)
 
 When a reviewer reaches its turn limit, the review is incomplete and reports `REVIEWER_TURNS_EXHAUSTED`. See [A reviewer reached its turn limit](/latest/reference/run-statuses#a-reviewer-reached-its-turn-limit).
+
+Codex reviewers use the configured review stage's elapsed timeout. **Max turns** and **Review Max Turns** do not cap Codex. See [Timeouts and limits](/latest/configuration/agents#timeouts-and-limits).
 
 ## What the reviewer returns
 
@@ -115,3 +141,11 @@ After the result, the report shows a `Checks:` list. Each check has one of these
 - Not applicable
 
 A reviewer that does not finish shows `{label}: review incomplete (required)` or `{label}: review incomplete (advisory)`.
+
+### Source inspection and executed checks
+
+Codex review has restricted read-only access to repository text. It can read and search, but cannot edit files or run tests and shell commands.
+
+Read each check's evidence. A source inspection can support a check without executing a test. **Not verified** means the check was not established; it is not a test pass.
+
+Automated verdicts do not provide a required human GitHub approval. See [Approval is a comment](/latest/reference/post-push-review#approval-is-a-comment-not-an-approving-review).
