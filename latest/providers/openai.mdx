@@ -225,7 +225,7 @@ See [Agent settings per stage](/latest/configuration/agents) for opt-in and the 
 
 Switching a project from the GitHub Actions Claude review to AI-Implement's internal review with Codex takes two separate settings:
 
-- **Review process** (on the project) decides who reviews the pull request and fixes the findings. Change it from **Claude Code Review** (`claude-code-review`) to **AI-Implement** (`ai-implement`) to hand review to AI-Implement's own reviewers.
+- **Review process** (on the project) decides who reviews the pull request and fixes the findings. If the project is on either **Claude Code Review** (`claude-code-review`) or **Claude Code Review, repository auto-fix** (`claude-code-review-repository-fix`), change the Review process to **AI-Implement** (`ai-implement`) to hand review to AI-Implement's own reviewers.
 - **Review stage** (on the **Agents** tab) decides which agent and model the internal review runs. Choose `codex` with a Codex account profile there for Codex to review.
 
 Changing the review process alone keeps Claude as the reviewer, because the review stage still selects the agent that runs.
