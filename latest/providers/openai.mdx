@@ -11,9 +11,59 @@ AI-Implement can run the Codex agent against OpenAI. Each OpenAI account profile
 
 Both are configured per account profile on the **Models & providers** page of the admin UI. Set up the profile first, then add a key or connect a plan to it.
 
-<Info>
-  Adding an account profile and setting its credentials requires an administrator on the orchestrator's admin UI.
-</Info>
+## Before you start
+
+The account profile form, **Set key**, and **Connect ChatGPT plan** show only for the `admin` role. With the `user` role, **Models & providers** is read-only.
+
+An admin grants the role on the **Access** panel (`/admin#access`). Only a listed email address can be made `admin`, and a domain entry always admits as `user`.
+
+<Warning>
+  AI-Implement does not read an `OPENAI_API_KEY` environment variable. A key reaches a run only through **Set key** on its account profile, with no environment fallback.
+</Warning>
+
+## Choose how to authenticate
+
+The two methods differ in billing and what each needs:
+
+|  | OpenAI API key (`openai-api-key`) | ChatGPT plan (`codex-subscription`) |
+|---|---|---|
+| Billing | The OpenAI API platform, separate from any ChatGPT subscription | The connected plan's Codex limits |
+| Use for | Customer-facing runs | Your own plan only, never shared |
+| Needs | An API organization with credits | A ChatGPT plan with Codex, and a laptop with an AI-Implement checkout |
+
+## Get an OpenAI API key for a business
+
+This section applies to the OpenAI API key path. Skip it if you are connecting a ChatGPT plan.
+
+A ChatGPT Business subscription (formerly ChatGPT Team) does not include API usage. The API organization on [platform.openai.com](https://platform.openai.com) is separate from the ChatGPT workspace.
+
+The organization selector at the bottom left of [platform.openai.com](https://platform.openai.com) often shows one organization named **Personal**. It belongs to the login you signed in with, so it can serve as your company's organization.
+
+You cannot create a second organization yourself. OpenAI support creates one on request, and OpenAI recommends projects within a single organization instead.
+
+<Steps>
+  <Step title="Add billing or prepaid credits">
+    Add a payment method or prepaid credits before anything else. While the **Add credits** panel still shows, every request fails with a quota error.
+  </Step>
+  <Step title="Create a project">
+    Create a project — for example `ai-implement`. The **Default project** cannot hold service accounts, so a dedicated project is required.
+  </Step>
+  <Step title="Set the project's limits">
+    Under the project's **Limits**, restrict **Model usage** and set a **Monthly spend limit**.
+  </Step>
+  <Step title="Create a service-account key">
+    Under the project's **Members**, choose **+ Service account** and create the key. The key is shown once, so copy it immediately.
+  </Step>
+  <Step title="Note the key's expiry">
+    Record the key's **Expires** date. After it passes, the profile stops working until you set a new key.
+  </Step>
+</Steps>
+
+For what OpenAI documents on each step, see:
+
+- [Managing projects in the API platform](https://help.openai.com/en/articles/9186755-managing-projects-in-the-api-platform)
+- [Managing billing for ChatGPT and the API platform](https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform)
+- [Requesting an additional API organization](https://help.openai.com/en/articles/8991840-requesting-an-additional-api-organization)
 
 ## Account profiles
 
@@ -26,12 +76,26 @@ The form has these fields:
 - **Agent** — `codex`.
 - **Provider** — `openai`.
 - **Authentication** — `openai-api-key` for an API key, or `codex-subscription` (shown as **ChatGPT plan**) to connect a ChatGPT plan.
-- **Permitted projects** — the exact project keys this profile may serve, comma-separated. A profile with no permitted project cannot be selected for any project.
+- **Permitted projects** — the projects this profile may serve, set as described in [Permitted projects](#permitted-projects).
+
+**Agent**, **Provider**, and **Authentication** must form one of these combinations, or the save is refused with `profile agent/provider/authentication combination is unsupported`:
+
+- `codex` + `openai` + `openai-api-key` or `codex-subscription`
+- `claude` + `anthropic` + `anthropic-api-key` or `claude-subscription`
+- `claude` + `bedrock` + `bedrock`
 
 A new profile is created **active**. A ChatGPT plan can only be connected while the profile is active.
 
+### Permitted projects
+
+**Permitted projects** controls which projects a profile may serve:
+
+- **Blank** — serves every project. The field is stored as `*` and shown in the table as `all projects`.
+- **A comma-separated list of project keys** — serves only those projects.
+- **Emptied after being set** — serves no project. Empty the list with `PATCH /api/model-accounts/:id`, or disable the profile, to revoke access.
+
 <Note>
-  Readiness is checked against the profile's first permitted project. A profile with no permitted project shows **unknown** readiness. That is a missing probe target, not a rejected credential.
+  Readiness is checked against one permitted project. A profile with a list is checked against its first key, and an all-projects profile is checked against a mapped project. A profile with an emptied list has no project to probe and shows **unknown** readiness — a missing probe target, not a rejected credential.
 </Note>
 
 ## Use an OpenAI API key
@@ -150,6 +214,23 @@ node dist/chatgpt-plan-login.js logout --record ~/.ai-implement/chatgpt-plan.jso
 ```
 
 Use local `logout` only on an independent laptop-only sign-in — one you created with `login` and never uploaded or imported. Once the orchestrator holds the same sign-in, revoking it on the laptop disconnects the hosted session too. To sign out a hosted account on purpose, use the host sign-out command above instead.
+
+## Next: point the project at the profile
+
+Creating a profile and setting its credential enrolls no project on its own. Opt the project in on its **Agents** tab (**Projects → Edit → Agents**), where every stage needs a resolved account profile.
+
+See [Agent settings per stage](/latest/configuration/agents) for opt-in and the per-stage rules.
+
+## Moving off the GitHub Actions Claude review
+
+Switching a project from the GitHub Actions Claude review to AI-Implement's internal review with Codex takes two separate settings:
+
+- **Review process** (on the project) decides who reviews the pull request and fixes the findings. Change it from **Claude Code Review** (`claude-code-review`) to **AI-Implement** (`ai-implement`) to hand review to AI-Implement's own reviewers.
+- **Review stage** (on the **Agents** tab) decides which agent and model the internal review runs. Choose `codex` with a Codex account profile there for Codex to review.
+
+Changing the review process alone keeps Claude as the reviewer, because the review stage still selects the agent that runs.
+
+See [Review process](/latest/customize/external-reviewers#review-process) for the review-process values and [Agent settings per stage](/latest/configuration/agents) for the review stage.
 
 ## How stored credentials are protected
 
