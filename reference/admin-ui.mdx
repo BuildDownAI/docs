@@ -609,7 +609,7 @@ These endpoints sit outside the operator API but are operator-configurable: you 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/github/webhook` | Receives GitHub webhook events from your target repos — pull request reviews, review comments, issue comments, and pull request merges. Validates the HMAC signature against `GITHUB_WEBHOOK_SECRET`. Returns `503` when the secret is unset (endpoint disabled). |
-| `POST` | `/trigger/gap-fill` | Starts a gap-fill run against an existing pull request. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Returns `503` when the secret is unset (trigger disabled).
+| `POST` | `/trigger/gap-fill` | Starts a gap-fill run against an existing pull request. Validates a bearer token equal to `GAP_FILL_TRIGGER_SECRET`. Returns `501` when the secret is unset (trigger disabled).
 
 <Warning>
   Both endpoints require their corresponding secret to be configured on the orchestrator.
